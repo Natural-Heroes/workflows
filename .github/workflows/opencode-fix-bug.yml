@@ -1,0 +1,161 @@
+name: opencode-fix-bug
+
+on:
+  workflow_call:
+    secrets:
+      OPENAI_API_KEY:
+        required: true
+
+jobs:
+  fix:
+    if: startsWith(github.event.comment.body, '/fix')
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Get parent comment info
+        id: parent
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const comment = context.payload.comment;
+            const pr = context.payload.pull_request;
+
+            // Get the comment this is replying to (in_reply_to_id)
+            if (!comment.in_reply_to_id) {
+              core.setFailed('This /fix command must be a reply to a bug report comment');
+              return;
+            }
+
+            // Get the parent comment
+            const parentComment = await github.rest.pulls.getReviewComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: comment.in_reply_to_id
+            });
+
+            const parent = parentComment.data;
+
+            // Extract bug info from parent comment
+            const titleMatch = parent.body.match(/## (.+)/);
+            const severityMatch = parent.body.match(/\*\*Severity:\*\* (.+)/);
+
+            // Get description (everything between severity and ---)
+            const descMatch = parent.body.match(/\*\*Severity:\*\* .+\n\n([\s\S]+?)\n\n---/);
+
+            core.setOutput('file', parent.path);
+            core.setOutput('line', parent.line || parent.original_line);
+            core.setOutput('bug_title', titleMatch ? titleMatch[1] : 'Bug fix');
+            core.setOutput('bug_description', descMatch ? descMatch[1] : parent.body);
+            core.setOutput('head_ref', pr.head.ref);
+            core.setOutput('pr_number', pr.number);
+
+            // Extract custom instructions after /fix
+            const userInstructions = comment.body.replace(/^\/fix\s*/, '').trim();
+            core.setOutput('user_instructions', userInstructions);
+
+            // React to acknowledge
+            await github.rest.reactions.createForPullRequestReviewComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: comment.id,
+              content: 'rocket'
+            });
+
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.parent.outputs.head_ref }}
+          fetch-depth: 0
+
+      - name: Read file content
+        id: read
+        run: |
+          FILE="${{ steps.parent.outputs.file }}"
+          if [ -f "$FILE" ]; then
+            CONTENT=$(cat "$FILE")
+            echo "content<<EOFMARKER" >> $GITHUB_OUTPUT
+            echo "$CONTENT" >> $GITHUB_OUTPUT
+            echo "EOFMARKER" >> $GITHUB_OUTPUT
+          else
+            echo "File not found: $FILE"
+            exit 1
+          fi
+
+      - name: Fix bug with GPT-5.2
+        id: fix
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          FILE_CONTENT: ${{ steps.read.outputs.content }}
+          BUG_TITLE: ${{ steps.parent.outputs.bug_title }}
+          BUG_DESC: ${{ steps.parent.outputs.bug_description }}
+          FILE_PATH: ${{ steps.parent.outputs.file }}
+          LINE_NUM: ${{ steps.parent.outputs.line }}
+          USER_INSTRUCTIONS: ${{ steps.parent.outputs.user_instructions }}
+        run: |
+          EXTRA=""
+          if [ -n "$USER_INSTRUCTIONS" ]; then
+            EXTRA="
+
+          ADDITIONAL INSTRUCTIONS FROM USER:
+          $USER_INSTRUCTIONS"
+          fi
+
+          PROMPT="You are a code fixer. Fix this bug in the code.
+
+          BUG: $BUG_TITLE
+          DESCRIPTION: $BUG_DESC
+          FILE: $FILE_PATH
+          LINE: $LINE_NUM
+          $EXTRA
+
+          CURRENT FILE CONTENT:
+          $FILE_CONTENT
+
+          IMPORTANT: Return ONLY the complete fixed file content. No markdown, no explanation, no code blocks. Just the raw fixed code that should replace the entire file."
+
+          RESPONSE=$(curl -s https://api.openai.com/v1/responses \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer $OPENAI_API_KEY" \
+            -d "$(jq -n --arg input "$PROMPT" '{
+              "model": "gpt-5.2",
+              "input": $input,
+              "reasoning": {
+                "effort": "medium"
+              }
+            }')")
+
+          FIXED=$(echo "$RESPONSE" | jq -r '
+            .output[]
+            | select(.type == "message")
+            | .content[]
+            | select(.type == "output_text")
+            | .text
+          ' 2>/dev/null)
+
+          # Remove markdown code blocks if present
+          FIXED=$(echo "$FIXED" | sed 's/^```[a-z]*//g' | sed 's/```$//g')
+
+          echo "$FIXED" > "$FILE_PATH"
+
+      - name: Commit and push fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add "${{ steps.parent.outputs.file }}"
+          git commit -m "fix: ${{ steps.parent.outputs.bug_title }}"
+          git push
+
+      - name: Reply with success
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.pulls.createReplyForReviewComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: ${{ steps.parent.outputs.pr_number }},
+              comment_id: context.payload.comment.in_reply_to_id,
+              body: '✅ **Fixed!** The bug has been fixed and committed to this PR.'
+            });

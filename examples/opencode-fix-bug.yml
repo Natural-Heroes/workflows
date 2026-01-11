@@ -1,0 +1,14 @@
+# Copy this file to your repo's .github/workflows/ folder
+# Replace YOUR_USERNAME with your GitHub username or org name
+
+name: opencode-fix-bug
+
+on:
+  pull_request_review_comment:
+    types: [created]
+
+jobs:
+  fix-bug:
+    uses: YOUR_USERNAME/workflows/.github/workflows/opencode-fix-bug.yml@main
+    secrets:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}

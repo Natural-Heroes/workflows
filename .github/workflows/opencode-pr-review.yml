@@ -1,0 +1,154 @@
+name: opencode-pr-review
+
+on:
+  workflow_call:
+    secrets:
+      OPENAI_API_KEY:
+        required: true
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+      pull-requests: write
+      issues: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get PR diff
+        id: diff
+        run: |
+          DIFF=$(git diff ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }} -- '*.ts' '*.tsx' '*.js' '*.jsx' | head -c 50000)
+          echo "diff<<EOFMARKER" >> $GITHUB_OUTPUT
+          echo "$DIFF" >> $GITHUB_OUTPUT
+          echo "EOFMARKER" >> $GITHUB_OUTPUT
+
+      - name: Analyze bugs with GPT-5.2
+        if: steps.diff.outputs.diff != ''
+        id: analyze
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          DIFF_CONTENT: ${{ steps.diff.outputs.diff }}
+        run: |
+          PROMPT="You are a bug-finding code reviewer. Analyze this PR diff and find bugs, security issues, and logic errors.
+
+          IMPORTANT: Return ONLY valid JSON array, no markdown, no explanation. Each bug must have these exact fields:
+          - file: string (file path from the diff header)
+          - line: number (line number in the NEW file)
+          - severity: string (Critical, High, Medium, or Low)
+          - title: string (short bug title)
+          - description: string (explanation of the bug and its impact)
+
+          If no bugs found, return: []
+
+          Diff to analyze:
+          $DIFF_CONTENT"
+
+          RESPONSE=$(curl -s https://api.openai.com/v1/responses \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer $OPENAI_API_KEY" \
+            -d "$(jq -n --arg input "$PROMPT" '{
+              "model": "gpt-5.2",
+              "input": $input,
+              "reasoning": {
+                "effort": "medium"
+              }
+            }')")
+
+          echo "API Response: $RESPONSE"
+
+          BUGS=$(echo "$RESPONSE" | jq -r '
+            .output[]
+            | select(.type == "message")
+            | .content[]
+            | select(.type == "output_text")
+            | .text
+          ' 2>/dev/null || echo "[]")
+
+          BUGS=$(echo "$BUGS" | sed 's/^```json//g' | sed 's/^```//g' | sed 's/```$//g' | tr -d '\n' | sed 's/^[[:space:]]*//g')
+
+          echo "Parsed bugs: $BUGS"
+          echo "bugs<<EOFMARKER" >> $GITHUB_OUTPUT
+          echo "$BUGS" >> $GITHUB_OUTPUT
+          echo "EOFMARKER" >> $GITHUB_OUTPUT
+
+      - name: Post individual review comments
+        if: steps.analyze.outputs.bugs != '' && steps.analyze.outputs.bugs != '[]'
+        uses: actions/github-script@v7
+        env:
+          BUGS_JSON: ${{ steps.analyze.outputs.bugs }}
+        with:
+          script: |
+            let bugs;
+            try {
+              const bugsStr = process.env.BUGS_JSON || '[]';
+              bugs = JSON.parse(bugsStr);
+            } catch (e) {
+              console.log('Failed to parse bugs JSON:', e.message);
+              console.log('Raw input:', process.env.BUGS_JSON);
+              return;
+            }
+
+            if (!Array.isArray(bugs) || bugs.length === 0) {
+              console.log('No bugs found or invalid format');
+              return;
+            }
+
+            const pr = context.payload.pull_request;
+            const repo = context.repo;
+
+            for (const bug of bugs) {
+              const body = [
+                `## ${bug.title}`,
+                '',
+                `**Severity:** ${bug.severity}`,
+                '',
+                bug.description,
+                '',
+                '---',
+                `💡 **Reply:**`,
+                `\`/fix\` to auto-fix this bug`,
+                `or`,
+                `\`/fix <instructions>\` to add custom instructions`
+              ].join('\n');
+
+              try {
+                await github.rest.pulls.createReviewComment({
+                  owner: repo.owner,
+                  repo: repo.repo,
+                  pull_number: pr.number,
+                  body: body,
+                  commit_id: pr.head.sha,
+                  path: bug.file,
+                  line: bug.line,
+                  side: 'RIGHT'
+                });
+                console.log('Posted inline comment for:', bug.title);
+              } catch (e) {
+                console.log('Failed to post line comment:', e.message);
+                await github.rest.issues.createComment({
+                  owner: repo.owner,
+                  repo: repo.repo,
+                  issue_number: pr.number,
+                  body: '**' + bug.file + ':' + bug.line + '**\n\n' + body
+                });
+              }
+            }
+
+      - name: Post no bugs message
+        if: steps.analyze.outputs.bugs == '[]' || steps.analyze.outputs.bugs == ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr.number,
+              body: '✅ **No bugs found in this PR.**'
+            });

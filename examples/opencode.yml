@@ -1,0 +1,16 @@
+# Copy this file to your repo's .github/workflows/ folder
+# Replace YOUR_USERNAME with your GitHub username or org name
+
+name: opencode
+
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+
+jobs:
+  opencode:
+    uses: YOUR_USERNAME/workflows/.github/workflows/opencode.yml@main
+    secrets:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}

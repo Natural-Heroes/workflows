@@ -1,0 +1,14 @@
+# Copy this file to your repo's .github/workflows/ folder
+# Replace YOUR_USERNAME with your GitHub username or org name
+
+name: opencode-pr-review
+
+on:
+  pull_request:
+    types: [opened, ready_for_review, synchronize]
+
+jobs:
+  review:
+    uses: YOUR_USERNAME/workflows/.github/workflows/opencode-pr-review.yml@main
+    secrets:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
