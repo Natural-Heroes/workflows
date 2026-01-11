@@ -5,17 +5,10 @@ Central repository for reusable GitHub Actions workflows.
 ## Structure
 
 - `.github/workflows/` - Reusable workflow definitions (called by other repos)
-- `opencode/` - Caller templates for opencode (Claude-based AI assistant)
 - `bugbot/` - Caller templates for bugbot (GPT-based bug detection & fixing)
 
-## Workflows
+## Bugbot Workflows
 
-### opencode
-| Workflow | Trigger | Provider |
-|----------|---------|----------|
-| `opencode.yml` | `/oc` or `/opencode` commands | Anthropic Claude |
-
-### bugbot
 | Workflow | Trigger | Provider |
 |----------|---------|----------|
 | `bugbot-review.yml` | PR opened/updated | OpenAI GPT-5.2 |
