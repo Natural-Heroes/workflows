@@ -1,0 +1,10 @@
+{
+  "name": "fibery",
+  "version": "0.1.0",
+  "description": "Integrate Claude Code with Fibery for scrum workflow management",
+  "author": {
+    "name": "Natural Heroes",
+    "email": "nevil@naturalheroes.nl"
+  },
+  "keywords": ["fibery", "scrum", "project-management", "integration"]
+}
