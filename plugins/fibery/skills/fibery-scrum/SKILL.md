@@ -1,12 +1,36 @@
 ---
 name: Fibery Scrum
-description: This skill should be used when the user asks to "work with Fibery", "query Fibery tasks", "create a Fibery task", "update task in Fibery", "show sprint status", "link PR to Fibery", "sync with Fibery", or mentions Fibery Scrum entities (Release, Sprint, Story, Task). Provides knowledge of the Natural Heroes Fibery Scrum schema and query patterns.
-version: 0.1.0
+description: This skill should be used when the user asks to "work with Fibery", "query Fibery tasks", "create a Fibery task", "create a todo", "update task in Fibery", "show sprint status", "link PR to Fibery", "sync with Fibery", or mentions Fibery entities (Release, Sprint, Story, Task, Todo). Provides knowledge of the Natural Heroes Fibery workspace including both Scrum tasks and general Todos.
+version: 0.2.0
 ---
 
-# Fibery Scrum Integration
+# Fibery Integration
 
-Integrate development workflow with Fibery's Scrum project management. This skill provides schema knowledge and query patterns for the Natural Heroes Fibery workspace.
+Integrate development workflow with Fibery project management. This skill provides schema knowledge and query patterns for the Natural Heroes Fibery workspace, supporting both **sprint-based Scrum tasks** and **general Todos**.
+
+## Two Task Systems
+
+This workspace has two task management systems:
+
+| System | Database | Use For |
+|--------|----------|---------|
+| **Scrum** | `Scrum/Task` | Sprint development work, bugs, features |
+| **General Todos** | `Fibery databases/Todo` | Operations, meetings, marketing, ad-hoc work |
+
+### When to Use Which
+
+| Use Case | Database | Command |
+|----------|----------|---------|
+| Sprint development work | Scrum/Task | `/create-task` |
+| Bug fixes for sprints | Scrum/Task | `/create-task --type=bug` |
+| Feature development | Scrum/Task | `/create-task --type=feature` |
+| Meeting action items | Fibery databases/Todo | `/create-todo` |
+| Marketing tasks | Fibery databases/Todo | `/create-todo` |
+| Operations tasks | Fibery databases/Todo | `/create-todo` |
+| R&D / Formula work | Fibery databases/Todo | `/create-todo` |
+| Ad-hoc tasks (no sprint) | Fibery databases/Todo | `/create-todo` |
+
+---
 
 ## Scrum Hierarchy
 
@@ -175,6 +199,66 @@ Tasks link to GitHub Pull Requests via:
 - `Scrum/PR link` - Direct URL to PR
 - `Scrum/Pull Request` - Linked GitHub/Pull Request entity
 - `Scrum/PR State` - PR status text
+
+---
+
+## General Todos (Fibery databases/Todo)
+
+For non-sprint work: operations, meetings, marketing, R&D, etc.
+
+### Todo Key Fields
+
+| Field | API Path | Type |
+|-------|----------|------|
+| Name | `Fibery databases/name` | text |
+| State | `workflow/state` | enum |
+| DRI | `Fibery databases/DRI` | user |
+| Priority | `Fibery databases/Priority` | enum |
+| Deadline | `Fibery databases/Deadline` | date-time |
+| Tags | `Fibery databases/Tags` | collection |
+
+### Todo States
+
+- Backlog
+- Todo
+- Doing
+- In Review
+- On Hold
+- Done
+
+### Query Active Todos
+
+```json
+{
+  "q_from": "Fibery databases/Todo",
+  "q_select": {
+    "Name": ["Fibery databases/name"],
+    "Public ID": ["fibery/public-id"],
+    "State": ["workflow/state", "enum/name"],
+    "DRI": ["Fibery databases/DRI", "user/name"],
+    "Priority": ["Fibery databases/Priority", "enum/name"],
+    "Deadline": ["Fibery databases/Deadline"]
+  },
+  "q_where": ["!=", ["workflow/state", "workflow/Final"], "$notFinal"],
+  "q_params": { "$notFinal": true },
+  "q_limit": 50
+}
+```
+
+### Create Todo
+
+```json
+{
+  "database": "Fibery databases/Todo",
+  "entity": {
+    "Fibery databases/name": "Todo title",
+    "Fibery databases/Priority": "Medium",
+    "workflow/state": "Todo"
+  }
+}
+```
+
+---
 
 ## Additional Resources
 
