@@ -1,22 +1,28 @@
 # Workflows Repository
 
-This repository contains reusable GitHub Actions workflows.
+Central repository for reusable GitHub Actions workflows.
 
 ## Structure
 
 - `.github/workflows/` - Reusable workflow definitions (called by other repos)
-- `examples/` - Caller workflow templates to copy into consuming repos
+- `opencode/` - Caller templates for opencode (Claude-based AI assistant)
+- `bugbot/` - Caller templates for bugbot (GPT-based bug detection & fixing)
 
 ## Workflows
 
-| Workflow | Trigger | Secret |
-|----------|---------|--------|
-| `opencode-fix-bug.yml` | `/fix` command on PR review comments | `OPENAI_API_KEY` |
-| `opencode-pr-review.yml` | PR opened/updated | `OPENAI_API_KEY` |
-| `opencode.yml` | `/oc` or `/opencode` commands | `ANTHROPIC_API_KEY` |
+### opencode
+| Workflow | Trigger | Provider |
+|----------|---------|----------|
+| `opencode.yml` | `/oc` or `/opencode` commands | Anthropic Claude |
+
+### bugbot
+| Workflow | Trigger | Provider |
+|----------|---------|----------|
+| `bugbot-review.yml` | PR opened/updated | OpenAI GPT-5.2 |
+| `bugbot-fix.yml` | `/fix` reply to bug comment | OpenAI GPT-5.2 |
 
 ## Adding New Workflows
 
 1. Create the reusable workflow in `.github/workflows/` with `workflow_call` trigger
-2. Create a caller template in `examples/`
+2. Create a caller template in the appropriate folder (or create new folder for new group)
 3. Update README.md with usage instructions

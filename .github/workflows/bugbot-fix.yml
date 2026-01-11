@@ -1,4 +1,4 @@
-name: opencode-fix-bug
+name: bugbot-fix
 
 on:
   workflow_call:

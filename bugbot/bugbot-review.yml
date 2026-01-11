@@ -1,7 +1,7 @@
 # Copy this file to your repo's .github/workflows/ folder
 # Replace YOUR_USERNAME with your GitHub username or org name
 
-name: opencode-pr-review
+name: bugbot-review
 
 on:
   pull_request:
@@ -9,6 +9,6 @@ on:
 
 jobs:
   review:
-    uses: YOUR_USERNAME/workflows/.github/workflows/opencode-pr-review.yml@main
+    uses: YOUR_USERNAME/workflows/.github/workflows/bugbot-review.yml@main
     secrets:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
