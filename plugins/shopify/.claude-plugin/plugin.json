@@ -1,0 +1,10 @@
+{
+  "name": "shopify",
+  "version": "0.1.0",
+  "description": "Shopify development toolkit with Dev MCP, Storefront MCP, and CLI guidance",
+  "author": {
+    "name": "Natural Heroes",
+    "email": "nevil@naturalheroes.nl"
+  },
+  "keywords": ["shopify", "ecommerce", "mcp", "storefront", "theme", "app"]
+}

@@ -18,6 +18,17 @@
       },
       "source": "./plugins/fibery",
       "category": "productivity"
+    },
+    {
+      "name": "shopify",
+      "description": "Shopify development toolkit with Dev MCP, Storefront MCP, and CLI guidance",
+      "version": "0.1.0",
+      "author": {
+        "name": "Natural Heroes",
+        "email": "nevil@naturalheroes.nl"
+      },
+      "source": "./plugins/shopify",
+      "category": "development"
     }
   ]
 }

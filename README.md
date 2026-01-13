@@ -17,6 +17,7 @@ This repository includes a local Claude Code plugin marketplace.
 | Plugin | Description |
 |--------|-------------|
 | `fibery` | Integrate Claude Code with Fibery for scrum workflow management |
+| `shopify` | Shopify development toolkit with Dev MCP, Storefront MCP, and CLI guidance |
 
 ## Bugbot
 
@@ -51,5 +52,6 @@ workflows/
 │   ├── bugbot-review.yml
 │   └── bugbot-fix.yml
 └── plugins/               # Claude Code plugins
-    └── fibery/
+    ├── fibery/
+    └── shopify/
 ```
