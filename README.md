@@ -1,6 +1,22 @@
-# Workflows - Reusable GitHub Actions
+# Workflows
 
-Central repository for reusable GitHub Actions workflows.
+Central repository for reusable GitHub Actions workflows and Claude Code plugins.
+
+## Claude Code Marketplace
+
+This repository includes a local Claude Code plugin marketplace.
+
+### Installation
+
+```bash
+/plugin marketplace add Natural-Heroes/workflows
+```
+
+### Available Plugins
+
+| Plugin | Description |
+|--------|-------------|
+| `fibery` | Integrate Claude Code with Fibery for scrum workflow management |
 
 ## Bugbot
 
@@ -26,10 +42,14 @@ Automated PR bug detection and fixing using GPT-5.2.
 
 ```
 workflows/
+├── .claude-plugin/        # Claude Code marketplace
+│   └── marketplace.json
 ├── .github/workflows/     # Reusable workflow definitions
 │   ├── bugbot-review.yml
 │   └── bugbot-fix.yml
-└── bugbot/                # Caller templates
-    ├── bugbot-review.yml
-    └── bugbot-fix.yml
+├── bugbot/                # Caller templates
+│   ├── bugbot-review.yml
+│   └── bugbot-fix.yml
+└── plugins/               # Claude Code plugins
+    └── fibery/
 ```
