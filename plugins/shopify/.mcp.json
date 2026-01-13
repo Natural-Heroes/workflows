@@ -8,11 +8,11 @@
       }
     },
     "storefront-dev": {
-      "type": "sse",
+      "type": "http",
       "url": "https://dev-test-202050947.myshopify.com/api/mcp"
     },
     "storefront-prod": {
-      "type": "sse",
+      "type": "http",
       "url": "https://natural-heroes-nl.myshopify.com/api/mcp"
     }
   }
