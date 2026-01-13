@@ -1,0 +1,23 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "workflows-marketplace",
+  "version": "1.0.0",
+  "description": "Local marketplace for Natural Heroes Claude Code plugins and workflows",
+  "owner": {
+    "name": "Natural Heroes",
+    "email": "nevil@naturalheroes.nl"
+  },
+  "plugins": [
+    {
+      "name": "fibery",
+      "description": "Integrate Claude Code with Fibery for scrum workflow management",
+      "version": "0.1.0",
+      "author": {
+        "name": "Natural Heroes",
+        "email": "nevil@naturalheroes.nl"
+      },
+      "source": "./plugins/fibery",
+      "category": "productivity"
+    }
+  ]
+}
