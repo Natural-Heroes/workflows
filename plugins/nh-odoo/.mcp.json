@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "context7": {
+      "command": "uvx",
+      "args": ["mcp-server-context7"]
+    }
+  }
+}

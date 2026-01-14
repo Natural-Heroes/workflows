@@ -1,0 +1,10 @@
+{
+  "name": "nh-odoo",
+  "version": "0.1.0",
+  "description": "Natural Heroes Odoo integration with MCP server and Odoo 19 documentation",
+  "author": {
+    "name": "Natural Heroes",
+    "email": "nevil@naturalheroes.nl"
+  },
+  "keywords": ["odoo", "erp", "mcp", "natural-heroes", "odoo-19"]
+}
