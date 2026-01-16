@@ -53,7 +53,7 @@ jobs:
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer $OPENAI_API_KEY" \
             -d "$(jq -n --arg input "$PROMPT" '{
-              "model": "gpt-5.2",
+              "model": "gpt-5.2-codex",
               "input": $input,
               "reasoning": {
                 "effort": "medium"

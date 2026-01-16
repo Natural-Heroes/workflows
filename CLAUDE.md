@@ -11,8 +11,8 @@ Central repository for reusable GitHub Actions workflows.
 
 | Workflow | Trigger | Provider |
 |----------|---------|----------|
-| `bugbot-review.yml` | PR opened/updated | OpenAI GPT-5.2 |
-| `bugbot-fix.yml` | `/fix` reply to bug comment | OpenAI GPT-5.2 |
+| `bugbot-review.yml` | PR opened/updated | OpenAI GPT-5.2-Codex |
+| `bugbot-fix.yml` | `/fix` reply to bug comment | OpenAI GPT-5.2-Codex |
 
 ## Adding New Workflows
 
