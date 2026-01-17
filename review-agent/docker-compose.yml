@@ -23,6 +23,70 @@ services:
       - "traefik.http.routers.qdrant.tls.certresolver=letsencrypt"
       - "traefik.http.services.qdrant.loadbalancer.server.port=6333"
 
+  # Redis for async job queue
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - dokploy-network
+
+  # Webhook API - receives GitHub webhooks
+  webhook-api:
+    build:
+      context: .
+      dockerfile: services/webhook-api/Dockerfile
+    restart: unless-stopped
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - VOYAGE_API_KEY=${VOYAGE_API_KEY}
+      - GITHUB_APP_ID=${GITHUB_APP_ID}
+      - GITHUB_PRIVATE_KEY=${GITHUB_PRIVATE_KEY}
+      - GITHUB_WEBHOOK_SECRET=${GITHUB_WEBHOOK_SECRET}
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - QDRANT_URL=http://qdrant:6333
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      redis:
+        condition: service_healthy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.review-webhook.rule=Host(`review-webhook.naturalheroes.nl`)"
+      - "traefik.http.routers.review-webhook.entrypoints=websecure"
+      - "traefik.http.routers.review-webhook.tls.certresolver=letsencrypt"
+      - "traefik.http.services.review-webhook.loadbalancer.server.port=8000"
+    networks:
+      - dokploy-network
+
+  # Worker - processes review/fix jobs from queue
+  worker:
+    build:
+      context: .
+      dockerfile: services/webhook-api/Dockerfile
+    command: ["arq", "worker.WorkerSettings"]
+    restart: unless-stopped
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - VOYAGE_API_KEY=${VOYAGE_API_KEY}
+      - GITHUB_APP_ID=${GITHUB_APP_ID}
+      - GITHUB_PRIVATE_KEY=${GITHUB_PRIVATE_KEY}
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - QDRANT_URL=http://qdrant:6333
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      redis:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+    networks:
+      - dokploy-network
+
   # Indexer service - run manually to index repositories
   indexer:
     build:
@@ -37,9 +101,12 @@ services:
         condition: service_healthy
     profiles:
       - tools  # Only run when explicitly requested
+    networks:
+      - dokploy-network
 
 volumes:
   qdrant_storage:
+  redis_data:
 
 networks:
   dokploy-network:
