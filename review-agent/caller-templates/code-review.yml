@@ -1,0 +1,15 @@
+# Copy this file to .github/workflows/code-review.yml in your repository
+name: Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, ready_for_review]
+
+jobs:
+  review:
+    uses: Natural-Heroes/workflows/.github/workflows/code-review.yml@main
+    with:
+      qdrant_url: https://qdrant.your-domain.com  # Update with your Qdrant URL
+    secrets:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      VOYAGE_API_KEY: ${{ secrets.VOYAGE_API_KEY }}

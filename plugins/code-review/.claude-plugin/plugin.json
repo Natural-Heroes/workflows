@@ -1,0 +1,17 @@
+{
+  "name": "code-review",
+  "version": "1.0.0",
+  "description": "Claude-powered code review with full codebase awareness",
+  "author": "Natural Heroes",
+  "repository": "https://github.com/Natural-Heroes/workflows",
+  "commands": [
+    {
+      "name": "review-status",
+      "description": "Check the status of recent code reviews for the current repository"
+    },
+    {
+      "name": "trigger-review",
+      "description": "Manually trigger a code review on the current branch"
+    }
+  ]
+}

@@ -1,0 +1,71 @@
+name: Claude Code Fix
+
+on:
+  workflow_call:
+    inputs:
+      qdrant_url:
+        description: 'Qdrant server URL'
+        required: true
+        type: string
+    secrets:
+      ANTHROPIC_API_KEY:
+        required: true
+      VOYAGE_API_KEY:
+        required: true
+
+jobs:
+  fix:
+    name: Fix Code
+    runs-on: ubuntu-latest
+    if: |
+      github.event.issue.pull_request &&
+      startsWith(github.event.comment.body, '/fix')
+
+    steps:
+      - name: Checkout workflows repo
+        uses: actions/checkout@v4
+        with:
+          repository: Natural-Heroes/workflows
+          path: workflows
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: workflows/review-agent/services/claude-agent/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          pip install -r workflows/review-agent/services/claude-agent/requirements.txt
+          pip install -r workflows/review-agent/shared/requirements.txt 2>/dev/null || true
+
+      - name: Extract PR number
+        id: pr
+        run: |
+          PR_URL="${{ github.event.issue.pull_request.url }}"
+          PR_NUMBER=$(echo "$PR_URL" | grep -oE '[0-9]+$')
+          echo "number=$PR_NUMBER" >> $GITHUB_OUTPUT
+
+      - name: Parse fix instructions
+        id: instructions
+        run: |
+          COMMENT_BODY="${{ github.event.comment.body }}"
+          # Remove /fix prefix and trim
+          INSTRUCTIONS=$(echo "$COMMENT_BODY" | sed 's|^/fix||' | xargs)
+          echo "instructions=$INSTRUCTIONS" >> $GITHUB_OUTPUT
+
+      - name: Run Code Fix
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          VOYAGE_API_KEY: ${{ secrets.VOYAGE_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          QDRANT_URL: ${{ inputs.qdrant_url }}
+          PYTHONPATH: ${{ github.workspace }}/workflows/review-agent
+        run: |
+          python -m review_agent.services.claude_agent.cli fix \
+            --owner "${{ github.repository_owner }}" \
+            --repo "${{ github.event.repository.name }}" \
+            --pr "${{ steps.pr.outputs.number }}" \
+            --comment-id "${{ github.event.comment.id }}" \
+            ${{ steps.instructions.outputs.instructions && format('--instructions "{0}"', steps.instructions.outputs.instructions) || '' }}

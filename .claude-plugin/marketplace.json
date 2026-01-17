@@ -40,6 +40,17 @@
       },
       "source": "./plugins/nh-odoo",
       "category": "development"
+    },
+    {
+      "name": "code-review",
+      "description": "Claude-powered code review with full codebase awareness using RAG",
+      "version": "1.0.0",
+      "author": {
+        "name": "Natural Heroes",
+        "email": "nevil@naturalheroes.nl"
+      },
+      "source": "./plugins/code-review",
+      "category": "development"
     }
   ]
 }
