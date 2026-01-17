@@ -16,6 +16,8 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+    networks:
+      - dokploy-network
 
   # Indexer service - run manually to index repositories
   indexer:
@@ -36,5 +38,5 @@ volumes:
   qdrant_storage:
 
 networks:
-  default:
-    name: review-agent-network
+  dokploy-network:
+    external: true
