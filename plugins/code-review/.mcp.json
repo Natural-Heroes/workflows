@@ -1,8 +1,0 @@
-{
-  "mcpServers": {
-    "code-review-api": {
-      "type": "http",
-      "url": "https://review-webhook.naturalheroes.nl/mcp"
-    }
-  }
-}
