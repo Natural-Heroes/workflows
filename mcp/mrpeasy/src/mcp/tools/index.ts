@@ -2,7 +2,7 @@
  * MCP Tool Registration
  *
  * Creates and configures the McpServer instance with registered tools.
- * Includes inventory, product, and search tools for MRPeasy integration.
+ * Includes inventory, product, search, and order tools for MRPeasy integration.
  */
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
@@ -11,6 +11,7 @@ import { createMrpEasyClient } from '../../services/mrpeasy/index.js';
 import { registerInventoryTools } from './inventory.js';
 import { registerProductTools } from './product.js';
 import { registerSearchTools } from './search.js';
+import { registerOrderTools } from './orders.js';
 
 /**
  * Creates and returns a configured McpServer instance.
@@ -21,6 +22,7 @@ import { registerSearchTools } from './search.js';
  * - Inventory tools (get_inventory)
  * - Product tools (get_product)
  * - Search tools (search_items)
+ * - Order tools (get_customer_orders, get_manufacturing_orders)
  *
  * @returns Configured McpServer instance ready for connection
  */
@@ -57,6 +59,7 @@ export function createMcpServer(): McpServer {
   registerInventoryTools(server, client);
   registerProductTools(server, client);
   registerSearchTools(server, client);
+  registerOrderTools(server, client);
 
   logger.info('MCP server created with all tools registered');
   return server;
