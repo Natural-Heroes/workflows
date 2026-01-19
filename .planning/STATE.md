@@ -5,33 +5,34 @@
 See: .planning/PROJECT.md (updated 2026-01-19)
 
 **Core value:** Direct, real-time access to manufacturing data for AI assistants without external dependencies like Zapier.
-**Current focus:** Phase 2 — API Client & Tools
+**Current focus:** Phase 3 — Rate Limiting & Resilience
 
 ## Current Position
 
-Phase: 2 of 5 (API Client & Tools)
-Plan: 3 plans created (02-01, 02-02, 02-03)
-Status: Ready to execute
-Last activity: 2026-01-19 — Phase 2 planned
+Phase: 3 of 5 (Rate Limiting & Resilience)
+Plan: Phase 2 complete (3/3 plans), Phase 3 not yet planned
+Status: Ready for Phase 3 planning
+Last activity: 2026-01-19 — Phase 2 executed
 
-Progress: ██░░░░░░░░ 20%
+Progress: ████░░░░░░ 40%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 1
-- Average duration: 4 min
-- Total execution time: 0.07 hours
+- Total plans completed: 4
+- Average duration: ~5 min
+- Total execution time: ~0.33 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-core-infrastructure | 1 | 4 min | 4 min |
+| 02-api-client-tools | 3 | ~15 min | ~5 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (4 min)
-- Trend: First plan
+- Last 5 plans: 01-01 (4 min), 02-01 (5 min), 02-02 (~5 min), 02-03 (~5 min)
+- Trend: Stable ~5 min/plan
 
 ## Accumulated Context
 
@@ -45,6 +46,8 @@ Recent decisions affecting current work:
 - No caching initially — add if rate limits become problematic
 - stderr-only logging — prevents MCP protocol corruption (stdout reserved for JSON-RPC)
 - In-memory session store (Map) — sufficient for single-node Dokploy deployment
+- Native fetch over axios/node-fetch — minimize dependencies
+- Memoized singleton client — single instance across all tools
 
 ### Pending Todos
 
@@ -57,5 +60,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-01-19
-Stopped at: Completed 01-PLAN.md (Phase 1 complete)
+Stopped at: Completed Phase 2 (all 3 plans executed)
 Resume file: None
