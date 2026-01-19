@@ -29,8 +29,8 @@ note: Works after SSL fix with new domain mcp-mrpeasy.naturalheroes.nl
 
 ### 3. get_inventory Tool
 expected: Call get_inventory tool, returns formatted text with stock levels (quantities, costs, warehouse info) - not raw JSON
-result: [awaiting retest]
-note: Fixed endpoint bug - changed /stock-items to /items (commit 1124b55)
+result: pass
+note: Fixed multiple issues - endpoint /stock-items→/items, type definitions aligned with actual API, HTTP 206 handling, null safety
 
 ### 4. get_product Tool
 expected: Call get_product tool with a valid product ID, returns product details including BOM (bill of materials) if applicable
@@ -59,9 +59,9 @@ result: [pending]
 ## Summary
 
 total: 9
-passed: 2
+passed: 3
 issues: 0
-pending: 7
+pending: 6
 skipped: 0
 
 ## Issues for /gsd:plan-fix
