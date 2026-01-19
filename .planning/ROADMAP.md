@@ -12,8 +12,8 @@ None — MCP server development follows official SDK patterns and research findi
 
 - [x] **Phase 1: Core Infrastructure** — MCP server with transport, logging, environment validation
 - [x] **Phase 2: API Client & Tools** — MRPeasy client with auth, 5 read tools with Zod schemas
-- [ ] **Phase 3: Rate Limiting & Resilience** — Request queue, retry logic, circuit breaker
-- [ ] **Phase 4: Error Handling** — LLM-readable errors, comprehensive input validation
+- [x] **Phase 3: Rate Limiting & Resilience** — Request queue, retry logic, circuit breaker
+- [x] **Phase 4: Error Handling** — LLM-readable errors, comprehensive input validation
 - [ ] **Phase 5: Testing & Deployment** — MCP Inspector testing, Dokploy deployment
 
 ## Phase Details
@@ -82,10 +82,9 @@ Delivers:
 ### Phase 5: Testing & Deployment
 **Goal**: Production deployment to Dokploy with testing
 **Depends on**: Phase 4
-**Research**: Likely (Dokploy specifics from task 304)
-**Research topics**: Task 304 deployment pattern, health check configuration
+**Research**: Unlikely (health check already exists, Dokploy MCP available)
 **Requirements**: DEPLOY-01, DEPLOY-02, DEPLOY-03, DEPLOY-04
-**Plans**: TBD
+**Plans**: 05-01 (Docker & Testing), 05-02 (Dokploy Deployment)
 
 Delivers:
 - Docker containerization
@@ -101,9 +100,9 @@ Delivers:
 |-------|----------------|--------|-----------|
 | 1. Core Infrastructure | 1/1 | Complete | 2026-01-19 |
 | 2. API Client & Tools | 3/3 | Complete | 2026-01-19 |
-| 3. Rate Limiting & Resilience | 0/2 | Planned | - |
-| 4. Error Handling | 0/TBD | Not started | - |
-| 5. Testing & Deployment | 0/TBD | Not started | - |
+| 3. Rate Limiting & Resilience | 2/2 | Complete | 2026-01-19 |
+| 4. Error Handling | 2/2 | Complete | 2026-01-19 |
+| 5. Testing & Deployment | 1/2 | In progress | - |
 
 ---
 *Created: 2026-01-19*

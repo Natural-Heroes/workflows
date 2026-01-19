@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-01-19)
 
 **Core value:** Direct, real-time access to manufacturing data for AI assistants without external dependencies like Zapier.
-**Current focus:** Phase 3 — Rate Limiting & Resilience
+**Current focus:** Phase 5 — Testing & Deployment
 
 ## Current Position
 
-Phase: 3 of 5 (Rate Limiting & Resilience)
-Plan: 2 plans created (03-01, 03-02)
-Status: Ready to execute
-Last activity: 2026-01-19 — Phase 3 planned
+Phase: 5 of 5 (Testing & Deployment)
+Plan: 1 of 2 in current phase
+Status: In progress
+Last activity: 2026-01-19 — Completed 05-01-PLAN.md
 
-Progress: ████░░░░░░ 40%
+Progress: █████████░ 90%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 4
-- Average duration: ~5 min
-- Total execution time: ~0.33 hours
+- Total plans completed: 9
+- Average duration: ~4 min
+- Total execution time: ~0.5 hours
 
 **By Phase:**
 
@@ -29,10 +29,13 @@ Progress: ████░░░░░░ 40%
 |-------|-------|-------|----------|
 | 01-core-infrastructure | 1 | 4 min | 4 min |
 | 02-api-client-tools | 3 | ~15 min | ~5 min |
+| 03-rate-limiting-resilience | 2 | ~6 min | ~3 min |
+| 04-error-handling | 2 | ~6 min | ~3 min |
+| 05-testing-deployment | 1 | 2 min | 2 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (4 min), 02-01 (5 min), 02-02 (~5 min), 02-03 (~5 min)
-- Trend: Stable ~5 min/plan
+- Last 5 plans: 03-01 (~3 min), 03-02 (~3 min), 04-01 (~3 min), 04-02 (~3 min), 05-01 (2 min)
+- Trend: Stable ~2-4 min/plan
 
 ## Accumulated Context
 
@@ -48,6 +51,12 @@ Recent decisions affecting current work:
 - In-memory session store (Map) — sufficient for single-node Dokploy deployment
 - Native fetch over axios/node-fetch — minimize dependencies
 - Memoized singleton client — single instance across all tools
+- Token bucket rate limiter — 100 req/10s with continuous refill
+- Request queue with single-concurrent — FIFO ordering
+- Circuit breaker pattern — 5 failures opens, 30s timeout, 2 successes closes
+- McpToolError class — separates user-facing from internal error details
+- handleToolError function — single entry point for all tool error handling
+- Multi-stage Docker build — builder for compile, runtime for production deps only
 
 ### Pending Todos
 
@@ -60,5 +69,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-01-19
-Stopped at: Completed Phase 2 (all 3 plans executed)
+Stopped at: Completed 05-01-PLAN.md (Docker Containerization & Testing)
 Resume file: None
