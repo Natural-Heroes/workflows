@@ -10,7 +10,7 @@ None — MCP server development follows official SDK patterns and research findi
 
 ## Phases
 
-- [ ] **Phase 1: Core Infrastructure** — MCP server with transport, logging, environment validation
+- [x] **Phase 1: Core Infrastructure** — MCP server with transport, logging, environment validation
 - [ ] **Phase 2: API Client & Tools** — MRPeasy client with auth, 5 read tools with Zod schemas
 - [ ] **Phase 3: Rate Limiting & Resilience** — Request queue, retry logic, circuit breaker
 - [ ] **Phase 4: Error Handling** — LLM-readable errors, comprehensive input validation
@@ -99,7 +99,7 @@ Delivers:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Core Infrastructure | 0/TBD | Not started | - |
+| 1. Core Infrastructure | 1/1 | Complete | 2026-01-19 |
 | 2. API Client & Tools | 0/TBD | Not started | - |
 | 3. Rate Limiting & Resilience | 0/TBD | Not started | - |
 | 4. Error Handling | 0/TBD | Not started | - |
