@@ -9,6 +9,7 @@ import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { MrpEasyClient, ItemType } from '../../services/mrpeasy/index.js';
 import { logger } from '../../lib/logger.js';
+import { handleToolError } from './error-handler.js';
 
 /**
  * Registers search-related MCP tools with the server.
@@ -106,19 +107,7 @@ export function registerSearchTools(
           ],
         };
       } catch (error) {
-        const message =
-          error instanceof Error ? error.message : 'Unknown error occurred';
-        logger.error('search_items tool error', { error: message });
-
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `Error searching items: ${message}`,
-            },
-          ],
-          isError: true,
-        };
+        return handleToolError(error, 'search_items');
       }
     }
   );

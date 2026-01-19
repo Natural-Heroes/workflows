@@ -11,6 +11,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { MrpEasyClient } from '../../services/mrpeasy/client.js';
 import type { CustomerOrder, ManufacturingOrder, PaginationMeta } from '../../services/mrpeasy/types.js';
 import { logger } from '../../lib/logger.js';
+import { handleToolError } from './error-handler.js';
 
 // ============================================================================
 // Zod Schemas
@@ -278,18 +279,7 @@ export function registerOrderTools(
           ],
         };
       } catch (error) {
-        const message = error instanceof Error ? error.message : 'Unknown error';
-        logger.error('get_customer_orders failed', { error: message });
-
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `Error fetching customer orders: ${message}`,
-            },
-          ],
-          isError: true,
-        };
+        return handleToolError(error, 'get_customer_orders');
       }
     }
   );
@@ -351,18 +341,7 @@ export function registerOrderTools(
           ],
         };
       } catch (error) {
-        const message = error instanceof Error ? error.message : 'Unknown error';
-        logger.error('get_manufacturing_orders failed', { error: message });
-
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `Error fetching manufacturing orders: ${message}`,
-            },
-          ],
-          isError: true,
-        };
+        return handleToolError(error, 'get_manufacturing_orders');
       }
     }
   );

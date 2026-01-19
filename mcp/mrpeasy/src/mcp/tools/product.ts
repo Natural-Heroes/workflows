@@ -9,6 +9,7 @@ import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { MrpEasyClient, BomItem } from '../../services/mrpeasy/index.js';
 import { logger } from '../../lib/logger.js';
+import { handleToolError } from './error-handler.js';
 
 /**
  * Formats BOM items into a hierarchical list.
@@ -113,19 +114,7 @@ export function registerProductTools(
           ],
         };
       } catch (error) {
-        const message =
-          error instanceof Error ? error.message : 'Unknown error occurred';
-        logger.error('get_product tool error', { error: message });
-
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `Error fetching product: ${message}`,
-            },
-          ],
-          isError: true,
-        };
+        return handleToolError(error, 'get_product');
       }
     }
   );

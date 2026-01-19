@@ -15,9 +15,23 @@ import { MrpEasyClient } from './client.js';
 // Re-export all types
 export * from './types.js';
 
-// Re-export client class and error
-export { MrpEasyClient, MrpEasyApiError } from './client.js';
+// Re-export client class and errors
+export {
+  MrpEasyClient,
+  MrpEasyApiError,
+  CircuitBreakerOpenError,
+} from './client.js';
 export type { MrpEasyClientConfig } from './client.js';
+
+// Re-export resilience utilities (for advanced usage or testing)
+export { TokenBucket, createRateLimiter } from './rate-limiter.js';
+export { RequestQueue, createRequestQueue } from './request-queue.js';
+export { withRetry, type RetryConfig } from './retry.js';
+export {
+  CircuitBreaker,
+  createCircuitBreaker,
+  type CircuitBreakerConfig,
+} from './circuit-breaker.js';
 
 /**
  * Memoized client instance.

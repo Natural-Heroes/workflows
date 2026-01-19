@@ -3,9 +3,23 @@
  *
  * Uses native fetch (Node 18+) with Basic Auth.
  * All logging goes to stderr via the logger module.
+ *
+ * Includes resilience features:
+ * - Request queue (max 1 concurrent request)
+ * - Token bucket rate limiter (100 requests per 10 seconds)
+ * - Retry with exponential backoff (on 429, 503)
+ * - Circuit breaker (5 failures opens, 30s timeout)
  */
 
 import { logger } from '../../lib/logger.js';
+import { TokenBucket, createRateLimiter } from './rate-limiter.js';
+import { RequestQueue, createRequestQueue } from './request-queue.js';
+import { withRetry } from './retry.js';
+import {
+  CircuitBreaker,
+  CircuitBreakerOpenError,
+  createCircuitBreaker,
+} from './circuit-breaker.js';
 import type {
   MrpEasyApiResponse,
   MrpEasyError,
@@ -31,6 +45,10 @@ export interface MrpEasyClientConfig {
   apiSecret: string;
   /** Base URL (optional, defaults to production) */
   baseUrl?: string;
+  /** Maximum retry attempts (optional, defaults to 3) */
+  maxRetries?: number;
+  /** Enable circuit breaker (optional, defaults to true) */
+  circuitBreakerEnabled?: boolean;
 }
 
 /**
@@ -39,12 +57,21 @@ export interface MrpEasyClientConfig {
 export class MrpEasyApiError extends Error {
   public readonly status: number;
   public readonly code?: string;
+  public readonly isRetryable: boolean;
+  public readonly retryAfterSeconds?: number;
 
-  constructor(message: string, status: number, code?: string) {
+  constructor(
+    message: string,
+    status: number,
+    code?: string,
+    retryAfterSeconds?: number
+  ) {
     super(message);
     this.name = 'MrpEasyApiError';
     this.status = status;
     this.code = code;
+    this.isRetryable = [429, 503, 408, 502, 504].includes(status);
+    this.retryAfterSeconds = retryAfterSeconds;
   }
 }
 
@@ -53,10 +80,20 @@ export class MrpEasyApiError extends Error {
  *
  * Provides typed methods for interacting with the MRPeasy API.
  * Uses Basic Auth with base64 encoded credentials.
+ *
+ * All requests automatically go through the resilience stack:
+ * queue → circuit breaker → retry → rate limiter → fetch
  */
 export class MrpEasyClient {
   private readonly baseUrl: string;
   private readonly authHeader: string;
+
+  // Resilience components
+  private readonly rateLimiter: TokenBucket;
+  private readonly queue: RequestQueue;
+  private readonly circuitBreaker: CircuitBreaker;
+  private readonly maxRetries: number;
+  private readonly circuitBreakerEnabled: boolean;
 
   /**
    * Creates a new MRPeasy API client.
@@ -70,17 +107,73 @@ export class MrpEasyClient {
     const credentials = `${config.apiKey}:${config.apiSecret}`;
     const encoded = Buffer.from(credentials).toString('base64');
     this.authHeader = `Basic ${encoded}`;
+
+    // Initialize resilience components
+    this.rateLimiter = createRateLimiter();
+    this.queue = createRequestQueue();
+    this.circuitBreaker = createCircuitBreaker();
+    this.maxRetries = config.maxRetries ?? 3;
+    this.circuitBreakerEnabled = config.circuitBreakerEnabled ?? true;
   }
 
   /**
    * Makes an authenticated GET request to the MRPeasy API.
    *
+   * All requests go through the resilience stack:
+   * 1. Queue - ensures max 1 concurrent request
+   * 2. Circuit breaker - protects against sustained failures
+   * 3. Retry - handles transient failures (429, 503)
+   * 4. Rate limiter - ensures max 100 requests per 10 seconds
+   *
    * @param endpoint - API endpoint (without base URL)
    * @param params - Query parameters
    * @returns Parsed JSON response
    * @throws MrpEasyApiError on non-2xx responses
+   * @throws CircuitBreakerOpenError if circuit breaker is open
    */
   private async request<T, P extends object = object>(
+    endpoint: string,
+    params?: P
+  ): Promise<T> {
+    logger.debug('Request queued', { endpoint });
+
+    // Queue ensures single concurrent request
+    return this.queue.enqueue(async () => {
+      // Wrapper for circuit breaker (optional)
+      const executeWithOptionalCircuitBreaker = async (
+        fn: () => Promise<T>
+      ): Promise<T> => {
+        if (this.circuitBreakerEnabled) {
+          return this.circuitBreaker.execute(fn);
+        }
+        return fn();
+      };
+
+      return executeWithOptionalCircuitBreaker(async () => {
+        // Retry handles transient failures (429, 503)
+        return withRetry(
+          async () => {
+            // Rate limiter ensures we don't exceed 100/10s
+            logger.debug('Waiting for rate limit token', { endpoint });
+            await this.rateLimiter.waitForToken();
+            logger.debug('Token acquired, sending request', { endpoint });
+
+            return this.executeRequest<T, P>(endpoint, params);
+          },
+          { maxAttempts: this.maxRetries }
+        );
+      });
+    });
+  }
+
+  /**
+   * Executes the actual HTTP request.
+   *
+   * @param endpoint - API endpoint (without base URL)
+   * @param params - Query parameters
+   * @returns Parsed JSON response
+   */
+  private async executeRequest<T, P extends object = object>(
     endpoint: string,
     params?: P
   ): Promise<T> {
@@ -107,9 +200,9 @@ export class MrpEasyClient {
       const response = await fetch(url.toString(), {
         method: 'GET',
         headers: {
-          'Authorization': this.authHeader,
+          Authorization: this.authHeader,
           'Content-Type': 'application/json',
-          'Accept': 'application/json',
+          Accept: 'application/json',
         },
       });
 
@@ -119,7 +212,7 @@ export class MrpEasyClient {
         // Try to parse error response
         let errorData: Partial<MrpEasyError> = {};
         try {
-          errorData = await response.json() as Partial<MrpEasyError>;
+          errorData = (await response.json()) as Partial<MrpEasyError>;
         } catch {
           // Response body is not JSON
         }
@@ -131,6 +224,42 @@ export class MrpEasyClient {
           duration,
         });
 
+        // Handle specific status codes with appropriate error messages
+        if (response.status === 429) {
+          const retryAfter = response.headers.get('Retry-After');
+          const retrySeconds = retryAfter ? parseInt(retryAfter, 10) : undefined;
+          throw new MrpEasyApiError(
+            'Rate limit exceeded',
+            429,
+            'RATE_LIMITED',
+            isNaN(retrySeconds as number) ? undefined : retrySeconds
+          );
+        }
+
+        if (response.status === 503) {
+          throw new MrpEasyApiError(
+            'MRPeasy service is temporarily unavailable',
+            503,
+            'SERVICE_UNAVAILABLE'
+          );
+        }
+
+        if (response.status === 401 || response.status === 403) {
+          throw new MrpEasyApiError(
+            'Authentication failed. Check MRPEASY_API_KEY and MRPEASY_API_SECRET.',
+            response.status,
+            'AUTH_ERROR'
+          );
+        }
+
+        if (response.status === 404) {
+          throw new MrpEasyApiError(
+            'Resource not found',
+            404,
+            'NOT_FOUND'
+          );
+        }
+
         throw new MrpEasyApiError(
           errorData.message ?? `HTTP ${response.status}: ${response.statusText}`,
           response.status,
@@ -138,7 +267,7 @@ export class MrpEasyClient {
         );
       }
 
-      const data = await response.json() as T;
+      const data = (await response.json()) as T;
 
       logger.debug('MRPeasy API response', {
         endpoint,
@@ -285,3 +414,6 @@ export class MrpEasyClient {
     return this.request<Item>(`/items/${id}`);
   }
 }
+
+// Re-export CircuitBreakerOpenError for callers to catch
+export { CircuitBreakerOpenError } from './circuit-breaker.js';
