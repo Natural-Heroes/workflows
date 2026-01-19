@@ -60,35 +60,44 @@ export interface MrpEasyError {
 // ============================================================================
 
 /**
- * Stock item representing inventory in a warehouse.
+ * Stock item representing inventory from MRPeasy /items endpoint.
+ * Field names match actual API response.
  */
 export interface StockItem {
-  /** Unique stock item ID */
-  id: number;
-  /** Reference to the item/product */
-  item_id: number;
-  /** Item number/SKU */
-  item_number: string;
-  /** Item name */
-  item_name: string;
+  /** Article ID (unique identifier) */
+  article_id: number;
+  /** Product ID */
+  product_id: number;
+  /** Item code/SKU */
+  code: string;
+  /** Item title/name */
+  title: string;
   /** Quantity in stock */
-  quantity: number;
+  in_stock: number;
   /** Booked quantity (reserved) */
-  booked_quantity: number;
-  /** Available quantity (quantity - booked) */
-  available_quantity: number;
-  /** Unit cost */
-  cost: number;
-  /** Total value */
-  total_value: number;
-  /** Warehouse ID */
-  warehouse_id: number;
-  /** Warehouse name */
-  warehouse_name: string;
-  /** Stock lot ID (if lot tracking enabled) */
-  lot_id?: number;
-  /** Stock lot number */
-  lot_number?: string;
+  booked: number;
+  /** Available quantity */
+  available: number;
+  /** Average cost per unit */
+  avg_cost: number | null;
+  /** Selling price */
+  selling_price: number;
+  /** Product group ID */
+  group_id: number;
+  /** Product group code */
+  group_code: string;
+  /** Product group title */
+  group_title: string;
+  /** Is raw material */
+  is_raw: boolean;
+  /** Deleted flag */
+  deleted: boolean;
+  /** Expected total (future stock) */
+  expected_total: number;
+  /** Expected available */
+  expected_available: number;
+  /** Minimum quantity threshold */
+  min_quantity: string;
 }
 
 /**

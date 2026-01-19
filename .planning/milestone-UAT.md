@@ -29,7 +29,8 @@ note: Works after SSL fix with new domain mcp-mrpeasy.naturalheroes.nl
 
 ### 3. get_inventory Tool
 expected: Call get_inventory tool, returns formatted text with stock levels (quantities, costs, warehouse info) - not raw JSON
-result: [pending]
+result: [awaiting retest]
+note: Fixed endpoint bug - changed /stock-items to /items (commit 1124b55)
 
 ### 4. get_product Tool
 expected: Call get_product tool with a valid product ID, returns product details including BOM (bill of materials) if applicable

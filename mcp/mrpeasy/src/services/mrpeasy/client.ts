@@ -208,7 +208,8 @@ export class MrpEasyClient {
 
       const duration = Date.now() - startTime;
 
-      if (!response.ok) {
+      // Handle 206 Partial Content (paginated responses) as success
+      if (!response.ok && response.status !== 206) {
         // Try to parse error response
         let errorData: Partial<MrpEasyError> = {};
         try {
@@ -269,10 +270,17 @@ export class MrpEasyClient {
 
       const data = (await response.json()) as T;
 
+      // Store Content-Range header for pagination parsing
+      const contentRange = response.headers.get('Content-Range');
+      if (contentRange) {
+        (data as Record<string, unknown>)._contentRange = contentRange;
+      }
+
       logger.debug('MRPeasy API response', {
         endpoint,
         status: response.status,
         duration,
+        contentRange,
       });
 
       return data;
@@ -300,13 +308,16 @@ export class MrpEasyClient {
   /**
    * Get stock items (inventory).
    *
+   * MRPeasy returns a flat array with Content-Range header for pagination.
+   * Content-Range format: "items 0-99/3633"
+   *
    * @param params - Query parameters for filtering and pagination
-   * @returns Paginated list of stock items
+   * @returns Array of stock items with _contentRange metadata
    */
   async getStockItems(
     params?: StockItemsParams
-  ): Promise<MrpEasyApiResponse<StockItem>> {
-    return this.request<MrpEasyApiResponse<StockItem>>('/items', params);
+  ): Promise<StockItem[] & { _contentRange?: string }> {
+    return this.request<StockItem[] & { _contentRange?: string }>('/items', params);
   }
 
   // ===========================================================================

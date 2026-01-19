@@ -61,40 +61,46 @@ export function registerInventoryTools(
           per_page: params.per_page,
         };
 
-        const response = await client.getStockItems(apiParams);
-        const { data, pagination } = response;
+        const items = await client.getStockItems(apiParams);
+
+        // Parse pagination from Content-Range header (format: "items 0-99/3633")
+        let total = items.length;
+        let startIdx = 1;
+        let endIdx = items.length;
+        const contentRange = (items as { _contentRange?: string })._contentRange;
+        if (contentRange) {
+          const match = contentRange.match(/items (\d+)-(\d+)\/(\d+)/);
+          if (match) {
+            startIdx = parseInt(match[1], 10) + 1; // Convert 0-indexed to 1-indexed
+            endIdx = parseInt(match[2], 10) + 1;
+            total = parseInt(match[3], 10);
+          }
+        }
 
         // Format response for LLM consumption
         const lines: string[] = [];
 
-        lines.push(
-          `Inventory Results (Page ${pagination.page} of ${pagination.total_pages}):`
-        );
+        lines.push(`Inventory Results (${startIdx}-${endIdx} of ${total} items):`);
         lines.push('');
 
-        if (data.length === 0) {
+        if (items.length === 0) {
           lines.push('No inventory items found matching the criteria.');
         } else {
-          for (const item of data) {
-            lines.push(`Item: ${item.item_name} (ID: ${item.item_id})`);
-            lines.push(`  - Quantity: ${item.quantity}`);
-            lines.push(`  - Reserved: ${item.booked_quantity}`);
-            lines.push(`  - Available: ${item.available_quantity}`);
-            lines.push(`  - Unit Cost: $${item.cost.toFixed(2)}`);
-            lines.push(`  - Total Value: $${item.total_value.toFixed(2)}`);
-            lines.push(`  - Warehouse: ${item.warehouse_name}`);
-            if (item.lot_number) {
-              lines.push(`  - Lot: ${item.lot_number}`);
+          for (const item of items) {
+            lines.push(`Item: ${item.title} (Code: ${item.code})`);
+            lines.push(`  - In Stock: ${item.in_stock}`);
+            lines.push(`  - Reserved: ${item.booked}`);
+            lines.push(`  - Available: ${item.available}`);
+            if (item.avg_cost !== null) {
+              lines.push(`  - Avg Cost: $${item.avg_cost.toFixed(2)}`);
             }
+            lines.push(`  - Selling Price: $${item.selling_price.toFixed(2)}`);
+            lines.push(`  - Group: ${item.group_title}`);
+            lines.push(`  - Type: ${item.is_raw ? 'Raw Material' : 'Product'}`);
             lines.push('');
           }
 
-          // Calculate range for display
-          const startIdx = (pagination.page - 1) * pagination.per_page + 1;
-          const endIdx = startIdx + data.length - 1;
-          lines.push(
-            `Showing ${startIdx}-${endIdx} of ${pagination.total} total items.`
-          );
+          lines.push(`Showing ${startIdx}-${endIdx} of ${total} total items.`);
         }
 
         return {
