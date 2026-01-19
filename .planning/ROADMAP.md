@@ -101,7 +101,7 @@ Delivers:
 |-------|----------------|--------|-----------|
 | 1. Core Infrastructure | 1/1 | Complete | 2026-01-19 |
 | 2. API Client & Tools | 3/3 | Complete | 2026-01-19 |
-| 3. Rate Limiting & Resilience | 0/TBD | Not started | - |
+| 3. Rate Limiting & Resilience | 0/2 | Planned | - |
 | 4. Error Handling | 0/TBD | Not started | - |
 | 5. Testing & Deployment | 0/TBD | Not started | - |
 
