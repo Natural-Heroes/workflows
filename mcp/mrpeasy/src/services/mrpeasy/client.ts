@@ -306,7 +306,7 @@ export class MrpEasyClient {
   async getStockItems(
     params?: StockItemsParams
   ): Promise<MrpEasyApiResponse<StockItem>> {
-    return this.request<MrpEasyApiResponse<StockItem>>('/stock-items', params);
+    return this.request<MrpEasyApiResponse<StockItem>>('/items', params);
   }
 
   // ===========================================================================
