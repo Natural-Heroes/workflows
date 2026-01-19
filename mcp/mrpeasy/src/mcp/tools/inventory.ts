@@ -87,15 +87,17 @@ export function registerInventoryTools(
           lines.push('No inventory items found matching the criteria.');
         } else {
           for (const item of items) {
-            lines.push(`Item: ${item.title} (Code: ${item.code})`);
-            lines.push(`  - In Stock: ${item.in_stock}`);
-            lines.push(`  - Reserved: ${item.booked}`);
-            lines.push(`  - Available: ${item.available}`);
-            if (item.avg_cost !== null) {
+            lines.push(`Item: ${item.title ?? 'Unknown'} (Code: ${item.code ?? 'N/A'})`);
+            lines.push(`  - In Stock: ${item.in_stock ?? 0}`);
+            lines.push(`  - Reserved: ${item.booked ?? 0}`);
+            lines.push(`  - Available: ${item.available ?? 0}`);
+            if (item.avg_cost != null && typeof item.avg_cost === 'number') {
               lines.push(`  - Avg Cost: $${item.avg_cost.toFixed(2)}`);
             }
-            lines.push(`  - Selling Price: $${item.selling_price.toFixed(2)}`);
-            lines.push(`  - Group: ${item.group_title}`);
+            if (item.selling_price != null && typeof item.selling_price === 'number') {
+              lines.push(`  - Selling Price: $${item.selling_price.toFixed(2)}`);
+            }
+            lines.push(`  - Group: ${item.group_title ?? 'Unknown'}`);
             lines.push(`  - Type: ${item.is_raw ? 'Raw Material' : 'Product'}`);
             lines.push('');
           }
