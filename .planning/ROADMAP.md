@@ -100,7 +100,7 @@ Delivers:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Core Infrastructure | 1/1 | Complete | 2026-01-19 |
-| 2. API Client & Tools | 0/TBD | Not started | - |
+| 2. API Client & Tools | 0/3 | Planned | - |
 | 3. Rate Limiting & Resilience | 0/TBD | Not started | - |
 | 4. Error Handling | 0/TBD | Not started | - |
 | 5. Testing & Deployment | 0/TBD | Not started | - |
