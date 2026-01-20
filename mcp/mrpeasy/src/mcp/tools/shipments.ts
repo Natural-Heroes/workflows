@@ -154,7 +154,7 @@ function buildShipmentObject(shipment: Shipment): Record<string, unknown> {
     statusCode: raw.status,
     trackingNumber: raw.tracking_number || null,
     created: formatDate(raw.created),
-    deliveryDate: raw.delivery_date ? formatDate(raw.delivery_date) : null,
+    actualShipDate: raw.delivery_date ? formatDate(raw.delivery_date) : null,
     customerOrder: {
       id: raw.customer_order_id || null,
       code: raw.customer_order_code || raw.cust_ord_code || null,
@@ -248,7 +248,7 @@ function formatShipmentDetails(shipment: Shipment): string {
       statusCode: raw.status,
       trackingNumber: raw.tracking_number || null,
       created: formatDate(raw.created),
-      deliveryDate: raw.delivery_date ? formatDate(raw.delivery_date) : null,
+      actualShipDate: raw.delivery_date ? formatDate(raw.delivery_date) : null,
       customerOrder: {
         id: raw.customer_order_id || null,
         code: coCode,
