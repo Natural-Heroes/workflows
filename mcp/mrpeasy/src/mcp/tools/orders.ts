@@ -848,20 +848,15 @@ export function registerOrderTools(
           logger.debug('Total MO count', { totalOrders });
 
           // Search strategy using Range headers (MRPeasy ignores page param)
-          // For codes > 30000, start from end (newest); otherwise start from beginning
+          // MRPeasy sorts by code DESCENDING: high codes (39509) first, low codes (00036) last
+          // So for high code numbers, search from the BEGINNING (where high codes are)
           let foundOrder = null;
           const batchSize = 100;
           const maxSearches = 15; // Search up to 1500 orders
-          const searchFromEnd = codeNumber > 30000;
 
           for (let i = 0; i < maxSearches && !foundOrder; i++) {
-            let offset: number;
-            if (searchFromEnd) {
-              // Start from the end of the list (newest orders)
-              offset = Math.max(0, totalOrders - (i + 1) * batchSize);
-            } else {
-              offset = i * batchSize;
-            }
+            // Always search from the beginning since high codes are at offset 0
+            const offset = i * batchSize;
 
             if (offset >= totalOrders) break;
 
