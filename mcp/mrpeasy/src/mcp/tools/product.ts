@@ -71,23 +71,60 @@ export function registerProductTools(
           }
           item = await client.getProduct(articleId);
         } else if (params.code) {
-          // Lookup by code - fetch items and find exact match
+          // Lookup by code - search both /items and /products endpoints
+          const searchCode = params.code.toLowerCase();
+
+          // First try /items endpoint (inventory items)
           const items = await client.getItems({ per_page: 100 });
-          item = items.find(
-            (i) => i.code?.toLowerCase() === params.code!.toLowerCase()
-          );
+          item = items.find((i) => i.code?.toLowerCase() === searchCode);
 
           if (!item) {
-            // Try fetching more pages if not found
+            // Try fetching more pages from /items
             let page = 2;
-            const maxPages = 50; // Limit search to avoid infinite loop
+            const maxPages = 50;
             while (!item && page <= maxPages) {
               const moreItems = await client.getItems({ page, per_page: 100 });
               if (moreItems.length === 0) break;
-              item = moreItems.find(
-                (i) => i.code?.toLowerCase() === params.code!.toLowerCase()
-              );
+              item = moreItems.find((i) => i.code?.toLowerCase() === searchCode);
               page++;
+            }
+          }
+
+          // If not found in /items, try /products endpoint
+          if (!item) {
+            try {
+              const productsResponse = await client.getProducts({ per_page: 100 });
+              if (productsResponse?.data) {
+                const matchedProduct = productsResponse.data.find(
+                  (p) => p.number?.toLowerCase() === searchCode
+                );
+                if (matchedProduct) {
+                  // Convert Product to StockItem-like format for display
+                  item = {
+                    article_id: matchedProduct.id,
+                    product_id: matchedProduct.id,
+                    code: matchedProduct.number,
+                    title: matchedProduct.name,
+                    in_stock: 0,
+                    booked: 0,
+                    available: 0,
+                    avg_cost: matchedProduct.cost ?? null,
+                    selling_price: matchedProduct.price ?? 0,
+                    group_id: 0,
+                    group_code: matchedProduct.group ?? '',
+                    group_title: matchedProduct.group ?? 'Unknown',
+                    is_raw: false,
+                    deleted: !matchedProduct.active,
+                    expected_total: 0,
+                    expected_available: 0,
+                    min_quantity: '0',
+                  } as StockItem;
+                }
+              }
+            } catch (productsError) {
+              logger.debug('Products endpoint lookup failed', {
+                error: productsError instanceof Error ? productsError.message : 'Unknown',
+              });
             }
           }
 
@@ -96,7 +133,7 @@ export function registerProductTools(
               content: [
                 {
                   type: 'text',
-                  text: `No item found with code "${params.code}". Check that the part number is correct.`,
+                  text: `No item found with code "${params.code}". Check that the part number is correct.\n\nNote: The code must exactly match the Part No. in MRPeasy (e.g., "P-APB-NH-3" or "A-00006").`,
                 },
               ],
               isError: true,

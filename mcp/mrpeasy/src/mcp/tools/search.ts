@@ -2,6 +2,7 @@
  * MCP Tool: search_items
  *
  * Searches for items (products, parts, materials) in MRPeasy by name or code.
+ * Searches both /items (inventory) and /products (manufactured items) endpoints.
  * Since MRPeasy's server-side search doesn't filter by code reliably,
  * this tool fetches items and filters client-side for accurate results.
  */
@@ -9,9 +10,24 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { MrpEasyClient } from '../../services/mrpeasy/index.js';
-import type { StockItem } from '../../services/mrpeasy/types.js';
+import type { StockItem, Product } from '../../services/mrpeasy/types.js';
 import { logger } from '../../lib/logger.js';
 import { handleToolError } from './error-handler.js';
+
+/**
+ * Unified search result type for display.
+ */
+interface SearchResult {
+  id: number;
+  code: string;
+  title: string;
+  type: string;
+  group: string;
+  inStock: number;
+  available: number;
+  deleted: boolean;
+  source: 'inventory' | 'products';
+}
 
 /**
  * Registers search-related MCP tools with the server.
@@ -25,7 +41,7 @@ export function registerSearchTools(
 ): void {
   server.tool(
     'search_items',
-    'Search for items by name or code (part number/SKU). Searches both the item title and the code field. Use get_product with code parameter for exact code lookup.',
+    'Search for items by name or code (part number/SKU). Searches both inventory items AND manufactured products. Use get_product with code parameter for exact code lookup.',
     {
       query: z
         .string()
@@ -55,76 +71,114 @@ export function registerSearchTools(
 
       try {
         const searchQuery = params.query.toLowerCase();
+        const allResults: SearchResult[] = [];
 
-        // Fetch items - we'll filter client-side for accurate code matching
-        // Fetch more items to ensure we have enough after filtering
+        // Search /items endpoint (inventory items)
         const fetchPerPage = 100;
-        const allMatchingItems: StockItem[] = [];
         let page = 1;
-        const maxPages = 20; // Limit to avoid excessive API calls
+        const maxPages = 20;
         let totalItems = 0;
 
-        // Fetch and filter until we have enough results or exhausted pages
-        while (allMatchingItems.length < params.per_page * params.page && page <= maxPages) {
+        while (page <= maxPages) {
           const items = await client.getItems({ page, per_page: fetchPerPage });
-
           if (items.length === 0) break;
 
-          // Parse total from Content-Range header
           const contentRange = (items as { _contentRange?: string })._contentRange;
           if (contentRange) {
             const match = contentRange.match(/items \d+-\d+\/(\d+)/);
-            if (match) {
-              totalItems = parseInt(match[1], 10);
+            if (match) totalItems = parseInt(match[1], 10);
+          }
+
+          for (const item of items) {
+            if (item.deleted && !params.include_deleted) continue;
+            const codeMatch = item.code?.toLowerCase().includes(searchQuery);
+            const titleMatch = item.title?.toLowerCase().includes(searchQuery);
+            if (codeMatch || titleMatch) {
+              allResults.push({
+                id: item.article_id,
+                code: item.code ?? 'N/A',
+                title: item.title ?? 'Unknown',
+                type: item.is_raw ? 'Raw Material' : 'Product',
+                group: item.group_title ?? 'Unknown',
+                inStock: item.in_stock ?? 0,
+                available: item.available ?? 0,
+                deleted: item.deleted ?? false,
+                source: 'inventory',
+              });
             }
           }
 
-          // Filter items that match query in code OR title
-          const filtered = items.filter((item) => {
-            // Skip deleted items unless explicitly requested
-            if (item.deleted && !params.include_deleted) return false;
-
-            const codeMatch = item.code?.toLowerCase().includes(searchQuery);
-            const titleMatch = item.title?.toLowerCase().includes(searchQuery);
-            return codeMatch || titleMatch;
-          });
-
-          allMatchingItems.push(...filtered);
-
-          // If we've checked all items, stop
           if (page * fetchPerPage >= totalItems) break;
           page++;
         }
 
-        // Apply pagination to filtered results
+        // Also search /products endpoint (manufactured items)
+        // These might have different codes (like P-XXX)
+        try {
+          const productsResponse = await client.getProducts({ per_page: 100 });
+          if (productsResponse?.data) {
+            for (const product of productsResponse.data) {
+              if (!product.active && !params.include_deleted) continue;
+              const codeMatch = product.number?.toLowerCase().includes(searchQuery);
+              const nameMatch = product.name?.toLowerCase().includes(searchQuery);
+              if (codeMatch || nameMatch) {
+                // Check if already in results (avoid duplicates)
+                const exists = allResults.some(
+                  (r) => r.code === product.number || r.id === product.id
+                );
+                if (!exists) {
+                  allResults.push({
+                    id: product.id,
+                    code: product.number ?? 'N/A',
+                    title: product.name ?? 'Unknown',
+                    type: 'Manufactured Product',
+                    group: product.group ?? 'Unknown',
+                    inStock: 0, // Products endpoint doesn't have stock info
+                    available: 0,
+                    deleted: !product.active,
+                    source: 'products',
+                  });
+                }
+              }
+            }
+          }
+        } catch (productsError) {
+          // Products endpoint might not be available or return different format
+          logger.debug('Products endpoint search failed, continuing with items only', {
+            error: productsError instanceof Error ? productsError.message : 'Unknown error',
+          });
+        }
+
+        // Apply pagination to combined results
         const startIdx = (params.page - 1) * params.per_page;
         const endIdx = startIdx + params.per_page;
-        const paginatedItems = allMatchingItems.slice(startIdx, endIdx);
+        const paginatedResults = allResults.slice(startIdx, endIdx);
 
         // Format response for LLM consumption
         const lines: string[] = [];
-
         lines.push(`Search Results for "${params.query}":`);
         lines.push('');
 
-        if (paginatedItems.length === 0) {
+        if (paginatedResults.length === 0) {
           lines.push(`No items found matching "${params.query}".`);
           if (!params.include_deleted) {
             lines.push('Note: Deleted items are hidden. Set include_deleted=true to include them.');
           }
         } else {
-          paginatedItems.forEach((item, index) => {
+          paginatedResults.forEach((item, index) => {
             const num = startIdx + index + 1;
-            lines.push(`${num}. ${item.title ?? 'Unknown'} (ID: ${item.article_id})`);
-            lines.push(`   Code: ${item.code ?? 'N/A'} | Type: ${item.is_raw ? 'Raw Material' : 'Product'}`);
-            lines.push(`   Group: ${item.group_title ?? 'Unknown'}`);
-            lines.push(`   In Stock: ${item.in_stock ?? 0} | Available: ${item.available ?? 0}`);
+            lines.push(`${num}. ${item.title} (ID: ${item.id})`);
+            lines.push(`   Code: ${item.code} | Type: ${item.type}`);
+            lines.push(`   Group: ${item.group}`);
+            if (item.source === 'inventory') {
+              lines.push(`   In Stock: ${item.inStock} | Available: ${item.available}`);
+            }
             lines.push(`   Status: ${item.deleted ? 'Deleted' : 'Active'}`);
             lines.push('');
           });
 
-          lines.push(`Showing ${paginatedItems.length} of ${allMatchingItems.length} matching items.`);
-          if (allMatchingItems.length > endIdx) {
+          lines.push(`Showing ${paginatedResults.length} of ${allResults.length} matching items.`);
+          if (allResults.length > endIdx) {
             lines.push(`Use page=${params.page + 1} to see more results.`);
           }
         }
