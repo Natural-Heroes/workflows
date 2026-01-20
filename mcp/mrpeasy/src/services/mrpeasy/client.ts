@@ -189,7 +189,14 @@ export class MrpEasyClient {
     if (params) {
       for (const [key, value] of Object.entries(params) as [string, unknown][]) {
         if (value !== undefined && value !== null) {
-          url.searchParams.set(key, String(value));
+          // Handle array parameters (e.g., status[] for MRPeasy PHP-style arrays)
+          if (Array.isArray(value)) {
+            for (const item of value) {
+              url.searchParams.append(key, String(item));
+            }
+          } else {
+            url.searchParams.set(key, String(value));
+          }
         }
       }
     }
