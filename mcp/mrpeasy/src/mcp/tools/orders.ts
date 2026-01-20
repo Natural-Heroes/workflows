@@ -179,12 +179,19 @@ function formatManufacturingOrderStatus(status: unknown): string {
  * Formats a single customer order for LLM-readable output.
  * MRPeasy API uses different field names than our types expect.
  */
-function formatCustomerOrder(order: CustomerOrder): string {
+function formatCustomerOrder(order: CustomerOrder, isFirst: boolean = false): string {
   const lines: string[] = [];
 
   // MRPeasy API field mapping - try multiple possible field names
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const raw = order as any;
+
+  // Temporary debug: show all field names for first order
+  if (isFirst) {
+    const fields = Object.keys(raw);
+    lines.push(`[DEBUG] API Fields: ${fields.join(', ')}`);
+    lines.push('');
+  }
 
   const orderId = raw.co_id ?? raw.id ?? raw.order_id ?? 'Unknown';
   const orderNumber = raw.co_number ?? raw.number ?? raw.order_number ?? 'N/A';
@@ -260,12 +267,12 @@ function formatCustomerOrdersResponse(
   lines.push(`Customer Orders (${startIdx}-${endIdx} of ${total}):`);
   lines.push('');
 
-  for (const order of orders) {
-    lines.push(formatCustomerOrder(order));
+  orders.forEach((order, index) => {
+    lines.push(formatCustomerOrder(order, index === 0));
     lines.push('');
     lines.push('---');
     lines.push('');
-  }
+  });
 
   lines.push(`Showing ${orders.length} of ${total} orders.`);
 
@@ -276,12 +283,19 @@ function formatCustomerOrdersResponse(
  * Formats a single manufacturing order for LLM-readable output.
  * MRPeasy API uses different field names than our types expect.
  */
-function formatManufacturingOrder(order: ManufacturingOrder): string {
+function formatManufacturingOrder(order: ManufacturingOrder, isFirst: boolean = false): string {
   const lines: string[] = [];
 
   // MRPeasy API field mapping - try multiple possible field names
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const raw = order as any;
+
+  // Temporary debug: show all field names for first order
+  if (isFirst) {
+    const fields = Object.keys(raw);
+    lines.push(`[DEBUG] API Fields: ${fields.join(', ')}`);
+    lines.push('');
+  }
 
   const moId = raw.mo_id ?? raw.id ?? raw.order_id ?? 'Unknown';
   const moNumber = raw.mo_number ?? raw.number ?? raw.order_number ?? 'N/A';
@@ -347,12 +361,12 @@ function formatManufacturingOrdersResponse(
   lines.push(`Manufacturing Orders (${startIdx}-${endIdx} of ${total}):`);
   lines.push('');
 
-  for (const order of orders) {
-    lines.push(formatManufacturingOrder(order));
+  orders.forEach((order, index) => {
+    lines.push(formatManufacturingOrder(order, index === 0));
     lines.push('');
     lines.push('---');
     lines.push('');
-  }
+  });
 
   lines.push(`Showing ${orders.length} of ${total} manufacturing orders.`);
 
