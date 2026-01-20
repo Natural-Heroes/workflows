@@ -177,30 +177,26 @@ function formatManufacturingOrderStatus(status: unknown): string {
 
 /**
  * Formats a single customer order for LLM-readable output.
- * MRPeasy API uses different field names than our types expect.
+ * MRPeasy API field names discovered from /customer-orders endpoint:
+ * cust_ord_id, code, reference, customer_id, customer_code, customer_name,
+ * status, created, delivery_date, actual_delivery_date, total_price, currency, etc.
  */
-function formatCustomerOrder(order: CustomerOrder, isFirst: boolean = false): string {
+function formatCustomerOrder(order: CustomerOrder): string {
   const lines: string[] = [];
 
-  // MRPeasy API field mapping - try multiple possible field names
+  // MRPeasy API field mapping based on actual API response
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const raw = order as any;
 
-  // Temporary debug: show all field names for first order
-  if (isFirst) {
-    const fields = Object.keys(raw);
-    lines.push(`[DEBUG] API Fields: ${fields.join(', ')}`);
-    lines.push('');
-  }
-
-  const orderId = raw.co_id ?? raw.id ?? raw.order_id ?? 'Unknown';
-  const orderNumber = raw.co_number ?? raw.number ?? raw.order_number ?? 'N/A';
-  const status = raw.co_status ?? raw.status;
-  const customerName = raw.customer_name ?? raw.partner_name ?? 'Unknown';
-  const orderDate = raw.order_date ?? raw.co_date ?? raw.date ?? raw.created;
-  const deliveryDate = raw.delivery_date ?? raw.due_date ?? raw.ship_date;
-  const total = raw.total ?? raw.grand_total ?? raw.amount ?? 0;
-  const currency = raw.currency ?? raw.currency_code ?? '€';
+  // Actual field names from MRPeasy API
+  const orderId = raw.cust_ord_id ?? raw.id ?? 'Unknown';
+  const orderNumber = raw.code ?? raw.number ?? 'N/A';
+  const status = raw.status;
+  const customerName = raw.customer_name ?? 'Unknown';
+  const orderDate = raw.created;
+  const deliveryDate = raw.delivery_date ?? raw.actual_delivery_date;
+  const total = raw.total_price ?? 0;
+  const currency = raw.currency ?? '€';
 
   lines.push(`Order #${orderNumber} (ID: ${orderId})`);
   lines.push(`Status: ${formatCustomerOrderStatus(status)}`);
@@ -253,22 +249,11 @@ function formatCustomerOrdersResponse(
   const endIdx = pagination?.endIdx ?? orders.length;
   const total = pagination?.total ?? orders.length;
 
-  // Debug: Log first order's field names to help with mapping
-  if (orders.length > 0) {
-    const firstOrder = orders[0] as unknown as Record<string, unknown>;
-    logger.debug('Customer order field names (first order)', {
-      fields: Object.keys(firstOrder),
-      sampleValues: Object.fromEntries(
-        Object.entries(firstOrder).slice(0, 10).map(([k, v]) => [k, v])
-      ),
-    });
-  }
-
   lines.push(`Customer Orders (${startIdx}-${endIdx} of ${total}):`);
   lines.push('');
 
-  orders.forEach((order, index) => {
-    lines.push(formatCustomerOrder(order, index === 0));
+  orders.forEach((order) => {
+    lines.push(formatCustomerOrder(order));
     lines.push('');
     lines.push('---');
     lines.push('');
@@ -281,32 +266,29 @@ function formatCustomerOrdersResponse(
 
 /**
  * Formats a single manufacturing order for LLM-readable output.
- * MRPeasy API uses different field names than our types expect.
+ * MRPeasy API field names discovered from /manufacturing-orders endpoint:
+ * man_ord_id, code, article_id, product_id, item_code, item_title, unit, unit_id,
+ * group_id, group_code, group_title, quantity, status, created, due_date,
+ * start_date, finish_date, item_cost, total_cost, assigned_id, etc.
  */
-function formatManufacturingOrder(order: ManufacturingOrder, isFirst: boolean = false): string {
+function formatManufacturingOrder(order: ManufacturingOrder): string {
   const lines: string[] = [];
 
-  // MRPeasy API field mapping - try multiple possible field names
+  // MRPeasy API field mapping based on actual API response
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const raw = order as any;
 
-  // Temporary debug: show all field names for first order
-  if (isFirst) {
-    const fields = Object.keys(raw);
-    lines.push(`[DEBUG] API Fields: ${fields.join(', ')}`);
-    lines.push('');
-  }
-
-  const moId = raw.mo_id ?? raw.id ?? raw.order_id ?? 'Unknown';
-  const moNumber = raw.mo_number ?? raw.number ?? raw.order_number ?? 'N/A';
-  const status = raw.mo_status ?? raw.status;
-  const productId = raw.product_id ?? raw.article_id ?? raw.item_id ?? 'N/A';
-  const productName = raw.product_name ?? raw.article_name ?? raw.item_name ?? raw.product_title ?? raw.name ?? 'Unknown';
-  const productCode = raw.product_code ?? raw.article_code ?? raw.item_code ?? raw.code;
-  const quantity = raw.quantity ?? raw.qty ?? 0;
-  const producedQty = raw.produced_quantity ?? raw.produced_qty ?? raw.completed ?? 0;
-  const startDate = raw.start_date ?? raw.start ?? raw.scheduled_start;
-  const finishDate = raw.finish_date ?? raw.end_date ?? raw.due_date ?? raw.deadline;
+  // Actual field names from MRPeasy API
+  const moId = raw.man_ord_id ?? raw.id ?? 'Unknown';
+  const moNumber = raw.code ?? 'N/A';
+  const status = raw.status;
+  const productId = raw.article_id ?? raw.product_id ?? 'N/A';
+  const productName = raw.item_title ?? 'Unknown';
+  const productCode = raw.item_code;
+  const quantity = raw.quantity ?? 0;
+  const producedQty = raw.produced_quantity ?? raw.produced_qty ?? 0;
+  const startDate = raw.start_date;
+  const finishDate = raw.due_date ?? raw.finish_date;
 
   lines.push(`MO #${moNumber} (ID: ${moId})`);
   lines.push(`Status: ${formatManufacturingOrderStatus(status)}`);
@@ -347,22 +329,11 @@ function formatManufacturingOrdersResponse(
   const endIdx = pagination?.endIdx ?? orders.length;
   const total = pagination?.total ?? orders.length;
 
-  // Debug: Log first MO's field names to help with mapping
-  if (orders.length > 0) {
-    const firstOrder = orders[0] as unknown as Record<string, unknown>;
-    logger.debug('Manufacturing order field names (first order)', {
-      fields: Object.keys(firstOrder),
-      sampleValues: Object.fromEntries(
-        Object.entries(firstOrder).slice(0, 15).map(([k, v]) => [k, v])
-      ),
-    });
-  }
-
   lines.push(`Manufacturing Orders (${startIdx}-${endIdx} of ${total}):`);
   lines.push('');
 
-  orders.forEach((order, index) => {
-    lines.push(formatManufacturingOrder(order, index === 0));
+  orders.forEach((order) => {
+    lines.push(formatManufacturingOrder(order));
     lines.push('');
     lines.push('---');
     lines.push('');
