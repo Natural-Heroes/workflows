@@ -237,6 +237,63 @@ GET /items/{article_id}
 
 ---
 
+## Shipments
+
+**Endpoint:** `GET /shipments`
+
+Shipments are **read-only** (only GET method supported).
+
+### Filter Parameters
+
+| Parameter | Description |
+|-----------|-------------|
+| `shipment_id` | Internal database identifier |
+| `code` | Unique shipment code (e.g., "SH-00123") |
+| `tracking_number` | Carrier tracking number |
+| `customer_order_id` | Filter by associated customer order ID |
+| `rma_order_id` | Filter by associated RMA order |
+| `purchase_order_id` | Filter by associated purchase order |
+| `status[]` | Shipment status array |
+| `created_min`, `created_max` | Creation date range |
+| `delivery_date_min`, `delivery_date_max` | Delivery date range |
+
+### Status Codes
+
+| Code | Status |
+|------|--------|
+| 10 | New |
+| 15 | Ready for shipment |
+| 20 | Shipped |
+| 30 | Cancelled |
+
+### Response Fields
+
+| Field | Description |
+|-------|-------------|
+| `shipment_id` | Internal ID |
+| `code` | Shipment code |
+| `status` | Status code |
+| `tracking_number` | Carrier tracking number |
+| `created` | Creation timestamp |
+| `delivery_date` | Delivery date |
+| `products` | Array of shipped products |
+| `shipping_address` | Shipping address (text or array) |
+| `packing_notes` | Packing/waybill notes |
+
+### Get Single Shipment
+
+```
+GET /shipments/{shipment_id}
+```
+
+### Get Shipments for Customer Order
+
+```
+GET /shipments?customer_order_id=1276
+```
+
+---
+
 ## Implementation Notes
 
 ### Code Lookups

@@ -12,6 +12,7 @@ import { registerInventoryTools } from './inventory.js';
 import { registerProductTools } from './product.js';
 import { registerSearchTools } from './search.js';
 import { registerOrderTools } from './orders.js';
+import { registerShipmentTools } from './shipments.js';
 
 /**
  * Creates and returns a configured McpServer instance.
@@ -23,6 +24,7 @@ import { registerOrderTools } from './orders.js';
  * - Product tools (get_product)
  * - Search tools (search_items)
  * - Order tools (get_customer_orders, get_manufacturing_orders)
+ * - Shipment tools (get_shipments, get_shipment_details)
  *
  * @returns Configured McpServer instance ready for connection
  */
@@ -60,6 +62,7 @@ export function createMcpServer(): McpServer {
   registerProductTools(server, client);
   registerSearchTools(server, client);
   registerOrderTools(server, client);
+  registerShipmentTools(server, client);
 
   logger.info('MCP server created with all tools registered');
   return server;

@@ -33,6 +33,8 @@ import type {
   ProductsParams,
   Item,
   ItemsParams,
+  Shipment,
+  ShipmentsParams,
 } from './types.js';
 
 /**
@@ -492,6 +494,35 @@ export class MrpEasyClient {
    */
   async getItem(id: number): Promise<Item> {
     return this.request<Item>(`/items/${id}`);
+  }
+
+  // ===========================================================================
+  // Shipments
+  // ===========================================================================
+
+  /**
+   * Get shipments.
+   *
+   * MRPeasy returns a flat array with Content-Range header for pagination.
+   * Shipments are read-only (only GET method supported).
+   *
+   * @param params - Query parameters for filtering and pagination
+   * @returns Array of shipments with _contentRange metadata
+   */
+  async getShipments(
+    params?: ShipmentsParams
+  ): Promise<Shipment[] & { _contentRange?: string }> {
+    return this.request<Shipment[] & { _contentRange?: string }>('/shipments', params);
+  }
+
+  /**
+   * Get a single shipment by ID.
+   *
+   * @param id - Shipment ID
+   * @returns Shipment details
+   */
+  async getShipment(id: number): Promise<Shipment> {
+    return this.request<Shipment>(`/shipments/${id}`);
   }
 }
 

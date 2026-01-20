@@ -366,3 +366,79 @@ export interface ItemsParams extends PaginationParams {
   /** Filter by code (exact match) */
   code?: string;
 }
+
+// ============================================================================
+// Shipment Types
+// ============================================================================
+
+/**
+ * Shipment product/line item.
+ */
+export interface ShipmentProduct {
+  /** Product/item ID */
+  article_id?: number;
+  /** Product code */
+  item_code?: string;
+  /** Product name */
+  item_title?: string;
+  /** Quantity shipped */
+  quantity?: number;
+  /** Unit of measure */
+  unit?: string;
+}
+
+/**
+ * Shipment record from MRPeasy /shipments endpoint.
+ */
+export interface Shipment {
+  /** Internal shipment ID */
+  shipment_id: number;
+  /** Shipment code (e.g., "SH-00123") */
+  code: string;
+  /** Shipment status code */
+  status: number;
+  /** Carrier tracking number */
+  tracking_number?: string;
+  /** Creation timestamp (Unix) */
+  created?: number;
+  /** Delivery date timestamp (Unix) */
+  delivery_date?: number;
+  /** Associated customer order ID */
+  customer_order_id?: number;
+  /** Associated customer order code */
+  customer_order_code?: string;
+  /** Shipping address (text or structured) */
+  shipping_address?: string | Record<string, unknown>;
+  /** Packing/waybill notes */
+  packing_notes?: string;
+  /** Products in shipment */
+  products?: ShipmentProduct[];
+}
+
+/**
+ * Shipments query parameters.
+ */
+export interface ShipmentsParams extends PaginationParams {
+  /** Filter by shipment ID */
+  shipment_id?: number;
+  /** Filter by shipment code (e.g., "SH-00123") */
+  code?: string;
+  /** Filter by tracking number */
+  tracking_number?: string;
+  /** Filter by associated customer order ID */
+  customer_order_id?: number;
+  /** Filter by associated RMA order ID */
+  rma_order_id?: number;
+  /** Filter by associated purchase order ID */
+  purchase_order_id?: number;
+  /** Filter by status */
+  status?: number;
+  /** Filter by creation date minimum (Unix timestamp) */
+  created_min?: number;
+  /** Filter by creation date maximum (Unix timestamp) */
+  created_max?: number;
+  /** Filter by delivery date minimum (Unix timestamp) */
+  delivery_date_min?: number;
+  /** Filter by delivery date maximum (Unix timestamp) */
+  delivery_date_max?: number;
+}
