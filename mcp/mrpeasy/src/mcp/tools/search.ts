@@ -165,14 +165,14 @@ export function registerSearchTools(
 
             // Debug: Log first item's field names to verify API response structure
             if (page === 1 && items.length > 0) {
-              const firstItem = items[0];
+              const firstItem = items[0] as unknown as Record<string, unknown>;
               logger.info('First item fields for debugging', {
                 keys: Object.keys(firstItem),
                 code: firstItem.code,
                 title: firstItem.title,
                 // Also check alternative field names
-                name: (firstItem as Record<string, unknown>).name,
-                number: (firstItem as Record<string, unknown>).number,
+                name: firstItem.name,
+                number: firstItem.number,
               });
             }
 
