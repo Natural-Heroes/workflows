@@ -163,21 +163,17 @@ function formatDate(value: unknown): string {
 
 /**
  * Maps numeric status code to readable string for customer orders.
- * MRPeasy uses numeric codes: 10=Draft, 20=Pending, 30=Confirmed, etc.
+ * MRPeasy CO status codes from API docs.
  */
 function formatCustomerOrderStatus(status: unknown): string {
   if (status === null || status === undefined) return 'Unknown';
 
   const statusMap: Record<number, string> = {
-    10: 'Draft',
-    20: 'Pending',
+    10: 'Quotation',
     30: 'Confirmed',
-    40: 'In Production',
-    50: 'Ready',
-    60: 'Shipped',
-    70: 'Completed',
-    80: 'Cancelled',
-    90: 'On Hold',
+    70: 'Shipped',
+    80: 'Delivered',
+    90: 'Cancelled',
   };
 
   const numStatus = typeof status === 'number' ? status : parseInt(String(status), 10);
@@ -186,18 +182,19 @@ function formatCustomerOrderStatus(status: unknown): string {
 
 /**
  * Maps numeric status code to readable string for manufacturing orders.
+ * MRPeasy MO status codes from API docs.
  */
 function formatManufacturingOrderStatus(status: unknown): string {
   if (status === null || status === undefined) return 'Unknown';
 
   const statusMap: Record<number, string> = {
-    10: 'Draft',
-    20: 'Pending',
-    30: 'Scheduled',
-    40: 'In Progress',
-    50: 'Completed',
-    60: 'Cancelled',
-    70: 'On Hold',
+    10: 'New',
+    20: 'Scheduled',
+    30: 'In Progress',
+    40: 'Done',
+    50: 'Shipped',
+    60: 'Closed',
+    70: 'Cancelled',
   };
 
   const numStatus = typeof status === 'number' ? status : parseInt(String(status), 10);
@@ -593,11 +590,11 @@ export function registerOrderTools(
         } else if (params.status) {
           // Map friendly status names to API codes
           const statusMap: Record<string, number> = {
-            pending: 20,
+            pending: 10,       // "Quotation" in MRPeasy
             confirmed: 30,
-            in_production: 40,
+            in_production: 30, // No separate status, use Confirmed
             shipped: 70,
-            completed: 80,
+            completed: 80,     // "Delivered" in MRPeasy
             cancelled: 90,
           };
           apiParams.status = statusMap[params.status] ?? params.status;
@@ -661,17 +658,17 @@ export function registerOrderTools(
           per_page: params.per_page ?? 20,
         };
 
-        // open_only: exclude Completed (50), Closed (60), and Cancelled (70)
-        // Include: 10 (New), 20 (Scheduled), 30 (In Progress), 40 (Done but not closed)
+        // open_only: exclude Done (40), Shipped (50), Closed (60), and Cancelled (70)
+        // Include: 10 (New), 20 (Scheduled), 30 (In Progress)
         if (params.open_only) {
-          apiParams['status[]'] = [10, 20, 30, 40];
+          apiParams['status[]'] = [10, 20, 30];
         } else if (params.status) {
           // Map friendly status names to API codes
           const statusMap: Record<string, number> = {
-            pending: 10,
+            pending: 10,       // "New" in MRPeasy
             scheduled: 20,
             in_progress: 30,
-            completed: 50,
+            completed: 40,     // "Done" in MRPeasy
             cancelled: 70,
           };
           apiParams.status = statusMap[params.status] ?? params.status;
