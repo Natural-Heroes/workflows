@@ -1,36 +1,15 @@
 /**
  * MCP Tool: get_product
  *
- * Retrieves detailed product information including bill of materials (BOM)
- * from MRPeasy.
+ * Retrieves detailed product/item information from MRPeasy.
+ * Note: BOM data requires a separate /boms endpoint call (not yet implemented).
  */
 
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import type { MrpEasyClient, BomItem } from '../../services/mrpeasy/index.js';
+import type { MrpEasyClient } from '../../services/mrpeasy/index.js';
 import { logger } from '../../lib/logger.js';
 import { handleToolError } from './error-handler.js';
-
-/**
- * Formats BOM items into a hierarchical list.
- *
- * @param bomItems - Array of BOM items
- * @param indent - Indentation level
- * @returns Formatted BOM lines
- */
-function formatBom(bomItems: BomItem[], indent: number = 0): string[] {
-  const lines: string[] = [];
-  const prefix = '  '.repeat(indent);
-
-  for (const item of bomItems) {
-    lines.push(
-      `${prefix}- ${item.quantity} x ${item.item_name} (ID: ${item.item_id})`
-    );
-    lines.push(`${prefix}    Part #: ${item.item_number} | Unit: ${item.unit}`);
-  }
-
-  return lines;
-}
 
 /**
  * Registers product-related MCP tools with the server.
@@ -44,15 +23,11 @@ export function registerProductTools(
 ): void {
   server.tool(
     'get_product',
-    'Get detailed product information including name, description, and bill of materials (BOM). Use this to understand product composition and manufacturing requirements.',
+    'Get detailed product/item information including name, stock levels, costs, and pricing. Use the article_id from inventory results.',
     {
       product_id: z
         .string()
-        .describe('The product ID to fetch'),
-      include_bom: z
-        .boolean()
-        .default(true)
-        .describe('Include bill of materials (default: true)'),
+        .describe('The article ID (from inventory results) to fetch'),
     },
     async (params) => {
       logger.debug('get_product tool called', { params });
@@ -72,38 +47,33 @@ export function registerProductTools(
           };
         }
 
-        const product = await client.getProduct(productId);
+        const item = await client.getProduct(productId);
 
         // Format response for LLM consumption
         const lines: string[] = [];
 
-        lines.push(`Product: ${product.name} (ID: ${product.id})`);
-        lines.push(`Part Number: ${product.number}`);
-
-        if (product.description) {
-          lines.push(`Description: ${product.description}`);
+        lines.push(`Product: ${item.title ?? 'Unknown'} (ID: ${item.article_id})`);
+        lines.push(`Code/SKU: ${item.code ?? 'N/A'}`);
+        lines.push(`Product ID: ${item.product_id}`);
+        lines.push(`Group: ${item.group_title ?? 'Unknown'} (${item.group_code ?? 'N/A'})`);
+        lines.push(`Type: ${item.is_raw ? 'Raw Material' : 'Finished Product'}`);
+        lines.push('');
+        lines.push('Stock Levels:');
+        lines.push(`  - In Stock: ${item.in_stock ?? 0}`);
+        lines.push(`  - Reserved: ${item.booked ?? 0}`);
+        lines.push(`  - Available: ${item.available ?? 0}`);
+        lines.push(`  - Expected Total: ${item.expected_total ?? 0}`);
+        lines.push(`  - Expected Available: ${item.expected_available ?? 0}`);
+        lines.push('');
+        lines.push('Pricing:');
+        if (item.avg_cost != null && typeof item.avg_cost === 'number') {
+          lines.push(`  - Average Cost: $${item.avg_cost.toFixed(2)}`);
         }
-
-        if (product.group) {
-          lines.push(`Group: ${product.group}`);
+        if (item.selling_price != null && typeof item.selling_price === 'number') {
+          lines.push(`  - Selling Price: $${item.selling_price.toFixed(2)}`);
         }
-
-        lines.push(`Unit: ${product.unit}`);
-        lines.push(`Standard Cost: $${product.cost.toFixed(2)}`);
-        lines.push(`Sales Price: $${product.price.toFixed(2)}`);
-        lines.push(`Status: ${product.active ? 'Active' : 'Inactive'}`);
-
-        // Include BOM if requested
-        if (params.include_bom) {
-          lines.push('');
-          lines.push('Bill of Materials:');
-
-          if (product.bom && product.bom.length > 0) {
-            lines.push(...formatBom(product.bom));
-          } else {
-            lines.push('  No BOM defined.');
-          }
-        }
+        lines.push('');
+        lines.push(`Status: ${item.deleted ? 'Deleted' : 'Active'}`);
 
         return {
           content: [

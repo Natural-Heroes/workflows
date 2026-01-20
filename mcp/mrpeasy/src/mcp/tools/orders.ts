@@ -9,7 +9,7 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { MrpEasyClient } from '../../services/mrpeasy/client.js';
-import type { CustomerOrder, ManufacturingOrder, PaginationMeta } from '../../services/mrpeasy/types.js';
+import type { CustomerOrder, ManufacturingOrder } from '../../services/mrpeasy/types.js';
 import { logger } from '../../lib/logger.js';
 import { handleToolError } from './error-handler.js';
 
@@ -98,22 +98,39 @@ const GetManufacturingOrdersInputSchema = z.object({
 function formatCustomerOrder(order: CustomerOrder): string {
   const lines: string[] = [];
 
-  lines.push(`Order #${order.number} (ID: ${order.id})`);
-  lines.push(`Status: ${order.status}`);
-  lines.push(`Customer: ${order.customer_name}`);
-  lines.push(`Order Date: ${order.order_date}`);
-  lines.push(`Delivery Date: ${order.delivery_date}`);
+  lines.push(`Order #${order.number ?? 'N/A'} (ID: ${order.id ?? 'Unknown'})`);
+  lines.push(`Status: ${order.status ?? 'Unknown'}`);
+  lines.push(`Customer: ${order.customer_name ?? 'Unknown'}`);
+  lines.push(`Order Date: ${order.order_date ?? 'N/A'}`);
+  lines.push(`Delivery Date: ${order.delivery_date ?? 'N/A'}`);
 
   if (order.items && order.items.length > 0) {
     lines.push('Items:');
     for (const item of order.items) {
-      lines.push(`  - ${item.quantity} x ${item.item_name}`);
+      lines.push(`  - ${item.quantity ?? 0} x ${item.item_name ?? 'Unknown'}`);
     }
   }
 
-  lines.push(`Total: ${order.currency} ${order.total.toFixed(2)}`);
+  const total = order.total != null ? order.total.toFixed(2) : '0.00';
+  const currency = order.currency ?? 'USD';
+  lines.push(`Total: ${currency} ${total}`);
 
   return lines.join('\n');
+}
+
+/**
+ * Parses Content-Range header to extract pagination info.
+ * Format: "items 0-99/3633"
+ */
+function parseContentRange(contentRange?: string): { startIdx: number; endIdx: number; total: number } | null {
+  if (!contentRange) return null;
+  const match = contentRange.match(/items (\d+)-(\d+)\/(\d+)/);
+  if (!match) return null;
+  return {
+    startIdx: parseInt(match[1], 10) + 1, // Convert 0-indexed to 1-indexed
+    endIdx: parseInt(match[2], 10) + 1,
+    total: parseInt(match[3], 10),
+  };
 }
 
 /**
@@ -121,15 +138,19 @@ function formatCustomerOrder(order: CustomerOrder): string {
  */
 function formatCustomerOrdersResponse(
   orders: CustomerOrder[],
-  pagination: PaginationMeta
+  contentRange?: string
 ): string {
   if (orders.length === 0) {
     return 'No customer orders found matching the specified criteria.';
   }
 
   const lines: string[] = [];
+  const pagination = parseContentRange(contentRange);
+  const startIdx = pagination?.startIdx ?? 1;
+  const endIdx = pagination?.endIdx ?? orders.length;
+  const total = pagination?.total ?? orders.length;
 
-  lines.push(`Customer Orders (Page ${pagination.page} of ${pagination.total_pages}):`);
+  lines.push(`Customer Orders (${startIdx}-${endIdx} of ${total}):`);
   lines.push('');
 
   for (const order of orders) {
@@ -139,11 +160,7 @@ function formatCustomerOrdersResponse(
     lines.push('');
   }
 
-  // Calculate range for "Showing X-Y of Z"
-  const startItem = (pagination.page - 1) * pagination.per_page + 1;
-  const endItem = Math.min(pagination.page * pagination.per_page, pagination.total);
-
-  lines.push(`Showing ${startItem}-${endItem} of ${pagination.total} orders.`);
+  lines.push(`Showing ${orders.length} of ${total} orders.`);
 
   return lines.join('\n');
 }
@@ -154,18 +171,18 @@ function formatCustomerOrdersResponse(
 function formatManufacturingOrder(order: ManufacturingOrder): string {
   const lines: string[] = [];
 
-  lines.push(`MO #${order.number} (ID: ${order.id})`);
-  lines.push(`Status: ${order.status}`);
-  lines.push(`Product: ${order.product_name} (ID: ${order.product_id})`);
-  lines.push(`Quantity: ${order.quantity}`);
-  lines.push(`Start Date: ${order.start_date}`);
-  lines.push(`Due Date: ${order.finish_date}`);
+  lines.push(`MO #${order.number ?? 'N/A'} (ID: ${order.id ?? 'Unknown'})`);
+  lines.push(`Status: ${order.status ?? 'Unknown'}`);
+  lines.push(`Product: ${order.product_name ?? 'Unknown'} (ID: ${order.product_id ?? 'N/A'})`);
+  lines.push(`Quantity: ${order.quantity ?? 0}`);
+  lines.push(`Start Date: ${order.start_date ?? 'N/A'}`);
+  lines.push(`Due Date: ${order.finish_date ?? 'N/A'}`);
 
-  // Calculate progress percentage
-  const percentage = order.quantity > 0
-    ? Math.round((order.produced_quantity / order.quantity) * 100)
-    : 0;
-  lines.push(`Progress: ${order.produced_quantity}/${order.quantity} (${percentage}%)`);
+  // Calculate progress percentage with null safety
+  const qty = order.quantity ?? 0;
+  const produced = order.produced_quantity ?? 0;
+  const percentage = qty > 0 ? Math.round((produced / qty) * 100) : 0;
+  lines.push(`Progress: ${produced}/${qty} (${percentage}%)`);
 
   return lines.join('\n');
 }
@@ -175,15 +192,19 @@ function formatManufacturingOrder(order: ManufacturingOrder): string {
  */
 function formatManufacturingOrdersResponse(
   orders: ManufacturingOrder[],
-  pagination: PaginationMeta
+  contentRange?: string
 ): string {
   if (orders.length === 0) {
     return 'No manufacturing orders found matching the specified criteria.';
   }
 
   const lines: string[] = [];
+  const pagination = parseContentRange(contentRange);
+  const startIdx = pagination?.startIdx ?? 1;
+  const endIdx = pagination?.endIdx ?? orders.length;
+  const total = pagination?.total ?? orders.length;
 
-  lines.push(`Manufacturing Orders (Page ${pagination.page} of ${pagination.total_pages}):`);
+  lines.push(`Manufacturing Orders (${startIdx}-${endIdx} of ${total}):`);
   lines.push('');
 
   for (const order of orders) {
@@ -193,11 +214,7 @@ function formatManufacturingOrdersResponse(
     lines.push('');
   }
 
-  // Calculate range for "Showing X-Y of Z"
-  const startItem = (pagination.page - 1) * pagination.per_page + 1;
-  const endItem = Math.min(pagination.page * pagination.per_page, pagination.total);
-
-  lines.push(`Showing ${startItem}-${endItem} of ${pagination.total} manufacturing orders.`);
+  lines.push(`Showing ${orders.length} of ${total} manufacturing orders.`);
 
   return lines.join('\n');
 }
@@ -259,15 +276,13 @@ export function registerOrderTools(
           apiParams.to_date = params.date_to;
         }
 
-        const response = await client.getCustomerOrders(apiParams);
-        const formattedResponse = formatCustomerOrdersResponse(
-          response.data,
-          response.pagination
-        );
+        const orders = await client.getCustomerOrders(apiParams);
+        const contentRange = (orders as { _contentRange?: string })._contentRange;
+        const formattedResponse = formatCustomerOrdersResponse(orders, contentRange);
 
         logger.debug('get_customer_orders success', {
-          count: response.data.length,
-          total: response.pagination.total,
+          count: orders.length,
+          contentRange,
         });
 
         return {
@@ -321,15 +336,13 @@ export function registerOrderTools(
           apiParams.to_date = params.date_to;
         }
 
-        const response = await client.getManufacturingOrders(apiParams);
-        const formattedResponse = formatManufacturingOrdersResponse(
-          response.data,
-          response.pagination
-        );
+        const orders = await client.getManufacturingOrders(apiParams);
+        const contentRange = (orders as { _contentRange?: string })._contentRange;
+        const formattedResponse = formatManufacturingOrdersResponse(orders, contentRange);
 
         logger.debug('get_manufacturing_orders success', {
-          count: response.data.length,
-          total: response.pagination.total,
+          count: orders.length,
+          contentRange,
         });
 
         return {

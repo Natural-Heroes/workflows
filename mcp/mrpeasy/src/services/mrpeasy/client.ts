@@ -327,13 +327,15 @@ export class MrpEasyClient {
   /**
    * Get customer orders (sales orders).
    *
+   * MRPeasy returns a flat array with Content-Range header for pagination.
+   *
    * @param params - Query parameters for filtering and pagination
-   * @returns Paginated list of customer orders
+   * @returns Array of customer orders with _contentRange metadata
    */
   async getCustomerOrders(
     params?: CustomerOrdersParams
-  ): Promise<MrpEasyApiResponse<CustomerOrder>> {
-    return this.request<MrpEasyApiResponse<CustomerOrder>>('/customer-orders', params);
+  ): Promise<CustomerOrder[] & { _contentRange?: string }> {
+    return this.request<CustomerOrder[] & { _contentRange?: string }>('/customer-orders', params);
   }
 
   /**
@@ -353,13 +355,15 @@ export class MrpEasyClient {
   /**
    * Get manufacturing orders (production orders).
    *
+   * MRPeasy returns a flat array with Content-Range header for pagination.
+   *
    * @param params - Query parameters for filtering and pagination
-   * @returns Paginated list of manufacturing orders
+   * @returns Array of manufacturing orders with _contentRange metadata
    */
   async getManufacturingOrders(
     params?: ManufacturingOrdersParams
-  ): Promise<MrpEasyApiResponse<ManufacturingOrder>> {
-    return this.request<MrpEasyApiResponse<ManufacturingOrder>>(
+  ): Promise<ManufacturingOrder[] & { _contentRange?: string }> {
+    return this.request<ManufacturingOrder[] & { _contentRange?: string }>(
       '/manufacturing-orders',
       params
     );
@@ -392,13 +396,15 @@ export class MrpEasyClient {
   }
 
   /**
-   * Get a single product by ID.
+   * Get a single product/item by ID.
    *
-   * @param id - Product ID
-   * @returns Product details including BOM
+   * MRPeasy uses /items/{id} for individual item details.
+   *
+   * @param id - Item/Article ID
+   * @returns Item details
    */
-  async getProduct(id: number): Promise<Product> {
-    return this.request<Product>(`/products/${id}`);
+  async getProduct(id: number): Promise<StockItem> {
+    return this.request<StockItem>(`/items/${id}`);
   }
 
   // ===========================================================================
@@ -408,11 +414,13 @@ export class MrpEasyClient {
   /**
    * Get items (general search across all item types).
    *
+   * MRPeasy returns a flat array with Content-Range header for pagination.
+   *
    * @param params - Query parameters for filtering and pagination
-   * @returns Paginated list of items
+   * @returns Array of items with _contentRange metadata
    */
-  async getItems(params?: ItemsParams): Promise<MrpEasyApiResponse<Item>> {
-    return this.request<MrpEasyApiResponse<Item>>('/items', params);
+  async getItems(params?: ItemsParams): Promise<StockItem[] & { _contentRange?: string }> {
+    return this.request<StockItem[] & { _contentRange?: string }>('/items', params);
   }
 
   /**

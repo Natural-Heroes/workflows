@@ -7,7 +7,7 @@
 
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import type { MrpEasyClient, ItemType } from '../../services/mrpeasy/index.js';
+import type { MrpEasyClient } from '../../services/mrpeasy/index.js';
 import { logger } from '../../lib/logger.js';
 import { handleToolError } from './error-handler.js';
 
@@ -51,51 +51,47 @@ export function registerSearchTools(
       logger.debug('search_items tool called', { params });
 
       try {
-        // Build API parameters
-        const apiParams: {
-          search: string;
-          type?: ItemType;
-          page: number;
-          per_page: number;
-        } = {
+        // Build API parameters - MRPeasy uses different param names
+        const apiParams: Record<string, string | number | undefined> = {
           search: params.query,
           page: params.page,
           per_page: params.per_page,
         };
 
-        // Only add type filter if not 'all'
-        if (params.type && params.type !== 'all') {
-          apiParams.type = params.type as ItemType;
-        }
+        const items = await client.getItems(apiParams);
 
-        const response = await client.getItems(apiParams);
-        const { data, pagination } = response;
+        // Parse pagination from Content-Range header (format: "items 0-99/3633")
+        let total = items.length;
+        let startIdx = 1;
+        const contentRange = (items as { _contentRange?: string })._contentRange;
+        if (contentRange) {
+          const match = contentRange.match(/items (\d+)-(\d+)\/(\d+)/);
+          if (match) {
+            startIdx = parseInt(match[1], 10) + 1;
+            total = parseInt(match[3], 10);
+          }
+        }
 
         // Format response for LLM consumption
         const lines: string[] = [];
 
-        lines.push(
-          `Search Results for "${params.query}" (Page ${pagination.page} of ${pagination.total_pages}):`
-        );
+        lines.push(`Search Results for "${params.query}":`);
         lines.push('');
 
-        if (data.length === 0) {
+        if (items.length === 0) {
           lines.push(`No items found matching "${params.query}".`);
         } else {
-          data.forEach((item, index) => {
-            const num = (pagination.page - 1) * pagination.per_page + index + 1;
-            lines.push(`${num}. ${item.name} (ID: ${item.id})`);
-            lines.push(`   Type: ${item.type} | Part #: ${item.number}`);
-            if (item.group) {
-              lines.push(`   Group: ${item.group}`);
-            }
-            lines.push(`   Status: ${item.active ? 'Active' : 'Inactive'}`);
+          items.forEach((item, index) => {
+            const num = startIdx + index;
+            lines.push(`${num}. ${item.title ?? 'Unknown'} (ID: ${item.article_id})`);
+            lines.push(`   Code: ${item.code ?? 'N/A'} | Type: ${item.is_raw ? 'Raw Material' : 'Product'}`);
+            lines.push(`   Group: ${item.group_title ?? 'Unknown'}`);
+            lines.push(`   In Stock: ${item.in_stock ?? 0} | Available: ${item.available ?? 0}`);
+            lines.push(`   Status: ${item.deleted ? 'Deleted' : 'Active'}`);
             lines.push('');
           });
 
-          lines.push(
-            `Found ${pagination.total} items matching "${params.query}".`
-          );
+          lines.push(`Showing ${items.length} of ${total} matching items.`);
         }
 
         return {
