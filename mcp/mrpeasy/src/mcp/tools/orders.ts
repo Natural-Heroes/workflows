@@ -92,8 +92,11 @@ const GetManufacturingOrdersInputSchema = z.object({
  * Input schema for get_customer_order_details tool.
  */
 const GetCustomerOrderDetailsInputSchema = z.object({
-  order_id: z.number().int().positive().describe(
-    'The customer order ID (e.g., 1276)'
+  order_id: z.number().int().positive().optional().describe(
+    'The internal customer order ID (cust_ord_id). Use this OR order_code, not both.'
+  ),
+  order_code: z.string().optional().describe(
+    'The customer order code/number (e.g., "CO-01263"). Use this OR order_id, not both.'
   ),
 });
 
@@ -101,8 +104,11 @@ const GetCustomerOrderDetailsInputSchema = z.object({
  * Input schema for get_manufacturing_order_details tool.
  */
 const GetManufacturingOrderDetailsInputSchema = z.object({
-  mo_id: z.number().int().positive().describe(
-    'The manufacturing order ID (e.g., 9365)'
+  mo_id: z.number().int().positive().optional().describe(
+    'The internal manufacturing order ID (man_ord_id). Use this OR mo_code, not both.'
+  ),
+  mo_code: z.string().optional().describe(
+    'The manufacturing order code/number (e.g., "MO-39509" or "WO-09318"). Use this OR mo_id, not both.'
   ),
 });
 
@@ -708,19 +714,65 @@ export function registerOrderTools(
   // -------------------------------------------------------------------------
   server.tool(
     'get_customer_order_details',
-    'Get full details of a specific customer order by ID. Returns header info plus line items with products, quantities, prices, and delivery status.',
+    'Get full details of a specific customer order. Can lookup by internal ID (order_id) or by code (order_code like "CO-01263"). Returns header info plus line items with products, quantities, prices.',
     {
       order_id: GetCustomerOrderDetailsInputSchema.shape.order_id,
+      order_code: GetCustomerOrderDetailsInputSchema.shape.order_code,
     },
     async (params) => {
       logger.debug('get_customer_order_details called', { params });
 
       try {
-        const order = await client.getCustomerOrder(params.order_id);
+        let resolvedId: number | undefined = params.order_id;
+
+        // If order_code is provided, search for the CO to get its cust_ord_id
+        if (params.order_code && !resolvedId) {
+          const searchCode = params.order_code.toUpperCase().replace(/^CO-/, '');
+          logger.debug('Searching for CO by code', { order_code: params.order_code, searchCode });
+
+          // Search customer orders to find one with matching code
+          const orders = await client.getCustomerOrders({ per_page: 100 });
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const matchingOrder = orders.find((o: any) => {
+            const orderCode = (o.code ?? '').toUpperCase();
+            // Match exact code or just the numeric part
+            return orderCode === params.order_code?.toUpperCase() ||
+                   orderCode === `CO-${searchCode}` ||
+                   orderCode.endsWith(searchCode);
+          });
+
+          if (matchingOrder) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            resolvedId = (matchingOrder as any).cust_ord_id ?? (matchingOrder as any).id;
+            logger.debug('Found CO by code', { code: params.order_code, resolvedId });
+          } else {
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: `Customer order with code "${params.order_code}" not found in the first 100 orders.\n\nTip: Try using get_customer_orders to find the order first, then use the cust_ord_id from the results.`,
+                },
+              ],
+            };
+          }
+        }
+
+        if (!resolvedId) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: 'Please provide either order_id (internal ID) or order_code (e.g., "CO-01263").',
+              },
+            ],
+          };
+        }
+
+        const order = await client.getCustomerOrder(resolvedId);
         const formattedResponse = formatCustomerOrderDetails(order);
 
         logger.debug('get_customer_order_details success', {
-          orderId: params.order_id,
+          orderId: resolvedId,
         });
 
         return {
@@ -742,19 +794,66 @@ export function registerOrderTools(
   // -------------------------------------------------------------------------
   server.tool(
     'get_manufacturing_order_details',
-    'Get full details of a specific manufacturing order (MO) by ID. Returns header info, operations/routing, and BOM parts/materials with required vs consumed quantities.',
+    'Get full details of a specific manufacturing order (MO). Can lookup by internal ID (mo_id) or by code (mo_code like "MO-39509"). Returns header info, operations/routing, and BOM parts/materials.',
     {
       mo_id: GetManufacturingOrderDetailsInputSchema.shape.mo_id,
+      mo_code: GetManufacturingOrderDetailsInputSchema.shape.mo_code,
     },
     async (params) => {
       logger.debug('get_manufacturing_order_details called', { params });
 
       try {
-        const order = await client.getManufacturingOrder(params.mo_id);
+        let resolvedId: number | undefined = params.mo_id;
+
+        // If mo_code is provided, search for the MO to get its man_ord_id
+        if (params.mo_code && !resolvedId) {
+          const searchCode = params.mo_code.toUpperCase().replace(/^(MO-|WO-)/, '');
+          logger.debug('Searching for MO by code', { mo_code: params.mo_code, searchCode });
+
+          // Search manufacturing orders to find one with matching code
+          const orders = await client.getManufacturingOrders({ per_page: 100 });
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const matchingOrder = orders.find((o: any) => {
+            const orderCode = (o.code ?? '').toUpperCase();
+            // Match exact code or just the numeric part
+            return orderCode === params.mo_code?.toUpperCase() ||
+                   orderCode === `WO-${searchCode}` ||
+                   orderCode === `MO-${searchCode}` ||
+                   orderCode.endsWith(searchCode);
+          });
+
+          if (matchingOrder) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            resolvedId = (matchingOrder as any).man_ord_id ?? (matchingOrder as any).id;
+            logger.debug('Found MO by code', { code: params.mo_code, resolvedId });
+          } else {
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: `Manufacturing order with code "${params.mo_code}" not found in the first 100 orders.\n\nTip: Try using get_manufacturing_orders to find the order first, then use the man_ord_id from the results.`,
+                },
+              ],
+            };
+          }
+        }
+
+        if (!resolvedId) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: 'Please provide either mo_id (internal ID) or mo_code (e.g., "MO-39509").',
+              },
+            ],
+          };
+        }
+
+        const order = await client.getManufacturingOrder(resolvedId);
         const formattedResponse = formatManufacturingOrderDetails(order);
 
         logger.debug('get_manufacturing_order_details success', {
-          moId: params.mo_id,
+          moId: resolvedId,
         });
 
         return {
