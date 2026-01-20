@@ -23,8 +23,12 @@ export function registerInventoryTools(
 ): void {
   server.tool(
     'get_inventory',
-    'Get current stock levels and inventory costs. Filter by item_id or warehouse_id. Returns quantity on hand, reserved, available, and unit costs.',
+    'Get current stock levels and inventory costs. Filter by code (SKU), item_id, or warehouse_id. Returns quantity on hand, reserved, available, and unit costs.',
     {
+      code: z
+        .string()
+        .optional()
+        .describe('Filter by item code/SKU (e.g., "ZPEO-NH-1"). Exact match.'),
       item_id: z
         .string()
         .optional()
@@ -52,14 +56,20 @@ export function registerInventoryTools(
 
       try {
         // Convert string IDs to numbers for the API
-        const apiParams = {
-          item_id: params.item_id ? parseInt(params.item_id, 10) : undefined,
-          warehouse_id: params.warehouse_id
-            ? parseInt(params.warehouse_id, 10)
-            : undefined,
+        const apiParams: Record<string, unknown> = {
           page: params.page,
           per_page: params.per_page,
         };
+
+        if (params.code) {
+          apiParams.code = params.code;
+        }
+        if (params.item_id) {
+          apiParams.item_id = parseInt(params.item_id, 10);
+        }
+        if (params.warehouse_id) {
+          apiParams.warehouse_id = parseInt(params.warehouse_id, 10);
+        }
 
         const items = await client.getStockItems(apiParams);
 
