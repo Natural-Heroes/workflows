@@ -24,8 +24,8 @@ const GetShipmentsInputSchema = z.object({
   customer_order_id: z.number().int().positive().optional().describe(
     'Filter by customer order ID (cust_ord_id). Get shipments for a specific CO.'
   ),
-  open_only: z.boolean().optional().describe(
-    'If true, only return open shipments (excludes Shipped and Cancelled). Shows pending work.'
+  pending_only: z.boolean().optional().describe(
+    'If true, only return shipments pending dispatch (New + Ready). Excludes already Shipped and Cancelled.'
   ),
   status: z.enum(['new', 'ready', 'shipped', 'cancelled']).optional().describe(
     'Filter by shipment status: new, ready, shipped, or cancelled'
@@ -286,10 +286,10 @@ export function registerShipmentTools(
   // -------------------------------------------------------------------------
   server.tool(
     'get_shipments',
-    'Get shipments with optional filtering. Use open_only=true to get only pending shipments (excludes Shipped/Cancelled). Filter by customer_order_id to get shipments for a specific CO.',
+    'Get shipments with optional filtering. Use pending_only=true to get shipments awaiting dispatch (New + Ready). Filter by customer_order_id to get shipments for a specific CO.',
     {
       customer_order_id: GetShipmentsInputSchema.shape.customer_order_id,
-      open_only: GetShipmentsInputSchema.shape.open_only,
+      pending_only: GetShipmentsInputSchema.shape.pending_only,
       status: GetShipmentsInputSchema.shape.status,
       tracking_number: GetShipmentsInputSchema.shape.tracking_number,
       page: GetShipmentsInputSchema.shape.page,
@@ -304,9 +304,10 @@ export function registerShipmentTools(
         if (params.customer_order_id) {
           apiParams.customer_order_id = params.customer_order_id;
         }
-        // open_only: exclude Shipped (20) and Cancelled (30)
+        // pending_only: shipments awaiting dispatch
         // Include: 10 (New), 15 (Ready for shipment)
-        if (params.open_only) {
+        // Excludes: 20 (Shipped - already dispatched), 30 (Cancelled)
+        if (params.pending_only) {
           apiParams['status[]'] = [10, 15];
         } else if (params.status) {
           apiParams.status = statusToCode(params.status);
