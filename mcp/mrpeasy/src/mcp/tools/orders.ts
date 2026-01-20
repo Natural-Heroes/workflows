@@ -410,18 +410,18 @@ function formatCustomerOrderDetails(order: CustomerOrder): string {
   lines.push(`Delivery Date: ${formatDate(deliveryDate)}`);
   lines.push('');
 
-  // Line items
-  const items = raw.items ?? raw.lines ?? raw.order_items ?? [];
+  // Line items - MRPeasy returns these as "products"
+  const items = raw.products ?? raw.items ?? raw.lines ?? raw.order_items ?? [];
   if (items.length > 0) {
     lines.push('--- Line Items ---');
     lines.push('');
     items.forEach((item: Record<string, unknown>, idx: number) => {
       const itemCode = item.item_code ?? item.code ?? item.item_number ?? 'N/A';
-      const itemName = item.item_name ?? item.name ?? item.title ?? 'Unknown';
+      const itemName = item.item_title ?? item.item_name ?? item.name ?? item.title ?? 'Unknown';
       const qty = item.quantity ?? item.qty ?? 0;
-      const deliveredQty = item.delivered_quantity ?? item.delivered_qty ?? item.delivered ?? 0;
-      const price = item.price ?? item.unit_price ?? 0;
-      const lineTotal = item.total ?? item.line_total ?? (Number(qty) * Number(price));
+      const deliveredQty = item.shipped ?? item.delivered_quantity ?? item.delivered_qty ?? item.delivered ?? 0;
+      const price = item.item_price ?? item.item_price_cur ?? item.price ?? item.unit_price ?? 0;
+      const lineTotal = item.total_price ?? item.total_price_cur ?? item.total ?? item.line_total ?? (Number(qty) * Number(price));
       const unit = item.unit ?? 'pcs';
 
       lines.push(`${idx + 1}. ${itemName}`);
