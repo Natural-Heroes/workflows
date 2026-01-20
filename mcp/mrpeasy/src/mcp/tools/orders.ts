@@ -730,27 +730,48 @@ export function registerOrderTools(
           const searchCode = params.order_code.toUpperCase().replace(/^CO-/, '');
           logger.debug('Searching for CO by code', { order_code: params.order_code, searchCode });
 
-          // Search customer orders to find one with matching code
-          const orders = await client.getCustomerOrders({ per_page: 100 });
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const matchingOrder = orders.find((o: any) => {
-            const orderCode = (o.code ?? '').toUpperCase();
-            // Match exact code or just the numeric part
-            return orderCode === params.order_code?.toUpperCase() ||
-                   orderCode === `CO-${searchCode}` ||
-                   orderCode.endsWith(searchCode);
-          });
+          // Search customer orders - paginate through up to 1000 orders to find the match
+          const maxPages = 10;
+          const perPage = 100;
+          let foundOrder = null;
 
-          if (matchingOrder) {
+          for (let page = 1; page <= maxPages && !foundOrder; page++) {
+            const orders = await client.getCustomerOrders({ per_page: perPage, page });
+
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            resolvedId = (matchingOrder as any).cust_ord_id ?? (matchingOrder as any).id;
+            foundOrder = orders.find((o: any) => {
+              const orderCode = (o.code ?? '').toUpperCase();
+              // Match exact code or just the numeric part
+              return orderCode === params.order_code?.toUpperCase() ||
+                     orderCode === `CO-${searchCode}` ||
+                     orderCode.endsWith(searchCode);
+            });
+
+            if (foundOrder) break;
+
+            // Check if we've reached the end of results
+            const contentRange = (orders as { _contentRange?: string })._contentRange;
+            if (contentRange) {
+              const match = contentRange.match(/items \d+-(\d+)\/(\d+)/);
+              if (match) {
+                const endIdx = parseInt(match[1], 10);
+                const total = parseInt(match[2], 10);
+                if (endIdx >= total - 1) break; // No more pages
+              }
+            }
+            if (orders.length < perPage) break; // Last page
+          }
+
+          if (foundOrder) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            resolvedId = (foundOrder as any).cust_ord_id ?? (foundOrder as any).id;
             logger.debug('Found CO by code', { code: params.order_code, resolvedId });
           } else {
             return {
               content: [
                 {
                   type: 'text',
-                  text: `Customer order with code "${params.order_code}" not found in the first 100 orders.\n\nTip: Try using get_customer_orders to find the order first, then use the cust_ord_id from the results.`,
+                  text: `Customer order with code "${params.order_code}" not found in the first 1000 orders.\n\nTip: Try using get_customer_orders with date filters to find the order first, then use the cust_ord_id from the results.`,
                 },
               ],
             };
@@ -810,28 +831,49 @@ export function registerOrderTools(
           const searchCode = params.mo_code.toUpperCase().replace(/^(MO-|WO-)/, '');
           logger.debug('Searching for MO by code', { mo_code: params.mo_code, searchCode });
 
-          // Search manufacturing orders to find one with matching code
-          const orders = await client.getManufacturingOrders({ per_page: 100 });
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const matchingOrder = orders.find((o: any) => {
-            const orderCode = (o.code ?? '').toUpperCase();
-            // Match exact code or just the numeric part
-            return orderCode === params.mo_code?.toUpperCase() ||
-                   orderCode === `WO-${searchCode}` ||
-                   orderCode === `MO-${searchCode}` ||
-                   orderCode.endsWith(searchCode);
-          });
+          // Search manufacturing orders - paginate through up to 1000 orders to find the match
+          const maxPages = 10;
+          const perPage = 100;
+          let foundOrder = null;
 
-          if (matchingOrder) {
+          for (let page = 1; page <= maxPages && !foundOrder; page++) {
+            const orders = await client.getManufacturingOrders({ per_page: perPage, page });
+
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            resolvedId = (matchingOrder as any).man_ord_id ?? (matchingOrder as any).id;
+            foundOrder = orders.find((o: any) => {
+              const orderCode = (o.code ?? '').toUpperCase();
+              // Match exact code or just the numeric part
+              return orderCode === params.mo_code?.toUpperCase() ||
+                     orderCode === `WO-${searchCode}` ||
+                     orderCode === `MO-${searchCode}` ||
+                     orderCode.endsWith(searchCode);
+            });
+
+            if (foundOrder) break;
+
+            // Check if we've reached the end of results
+            const contentRange = (orders as { _contentRange?: string })._contentRange;
+            if (contentRange) {
+              const match = contentRange.match(/items \d+-(\d+)\/(\d+)/);
+              if (match) {
+                const endIdx = parseInt(match[1], 10);
+                const total = parseInt(match[2], 10);
+                if (endIdx >= total - 1) break; // No more pages
+              }
+            }
+            if (orders.length < perPage) break; // Last page
+          }
+
+          if (foundOrder) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            resolvedId = (foundOrder as any).man_ord_id ?? (foundOrder as any).id;
             logger.debug('Found MO by code', { code: params.mo_code, resolvedId });
           } else {
             return {
               content: [
                 {
                   type: 'text',
-                  text: `Manufacturing order with code "${params.mo_code}" not found in the first 100 orders.\n\nTip: Try using get_manufacturing_orders to find the order first, then use the man_ord_id from the results.`,
+                  text: `Manufacturing order with code "${params.mo_code}" not found in the first 1000 orders.\n\nTip: Try using get_manufacturing_orders with date filters to find the order first, then use the man_ord_id from the results.`,
                 },
               ],
             };
