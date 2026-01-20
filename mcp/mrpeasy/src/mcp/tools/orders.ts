@@ -88,6 +88,24 @@ const GetManufacturingOrdersInputSchema = z.object({
   ),
 });
 
+/**
+ * Input schema for get_customer_order_details tool.
+ */
+const GetCustomerOrderDetailsInputSchema = z.object({
+  order_id: z.number().int().positive().describe(
+    'The customer order ID (e.g., 1276)'
+  ),
+});
+
+/**
+ * Input schema for get_manufacturing_order_details tool.
+ */
+const GetManufacturingOrderDetailsInputSchema = z.object({
+  mo_id: z.number().int().positive().describe(
+    'The manufacturing order ID (e.g., 9365)'
+  ),
+});
+
 // ============================================================================
 // Utility Functions
 // ============================================================================
@@ -345,6 +363,207 @@ function formatManufacturingOrdersResponse(
 }
 
 // ============================================================================
+// Detail Formatters
+// ============================================================================
+
+/**
+ * Formats detailed customer order response for LLM consumption.
+ * Includes header info and line items with quantities and prices.
+ */
+function formatCustomerOrderDetails(order: CustomerOrder): string {
+  const lines: string[] = [];
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const raw = order as any;
+
+  // Header info
+  const orderId = raw.cust_ord_id ?? raw.id ?? 'Unknown';
+  const orderNumber = raw.code ?? raw.number ?? 'N/A';
+  const reference = raw.reference ?? '';
+  const status = raw.status;
+  const customerName = raw.customer_name ?? 'Unknown';
+  const customerCode = raw.customer_code ?? '';
+  const orderDate = raw.created;
+  const deliveryDate = raw.delivery_date ?? raw.actual_delivery_date;
+  const total = raw.total_price ?? 0;
+  const currency = raw.currency ?? '€';
+  const notes = raw.notes ?? raw.comment ?? '';
+
+  lines.push('=== Customer Order Details ===');
+  lines.push('');
+  lines.push(`Order #${orderNumber} (ID: ${orderId})`);
+  if (reference) lines.push(`Reference: ${reference}`);
+  lines.push(`Status: ${formatCustomerOrderStatus(status)}`);
+  lines.push('');
+  lines.push('--- Customer ---');
+  lines.push(`Name: ${customerName}`);
+  if (customerCode) lines.push(`Code: ${customerCode}`);
+  lines.push('');
+  lines.push('--- Dates ---');
+  lines.push(`Order Date: ${formatDate(orderDate)}`);
+  lines.push(`Delivery Date: ${formatDate(deliveryDate)}`);
+  lines.push('');
+
+  // Line items
+  const items = raw.items ?? raw.lines ?? raw.order_items ?? [];
+  if (items.length > 0) {
+    lines.push('--- Line Items ---');
+    lines.push('');
+    items.forEach((item: Record<string, unknown>, idx: number) => {
+      const itemCode = item.item_code ?? item.code ?? item.item_number ?? 'N/A';
+      const itemName = item.item_name ?? item.name ?? item.title ?? 'Unknown';
+      const qty = item.quantity ?? item.qty ?? 0;
+      const deliveredQty = item.delivered_quantity ?? item.delivered_qty ?? item.delivered ?? 0;
+      const price = item.price ?? item.unit_price ?? 0;
+      const lineTotal = item.total ?? item.line_total ?? (Number(qty) * Number(price));
+      const unit = item.unit ?? 'pcs';
+
+      lines.push(`${idx + 1}. ${itemName}`);
+      lines.push(`   Code: ${itemCode}`);
+      lines.push(`   Quantity: ${qty} ${unit}`);
+      lines.push(`   Delivered: ${deliveredQty} ${unit}`);
+      lines.push(`   Unit Price: ${currency} ${Number(price).toFixed(2)}`);
+      lines.push(`   Line Total: ${currency} ${Number(lineTotal).toFixed(2)}`);
+      lines.push('');
+    });
+  } else {
+    lines.push('--- Line Items ---');
+    lines.push('No line items found in this order.');
+    lines.push('');
+  }
+
+  lines.push('--- Total ---');
+  lines.push(`Order Total: ${currency} ${Number(total).toFixed(2)}`);
+
+  if (notes) {
+    lines.push('');
+    lines.push('--- Notes ---');
+    lines.push(notes);
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * Formats detailed manufacturing order response for LLM consumption.
+ * Includes header info, operations/routing, and BOM parts/materials.
+ */
+function formatManufacturingOrderDetails(order: ManufacturingOrder): string {
+  const lines: string[] = [];
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const raw = order as any;
+
+  // Header info
+  const moId = raw.man_ord_id ?? raw.id ?? 'Unknown';
+  const moNumber = raw.code ?? raw.number ?? 'N/A';
+  const status = raw.status;
+  const productId = raw.article_id ?? raw.product_id ?? 'N/A';
+  const productName = raw.item_title ?? raw.product_name ?? 'Unknown';
+  const productCode = raw.item_code ?? raw.product_number ?? '';
+  const quantity = raw.quantity ?? 0;
+  const producedQty = raw.produced_quantity ?? raw.produced_qty ?? 0;
+  const startDate = raw.start_date;
+  const dueDate = raw.due_date ?? raw.finish_date;
+  const actualFinish = raw.actual_finish_date ?? raw.finished_date;
+  const totalCost = raw.total_cost ?? 0;
+  const itemCost = raw.item_cost ?? 0;
+  const notes = raw.notes ?? raw.comment ?? '';
+  const coNumber = raw.cust_ord_code ?? raw.customer_order_number ?? '';
+
+  lines.push('=== Manufacturing Order Details ===');
+  lines.push('');
+  lines.push(`MO #${moNumber} (ID: ${moId})`);
+  lines.push(`Status: ${formatManufacturingOrderStatus(status)}`);
+  lines.push('');
+  lines.push('--- Product ---');
+  lines.push(`Name: ${productName}`);
+  if (productCode) lines.push(`Code: ${productCode}`);
+  lines.push(`Product ID: ${productId}`);
+  lines.push('');
+  lines.push('--- Quantities ---');
+  lines.push(`Planned: ${quantity}`);
+  lines.push(`Produced: ${producedQty}`);
+  const remaining = Number(quantity) - Number(producedQty);
+  lines.push(`Remaining: ${remaining}`);
+  const progress = Number(quantity) > 0 ? Math.round((Number(producedQty) / Number(quantity)) * 100) : 0;
+  lines.push(`Progress: ${progress}%`);
+  lines.push('');
+  lines.push('--- Schedule ---');
+  lines.push(`Start Date: ${formatDate(startDate)}`);
+  lines.push(`Due Date: ${formatDate(dueDate)}`);
+  if (actualFinish) lines.push(`Actual Finish: ${formatDate(actualFinish)}`);
+  if (coNumber) lines.push(`Customer Order: ${coNumber}`);
+  lines.push('');
+
+  // Operations/Routing
+  const operations = raw.operations ?? raw.routing ?? raw.work_orders ?? [];
+  if (operations.length > 0) {
+    lines.push('--- Operations/Routing ---');
+    lines.push('');
+    operations.forEach((op: Record<string, unknown>, idx: number) => {
+      const opNumber = op.operation_number ?? op.sequence ?? op.op_number ?? (idx + 1);
+      const opName = op.operation_name ?? op.name ?? op.title ?? 'Operation';
+      const workstation = op.workstation ?? op.work_center ?? op.machine ?? 'N/A';
+      const setupTime = op.setup_time ?? op.setup_minutes ?? 0;
+      const runTime = op.run_time ?? op.runtime ?? op.cycle_time ?? 0;
+      const opStatus = op.status ?? 'Unknown';
+
+      lines.push(`${opNumber}. ${opName}`);
+      lines.push(`   Workstation: ${workstation}`);
+      lines.push(`   Setup Time: ${setupTime} min`);
+      lines.push(`   Run Time: ${runTime} min`);
+      lines.push(`   Status: ${opStatus}`);
+      lines.push('');
+    });
+  } else {
+    lines.push('--- Operations/Routing ---');
+    lines.push('No operations found for this MO.');
+    lines.push('');
+  }
+
+  // BOM/Materials
+  const materials = raw.materials ?? raw.bom ?? raw.parts ?? raw.components ?? [];
+  if (materials.length > 0) {
+    lines.push('--- BOM/Materials ---');
+    lines.push('');
+    materials.forEach((mat: Record<string, unknown>, idx: number) => {
+      const matCode = mat.item_code ?? mat.code ?? mat.part_number ?? 'N/A';
+      const matName = mat.item_name ?? mat.name ?? mat.title ?? 'Unknown';
+      const reqQty = mat.required_quantity ?? mat.quantity ?? mat.qty ?? 0;
+      const consumedQty = mat.consumed_quantity ?? mat.consumed ?? mat.used_qty ?? 0;
+      const unit = mat.unit ?? mat.uom ?? 'pcs';
+
+      lines.push(`${idx + 1}. ${matName}`);
+      lines.push(`   Code: ${matCode}`);
+      lines.push(`   Required: ${reqQty} ${unit}`);
+      lines.push(`   Consumed: ${consumedQty} ${unit}`);
+      const shortfall = Number(reqQty) - Number(consumedQty);
+      if (shortfall > 0) {
+        lines.push(`   Remaining: ${shortfall} ${unit}`);
+      }
+      lines.push('');
+    });
+  } else {
+    lines.push('--- BOM/Materials ---');
+    lines.push('No materials/BOM found for this MO.');
+    lines.push('');
+  }
+
+  lines.push('--- Costs ---');
+  lines.push(`Item Cost: ${Number(itemCost).toFixed(2)}`);
+  lines.push(`Total Cost: ${Number(totalCost).toFixed(2)}`);
+
+  if (notes) {
+    lines.push('');
+    lines.push('--- Notes ---');
+    lines.push(notes);
+  }
+
+  return lines.join('\n');
+}
+
+// ============================================================================
 // Tool Registration
 // ============================================================================
 
@@ -484,5 +703,73 @@ export function registerOrderTools(
     }
   );
 
-  logger.info('Order tools registered: get_customer_orders, get_manufacturing_orders');
+  // -------------------------------------------------------------------------
+  // get_customer_order_details
+  // -------------------------------------------------------------------------
+  server.tool(
+    'get_customer_order_details',
+    'Get full details of a specific customer order by ID. Returns header info plus line items with products, quantities, prices, and delivery status.',
+    {
+      order_id: GetCustomerOrderDetailsInputSchema.shape.order_id,
+    },
+    async (params) => {
+      logger.debug('get_customer_order_details called', { params });
+
+      try {
+        const order = await client.getCustomerOrder(params.order_id);
+        const formattedResponse = formatCustomerOrderDetails(order);
+
+        logger.debug('get_customer_order_details success', {
+          orderId: params.order_id,
+        });
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: formattedResponse,
+            },
+          ],
+        };
+      } catch (error) {
+        return handleToolError(error, 'get_customer_order_details');
+      }
+    }
+  );
+
+  // -------------------------------------------------------------------------
+  // get_manufacturing_order_details
+  // -------------------------------------------------------------------------
+  server.tool(
+    'get_manufacturing_order_details',
+    'Get full details of a specific manufacturing order (MO) by ID. Returns header info, operations/routing, and BOM parts/materials with required vs consumed quantities.',
+    {
+      mo_id: GetManufacturingOrderDetailsInputSchema.shape.mo_id,
+    },
+    async (params) => {
+      logger.debug('get_manufacturing_order_details called', { params });
+
+      try {
+        const order = await client.getManufacturingOrder(params.mo_id);
+        const formattedResponse = formatManufacturingOrderDetails(order);
+
+        logger.debug('get_manufacturing_order_details success', {
+          moId: params.mo_id,
+        });
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: formattedResponse,
+            },
+          ],
+        };
+      } catch (error) {
+        return handleToolError(error, 'get_manufacturing_order_details');
+      }
+    }
+  );
+
+  logger.info('Order tools registered: get_customer_orders, get_manufacturing_orders, get_customer_order_details, get_manufacturing_order_details');
 }
