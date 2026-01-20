@@ -101,8 +101,10 @@ Format: `items {start}-{end}/{total}`
 | Code | Status |
 |------|--------|
 | 10 | New |
+| 15 | Not Scheduled |
 | 20 | Scheduled |
 | 30 | In Progress |
+| 35 | Paused |
 | 40 | Done |
 | 50 | Shipped |
 | 60 | Closed |
@@ -161,9 +163,14 @@ GET /manufacturing-orders/{man_ord_id}
 | Code | Status |
 |------|--------|
 | 10 | Quotation |
+| 20 | Waiting for confirmation |
 | 30 | Confirmed |
+| 40 | Waiting for production |
+| 50 | In production |
+| 60 | Ready for shipment |
 | 70 | Shipped |
 | 80 | Delivered |
+| 85 | Archived |
 | 90 | Cancelled |
 
 ### Response Fields

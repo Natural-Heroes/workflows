@@ -170,9 +170,14 @@ function formatCustomerOrderStatus(status: unknown): string {
 
   const statusMap: Record<number, string> = {
     10: 'Quotation',
+    20: 'Waiting for confirmation',
     30: 'Confirmed',
+    40: 'Waiting for production',
+    50: 'In production',
+    60: 'Ready for shipment',
     70: 'Shipped',
     80: 'Delivered',
+    85: 'Archived',
     90: 'Cancelled',
   };
 
@@ -189,8 +194,10 @@ function formatManufacturingOrderStatus(status: unknown): string {
 
   const statusMap: Record<number, string> = {
     10: 'New',
+    15: 'Not Scheduled',
     20: 'Scheduled',
     30: 'In Progress',
+    35: 'Paused',
     40: 'Done',
     50: 'Shipped',
     60: 'Closed',
@@ -583,16 +590,16 @@ export function registerOrderTools(
           per_page: params.per_page ?? 20,
         };
 
-        // open_only: exclude Delivered (80) and Cancelled (90)
-        // Include: 10 (Quotation), 30 (Confirmed), 70 (Shipped)
+        // open_only: exclude Delivered (80), Archived (85), and Cancelled (90)
+        // Include all active statuses: 10-70
         if (params.open_only) {
-          apiParams['status[]'] = [10, 30, 70];
+          apiParams['status[]'] = [10, 20, 30, 40, 50, 60, 70];
         } else if (params.status) {
           // Map friendly status names to API codes
           const statusMap: Record<string, number> = {
             pending: 10,       // "Quotation" in MRPeasy
             confirmed: 30,
-            in_production: 30, // No separate status, use Confirmed
+            in_production: 50,
             shipped: 70,
             completed: 80,     // "Delivered" in MRPeasy
             cancelled: 90,
@@ -659,9 +666,9 @@ export function registerOrderTools(
         };
 
         // open_only: exclude Done (40), Shipped (50), Closed (60), and Cancelled (70)
-        // Include: 10 (New), 20 (Scheduled), 30 (In Progress)
+        // Include: 10 (New), 15 (Not Scheduled), 20 (Scheduled), 30 (In Progress), 35 (Paused)
         if (params.open_only) {
-          apiParams['status[]'] = [10, 20, 30];
+          apiParams['status[]'] = [10, 15, 20, 30, 35];
         } else if (params.status) {
           // Map friendly status names to API codes
           const statusMap: Record<string, number> = {
