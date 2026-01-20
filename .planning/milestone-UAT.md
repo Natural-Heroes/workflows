@@ -3,15 +3,15 @@ status: testing
 phase: milestone-complete
 source: 01-SUMMARY.md, 02-01-SUMMARY.md, 02-02-SUMMARY.md, 02-03-SUMMARY.md, 03-01-SUMMARY.md, 03-02-SUMMARY.md, 04-01-SUMMARY.md, 04-02-SUMMARY.md, 05-01-SUMMARY.md, 05-02-SUMMARY.md
 started: 2026-01-19T21:30:00Z
-updated: 2026-01-20T00:15:00Z
+updated: 2026-01-20T12:30:00Z
 ---
 
 ## Current Test
 
-number: 8
-name: Error Handling - Invalid Credentials
+number: 9
+name: Auto-Deploy Trigger
 expected: |
-  If API credentials are wrong, returns LLM-friendly error message.
+  Push to main branch triggers automatic deployment in Dokploy.
 awaiting: user response
 
 ## Tests
@@ -53,7 +53,8 @@ note: Returns 31,268 MOs with product_id, quantity, progress. Field mapping issu
 
 ### 8. Error Handling - Invalid Credentials
 expected: If API credentials are wrong, returns LLM-friendly error message like "Authentication failed. Check that MRPEASY_API_KEY and MRPEASY_API_SECRET are correct."
-result: [pending]
+result: pass
+note: Verified via code review - client.ts handles 401/403 with AUTH_ERROR, error-handler.ts formats as LLM-friendly message with suggestion to check credentials.
 
 ### 9. Auto-Deploy Trigger
 expected: Push to main branch triggers automatic deployment in Dokploy (check Dokploy dashboard for deployment activity)
@@ -63,9 +64,9 @@ note: Auto-deploy seems to not trigger consistently. Manual deploy via Dokploy A
 ## Summary
 
 total: 9
-passed: 5
-issues: 2
-pending: 2
+passed: 6
+issues: 3
+pending: 0
 skipped: 0
 
 ## Issues for /gsd:plan-fix
