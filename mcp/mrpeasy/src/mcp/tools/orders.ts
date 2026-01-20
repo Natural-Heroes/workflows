@@ -848,11 +848,12 @@ export function registerOrderTools(
           logger.debug('Total MO count', { totalOrders });
 
           // Search strategy using Range headers (MRPeasy ignores page param)
-          // MRPeasy sorts by code DESCENDING: high codes (39509) first, low codes (00036) last
-          // So for high code numbers, search from the BEGINNING (where high codes are)
+          // MRPeasy sorts by code DESCENDING but with mixed prefixes:
+          // WO-09xxx (offset 0-7000) → MO-39xxx (offset ~7000) → MO-00xxx (offset 31000)
+          // Need to search enough to cover orders in the MO-39xxx range (~7500 offset)
           let foundOrder = null;
           const batchSize = 100;
-          const maxSearches = 15; // Search up to 1500 orders
+          const maxSearches = 100; // Search up to 10000 orders to cover MO-39xxx range
 
           for (let i = 0; i < maxSearches && !foundOrder; i++) {
             // Always search from the beginning since high codes are at offset 0
