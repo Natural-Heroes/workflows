@@ -271,30 +271,72 @@ export interface StockItemsParams extends PaginationParams {
 
 /**
  * Customer orders query parameters.
+ * Supports direct filtering by code, ID, and other fields.
  */
 export interface CustomerOrdersParams extends PaginationParams {
+  /** Filter by order code (e.g., "CO-01263") - exact match */
+  code?: string;
+  /** Filter by internal cust_ord_id */
+  cust_ord_id?: number;
+  /** Filter by order reference */
+  reference?: string;
   /** Filter by status */
   status?: string;
   /** Filter by customer ID */
   customer_id?: number;
+  /** Filter by customer code */
+  customer_code?: string;
+  /** Filter by customer name */
+  customer_name?: string;
   /** Filter orders from date (ISO string) */
   from_date?: string;
   /** Filter orders to date (ISO string) */
   to_date?: string;
+  /** Filter by creation date minimum */
+  created_min?: string;
+  /** Filter by creation date maximum */
+  created_max?: string;
+  /** Filter by delivery date minimum */
+  delivery_date_min?: string;
+  /** Filter by delivery date maximum */
+  delivery_date_max?: string;
 }
 
 /**
  * Manufacturing orders query parameters.
+ * Supports direct filtering by code, ID, and other fields.
  */
 export interface ManufacturingOrdersParams extends PaginationParams {
+  /** Filter by MO code (e.g., "MO-39509") - exact match */
+  code?: string;
+  /** Filter by internal man_ord_id */
+  man_ord_id?: number;
+  /** Filter by article ID (stock item reference) */
+  article_id?: number;
   /** Filter by status */
   status?: string;
   /** Filter by product ID */
   product_id?: number;
+  /** Filter by item code (part number) */
+  item_code?: string;
+  /** Filter by item title (product name) */
+  item_title?: string;
   /** Filter orders from date (ISO string) */
   from_date?: string;
   /** Filter orders to date (ISO string) */
   to_date?: string;
+  /** Filter by creation date minimum */
+  created_min?: string;
+  /** Filter by creation date maximum */
+  created_max?: string;
+  /** Filter by due date minimum */
+  due_date_min?: string;
+  /** Filter by due date maximum */
+  due_date_max?: string;
+  /** Filter by start date minimum */
+  start_date_min?: string;
+  /** Filter by start date maximum */
+  start_date_max?: string;
 }
 
 /**

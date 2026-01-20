@@ -725,53 +725,24 @@ export function registerOrderTools(
       try {
         let resolvedId: number | undefined = params.order_id;
 
-        // If order_code is provided, search for the CO to get its cust_ord_id
+        // If order_code is provided, use the API's code filter to find the CO
         if (params.order_code && !resolvedId) {
-          const searchCode = params.order_code.toUpperCase().replace(/^CO-/, '');
-          logger.debug('Searching for CO by code', { order_code: params.order_code, searchCode });
+          logger.debug('Searching for CO by code filter', { order_code: params.order_code });
 
-          // Search customer orders - paginate through up to 1000 orders to find the match
-          const maxPages = 10;
-          const perPage = 100;
-          let foundOrder = null;
+          // MRPeasy API supports direct filtering by code - single API call
+          const orders = await client.getCustomerOrders({ code: params.order_code });
 
-          for (let page = 1; page <= maxPages && !foundOrder; page++) {
-            const orders = await client.getCustomerOrders({ per_page: perPage, page });
-
+          if (orders.length > 0) {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            foundOrder = orders.find((o: any) => {
-              const orderCode = (o.code ?? '').toUpperCase();
-              // Match exact code or just the numeric part
-              return orderCode === params.order_code?.toUpperCase() ||
-                     orderCode === `CO-${searchCode}` ||
-                     orderCode.endsWith(searchCode);
-            });
-
-            if (foundOrder) break;
-
-            // Check if we've reached the end of results
-            const contentRange = (orders as { _contentRange?: string })._contentRange;
-            if (contentRange) {
-              const match = contentRange.match(/items \d+-(\d+)\/(\d+)/);
-              if (match) {
-                const endIdx = parseInt(match[1], 10);
-                const total = parseInt(match[2], 10);
-                if (endIdx >= total - 1) break; // No more pages
-              }
-            }
-            if (orders.length < perPage) break; // Last page
-          }
-
-          if (foundOrder) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            resolvedId = (foundOrder as any).cust_ord_id ?? (foundOrder as any).id;
-            logger.debug('Found CO by code', { code: params.order_code, resolvedId });
+            const foundOrder = orders[0] as any;
+            resolvedId = foundOrder.cust_ord_id ?? foundOrder.id;
+            logger.debug('Found CO by code filter', { code: params.order_code, resolvedId });
           } else {
             return {
               content: [
                 {
                   type: 'text',
-                  text: `Customer order with code "${params.order_code}" not found in the first 1000 orders.\n\nTip: Try using get_customer_orders with date filters to find the order first, then use the cust_ord_id from the results.`,
+                  text: `Customer order with code "${params.order_code}" not found.\n\nTip: Try using get_customer_orders to browse orders, or use the internal cust_ord_id directly if you know it.`,
                 },
               ],
             };
@@ -826,61 +797,18 @@ export function registerOrderTools(
       try {
         let resolvedId: number | undefined = params.mo_id;
 
-        // If mo_code is provided, search for the MO to get its man_ord_id
+        // If mo_code is provided, use the API's code filter to find the MO
         if (params.mo_code && !resolvedId) {
-          const codeUpper = params.mo_code.toUpperCase();
-          const numericPart = codeUpper.replace(/^(MO-|WO-)/, '');
-          const codeNumber = parseInt(numericPart, 10);
-          logger.debug('Searching for MO by code', { mo_code: params.mo_code, codeNumber });
+          logger.debug('Searching for MO by code filter', { mo_code: params.mo_code });
 
-          // First get a small batch to find total count
-          const calibrationBatch = await client.getManufacturingOrdersWithRange(0, 10);
-          const contentRangeHeader = (calibrationBatch as { _contentRange?: string })._contentRange;
-          let totalOrders = 0;
+          // MRPeasy API supports direct filtering by code - single API call
+          const orders = await client.getManufacturingOrders({ code: params.mo_code });
 
-          if (contentRangeHeader) {
-            const rangeMatch = contentRangeHeader.match(/items \d+-\d+\/(\d+)/);
-            if (rangeMatch) {
-              totalOrders = parseInt(rangeMatch[1], 10);
-            }
-          }
-
-          logger.debug('Total MO count', { totalOrders });
-
-          // Search strategy using Range headers (MRPeasy ignores page param)
-          // MRPeasy sorts by code DESCENDING but with mixed prefixes:
-          // WO-09xxx (offset 0-7000) → MO-39xxx (offset ~7000) → MO-00xxx (offset 31000)
-          // Need to search enough to cover orders in the MO-39xxx range (~7500 offset)
-          let foundOrder = null;
-          const batchSize = 100;
-          const maxSearches = 100; // Search up to 10000 orders to cover MO-39xxx range
-
-          for (let i = 0; i < maxSearches && !foundOrder; i++) {
-            // Always search from the beginning since high codes are at offset 0
-            const offset = i * batchSize;
-
-            if (offset >= totalOrders) break;
-
-            const orders = await client.getManufacturingOrdersWithRange(offset, batchSize);
-
+          if (orders.length > 0) {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            foundOrder = orders.find((o: any) => {
-              const orderCode = (o.code ?? '').toUpperCase();
-              // Match exact code or variations
-              return orderCode === codeUpper ||
-                     orderCode === `WO-${numericPart}` ||
-                     orderCode === `MO-${numericPart}` ||
-                     orderCode.endsWith(numericPart);
-            });
-
-            if (foundOrder) break;
-            if (orders.length < batchSize) break; // No more data
-          }
-
-          if (foundOrder) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            resolvedId = (foundOrder as any).man_ord_id ?? (foundOrder as any).id;
-            logger.debug('Found MO by code', { code: params.mo_code, resolvedId });
+            const foundOrder = orders[0] as any;
+            resolvedId = foundOrder.man_ord_id ?? foundOrder.id;
+            logger.debug('Found MO by code filter', { code: params.mo_code, resolvedId });
           } else {
             return {
               content: [
