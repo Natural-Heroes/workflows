@@ -127,13 +127,15 @@ export class MrpEasyClient {
    *
    * @param endpoint - API endpoint (without base URL)
    * @param params - Query parameters
+   * @param rangeHeader - Optional Range header for pagination (e.g., "items=0-99")
    * @returns Parsed JSON response
    * @throws MrpEasyApiError on non-2xx responses
    * @throws CircuitBreakerOpenError if circuit breaker is open
    */
   private async request<T, P extends object = object>(
     endpoint: string,
-    params?: P
+    params?: P,
+    rangeHeader?: string
   ): Promise<T> {
     logger.debug('Request queued', { endpoint });
 
@@ -158,7 +160,7 @@ export class MrpEasyClient {
             await this.rateLimiter.waitForToken();
             logger.debug('Token acquired, sending request', { endpoint });
 
-            return this.executeRequest<T, P>(endpoint, params);
+            return this.executeRequest<T, P>(endpoint, params, rangeHeader);
           },
           { maxAttempts: this.maxRetries }
         );
@@ -171,11 +173,13 @@ export class MrpEasyClient {
    *
    * @param endpoint - API endpoint (without base URL)
    * @param params - Query parameters
+   * @param rangeHeader - Optional Range header for pagination (e.g., "items=0-99")
    * @returns Parsed JSON response
    */
   private async executeRequest<T, P extends object = object>(
     endpoint: string,
-    params?: P
+    params?: P,
+    rangeHeader?: string
   ): Promise<T> {
     // Build URL with query parameters
     const url = new URL(`${this.baseUrl}${endpoint}`);
@@ -192,18 +196,26 @@ export class MrpEasyClient {
       method: 'GET',
       endpoint,
       params: params ?? {},
+      rangeHeader,
     });
 
     const startTime = Date.now();
 
     try {
+      const headers: Record<string, string> = {
+        Authorization: this.authHeader,
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      };
+
+      // MRPeasy API uses Range headers for pagination, not query params
+      if (rangeHeader) {
+        headers['Range'] = rangeHeader;
+      }
+
       const response = await fetch(url.toString(), {
         method: 'GET',
-        headers: {
-          Authorization: this.authHeader,
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-        },
+        headers,
       });
 
       const duration = Date.now() - startTime;
@@ -415,12 +427,37 @@ export class MrpEasyClient {
    * Get items (general search across all item types).
    *
    * MRPeasy returns a flat array with Content-Range header for pagination.
+   * NOTE: MRPeasy API ignores the page parameter. Use getItemsWithRange for pagination.
    *
-   * @param params - Query parameters for filtering and pagination
+   * @param params - Query parameters for filtering (pagination params may not work)
    * @returns Array of items with _contentRange metadata
    */
   async getItems(params?: ItemsParams): Promise<StockItem[] & { _contentRange?: string }> {
     return this.request<StockItem[] & { _contentRange?: string }>('/items', params);
+  }
+
+  /**
+   * Get items with Range header pagination.
+   *
+   * MRPeasy API ignores query string pagination (page, per_page, offset).
+   * Use HTTP Range headers instead: Range: items=0-99
+   *
+   * @param offset - Starting item index (0-based)
+   * @param limit - Maximum number of items to return
+   * @param params - Optional query parameters for filtering (code, search, etc.)
+   * @returns Array of items with _contentRange metadata
+   */
+  async getItemsWithRange(
+    offset: number,
+    limit: number,
+    params?: Omit<ItemsParams, 'page' | 'per_page'>
+  ): Promise<StockItem[] & { _contentRange?: string }> {
+    const rangeHeader = `items=${offset}-${offset + limit - 1}`;
+    return this.request<StockItem[] & { _contentRange?: string }>(
+      '/items',
+      params as ItemsParams,
+      rangeHeader
+    );
   }
 
   /**
