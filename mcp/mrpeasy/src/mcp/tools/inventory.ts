@@ -77,39 +77,63 @@ export function registerInventoryTools(
           }
         }
 
-        // Format response for LLM consumption
-        const lines: string[] = [];
-
-        lines.push(`Inventory Results (${startIdx}-${endIdx} of ${total} items):`);
-        lines.push('');
-
+        // Build hybrid JSON response
         if (items.length === 0) {
-          lines.push('No inventory items found matching the criteria.');
-        } else {
-          for (const item of items) {
-            lines.push(`Item: ${item.title ?? 'Unknown'} (Code: ${item.code ?? 'N/A'}, ID: ${item.article_id})`);
-            lines.push(`  - In Stock: ${item.in_stock ?? 0}`);
-            lines.push(`  - Reserved: ${item.booked ?? 0}`);
-            lines.push(`  - Available: ${item.available ?? 0}`);
-            if (item.avg_cost != null && typeof item.avg_cost === 'number') {
-              lines.push(`  - Avg Cost: $${item.avg_cost.toFixed(2)}`);
-            }
-            if (item.selling_price != null && typeof item.selling_price === 'number') {
-              lines.push(`  - Selling Price: $${item.selling_price.toFixed(2)}`);
-            }
-            lines.push(`  - Group: ${item.group_title ?? 'Unknown'}`);
-            lines.push(`  - Type: ${item.is_raw ? 'Raw Material' : 'Product'}`);
-            lines.push('');
-          }
-
-          lines.push(`Showing ${startIdx}-${endIdx} of ${total} total items.`);
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify({
+                  summary: 'No inventory items found matching the criteria.',
+                  pagination: { showing: 0, total: 0 },
+                  items: [],
+                }),
+              },
+            ],
+          };
         }
+
+        // Build summary stats
+        let totalInStock = 0;
+        let totalAvailable = 0;
+        let rawCount = 0;
+        let productCount = 0;
+        items.forEach((item) => {
+          totalInStock += Number(item.in_stock ?? 0);
+          totalAvailable += Number(item.available ?? 0);
+          if (item.is_raw) rawCount++;
+          else productCount++;
+        });
+
+        const inventoryItems = items.map((item) => ({
+          id: item.article_id,
+          code: item.code,
+          name: item.title ?? 'Unknown',
+          inStock: Number(item.in_stock ?? 0),
+          reserved: Number(item.booked ?? 0),
+          available: Number(item.available ?? 0),
+          avgCost: item.avg_cost != null ? Number(item.avg_cost) : null,
+          sellingPrice: item.selling_price != null ? Number(item.selling_price) : null,
+          group: item.group_title ?? null,
+          type: item.is_raw ? 'raw_material' : 'product',
+        }));
+
+        const response = {
+          summary: `${items.length} of ${total} items: ${totalInStock} in stock, ${totalAvailable} available. ${productCount} products, ${rawCount} raw materials.`,
+          pagination: {
+            showing: items.length,
+            total,
+            startIdx,
+            endIdx,
+          },
+          items: inventoryItems,
+        };
 
         return {
           content: [
             {
               type: 'text',
-              text: lines.join('\n'),
+              text: JSON.stringify(response),
             },
           ],
         };

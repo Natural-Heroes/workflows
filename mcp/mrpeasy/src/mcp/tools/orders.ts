@@ -200,45 +200,29 @@ function formatManufacturingOrderStatus(status: unknown): string {
 // ============================================================================
 
 /**
- * Formats a single customer order for LLM-readable output.
- * MRPeasy API field names discovered from /customer-orders endpoint:
- * cust_ord_id, code, reference, customer_id, customer_code, customer_name,
- * status, created, delivery_date, actual_delivery_date, total_price, currency, etc.
+ * Builds a customer order object for JSON output.
  */
-function formatCustomerOrder(order: CustomerOrder): string {
-  const lines: string[] = [];
-
-  // MRPeasy API field mapping based on actual API response
+function buildCustomerOrderObject(order: CustomerOrder): Record<string, unknown> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const raw = order as any;
 
-  // Actual field names from MRPeasy API
-  const orderId = raw.cust_ord_id ?? raw.id ?? 'Unknown';
-  const orderNumber = raw.code ?? raw.number ?? 'N/A';
-  const status = raw.status;
-  const customerName = raw.customer_name ?? 'Unknown';
-  const orderDate = raw.created;
-  const deliveryDate = raw.delivery_date ?? raw.actual_delivery_date;
-  const total = raw.total_price ?? 0;
-  const currency = raw.currency ?? '€';
-
-  lines.push(`Order #${orderNumber} (ID: ${orderId})`);
-  lines.push(`Status: ${formatCustomerOrderStatus(status)}`);
-  lines.push(`Customer: ${customerName}`);
-  lines.push(`Order Date: ${formatDate(orderDate)}`);
-  lines.push(`Delivery Date: ${formatDate(deliveryDate)}`);
-
-  if (order.items && order.items.length > 0) {
-    lines.push('Items:');
-    for (const item of order.items) {
-      lines.push(`  - ${item.quantity ?? 0} x ${item.item_name ?? 'Unknown'}`);
-    }
-  }
-
-  const totalFormatted = typeof total === 'number' ? total.toFixed(2) : '0.00';
-  lines.push(`Total: ${currency} ${totalFormatted}`);
-
-  return lines.join('\n');
+  return {
+    id: raw.cust_ord_id ?? raw.id,
+    code: raw.code ?? raw.number,
+    status: formatCustomerOrderStatus(raw.status),
+    statusCode: raw.status,
+    customer: {
+      id: raw.customer_id,
+      code: raw.customer_code,
+      name: raw.customer_name ?? 'Unknown',
+    },
+    reference: raw.reference || null,
+    created: formatDate(raw.created),
+    deliveryDate: raw.delivery_date ? formatDate(raw.delivery_date) : null,
+    actualDeliveryDate: raw.actual_delivery_date ? formatDate(raw.actual_delivery_date) : null,
+    total: Number(raw.total_price ?? 0),
+    currency: raw.currency ?? 'EUR',
+  };
 }
 
 /**
@@ -257,115 +241,135 @@ function parseContentRange(contentRange?: string): { startIdx: number; endIdx: n
 }
 
 /**
- * Formats customer orders response for LLM consumption.
+ * Formats customer orders response as hybrid JSON for LLM consumption.
  */
 function formatCustomerOrdersResponse(
   orders: CustomerOrder[],
   contentRange?: string
 ): string {
-  if (orders.length === 0) {
-    return 'No customer orders found matching the specified criteria.';
-  }
-
-  const lines: string[] = [];
   const pagination = parseContentRange(contentRange);
-  const startIdx = pagination?.startIdx ?? 1;
-  const endIdx = pagination?.endIdx ?? orders.length;
   const total = pagination?.total ?? orders.length;
 
-  lines.push(`Customer Orders (${startIdx}-${endIdx} of ${total}):`);
-  lines.push('');
+  if (orders.length === 0) {
+    return JSON.stringify({
+      summary: 'No customer orders found matching the criteria.',
+      pagination: { showing: 0, total: 0 },
+      orders: [],
+    });
+  }
 
-  orders.forEach((order) => {
-    lines.push(formatCustomerOrder(order));
-    lines.push('');
-    lines.push('---');
-    lines.push('');
+  // Build summary with key stats
+  const statusCounts: Record<string, number> = {};
+  let totalValue = 0;
+  orders.forEach((o) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const raw = o as any;
+    const status = formatCustomerOrderStatus(raw.status);
+    statusCounts[status] = (statusCounts[status] ?? 0) + 1;
+    totalValue += Number(raw.total_price ?? 0);
   });
 
-  lines.push(`Showing ${orders.length} of ${total} orders.`);
+  const statusSummary = Object.entries(statusCounts)
+    .map(([s, c]) => `${c} ${s.toLowerCase()}`)
+    .join(', ');
 
-  return lines.join('\n');
+  const response = {
+    summary: `${orders.length} of ${total} customer orders: ${statusSummary}. Total value: €${totalValue.toFixed(2)}`,
+    pagination: {
+      showing: orders.length,
+      total,
+      startIdx: pagination?.startIdx ?? 1,
+      endIdx: pagination?.endIdx ?? orders.length,
+    },
+    orders: orders.map(buildCustomerOrderObject),
+  };
+
+  return JSON.stringify(response);
 }
 
 /**
- * Formats a single manufacturing order for LLM-readable output.
- * MRPeasy API field names discovered from /manufacturing-orders endpoint:
- * man_ord_id, code, article_id, product_id, item_code, item_title, unit, unit_id,
- * group_id, group_code, group_title, quantity, status, created, due_date,
- * start_date, finish_date, item_cost, total_cost, assigned_id, etc.
+ * Builds a manufacturing order object for JSON output.
  */
-function formatManufacturingOrder(order: ManufacturingOrder): string {
-  const lines: string[] = [];
-
-  // MRPeasy API field mapping based on actual API response
+function buildManufacturingOrderObject(order: ManufacturingOrder): Record<string, unknown> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const raw = order as any;
 
-  // Actual field names from MRPeasy API
-  const moId = raw.man_ord_id ?? raw.id ?? 'Unknown';
-  const moNumber = raw.code ?? 'N/A';
-  const status = raw.status;
-  const productId = raw.article_id ?? raw.product_id ?? 'N/A';
-  const productName = raw.item_title ?? 'Unknown';
-  const productCode = raw.item_code;
-  const quantity = raw.quantity ?? 0;
-  const producedQty = raw.produced_quantity ?? raw.produced_qty ?? 0;
-  const startDate = raw.start_date;
-  const finishDate = raw.due_date ?? raw.finish_date;
+  const quantity = Number(raw.quantity ?? 0);
+  const produced = Number(raw.produced_quantity ?? raw.produced_qty ?? 0);
+  const progress = quantity > 0 ? Math.round((produced / quantity) * 100) : 0;
 
-  lines.push(`MO #${moNumber} (ID: ${moId})`);
-  lines.push(`Status: ${formatManufacturingOrderStatus(status)}`);
-
-  // Show product name with code if available
-  const productDisplay = productCode
-    ? `${productName} [${productCode}]`
-    : productName;
-  lines.push(`Product: ${productDisplay} (ID: ${productId})`);
-
-  lines.push(`Quantity: ${quantity}`);
-  lines.push(`Start Date: ${formatDate(startDate)}`);
-  lines.push(`Due Date: ${formatDate(finishDate)}`);
-
-  // Calculate progress percentage with null safety
-  const qty = typeof quantity === 'number' ? quantity : 0;
-  const produced = typeof producedQty === 'number' ? producedQty : 0;
-  const percentage = qty > 0 ? Math.round((produced / qty) * 100) : 0;
-  lines.push(`Progress: ${produced}/${qty} (${percentage}%)`);
-
-  return lines.join('\n');
+  return {
+    id: raw.man_ord_id ?? raw.id,
+    code: raw.code,
+    status: formatManufacturingOrderStatus(raw.status),
+    statusCode: raw.status,
+    product: {
+      id: raw.article_id ?? raw.product_id,
+      code: raw.item_code,
+      name: raw.item_title ?? 'Unknown',
+    },
+    quantity: {
+      planned: quantity,
+      produced,
+      remaining: quantity - produced,
+      progress,
+    },
+    startDate: formatDate(raw.start_date),
+    dueDate: formatDate(raw.due_date ?? raw.finish_date),
+    customerOrder: raw.cust_ord_code || null,
+    totalCost: Number(raw.total_cost ?? 0),
+  };
 }
 
 /**
- * Formats manufacturing orders response for LLM consumption.
+ * Formats manufacturing orders response as hybrid JSON for LLM consumption.
  */
 function formatManufacturingOrdersResponse(
   orders: ManufacturingOrder[],
   contentRange?: string
 ): string {
-  if (orders.length === 0) {
-    return 'No manufacturing orders found matching the specified criteria.';
-  }
-
-  const lines: string[] = [];
   const pagination = parseContentRange(contentRange);
-  const startIdx = pagination?.startIdx ?? 1;
-  const endIdx = pagination?.endIdx ?? orders.length;
   const total = pagination?.total ?? orders.length;
 
-  lines.push(`Manufacturing Orders (${startIdx}-${endIdx} of ${total}):`);
-  lines.push('');
+  if (orders.length === 0) {
+    return JSON.stringify({
+      summary: 'No manufacturing orders found matching the criteria.',
+      pagination: { showing: 0, total: 0 },
+      orders: [],
+    });
+  }
 
-  orders.forEach((order) => {
-    lines.push(formatManufacturingOrder(order));
-    lines.push('');
-    lines.push('---');
-    lines.push('');
+  // Build summary with key stats
+  const statusCounts: Record<string, number> = {};
+  let totalPlanned = 0;
+  let totalProduced = 0;
+  orders.forEach((o) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const raw = o as any;
+    const status = formatManufacturingOrderStatus(raw.status);
+    statusCounts[status] = (statusCounts[status] ?? 0) + 1;
+    totalPlanned += Number(raw.quantity ?? 0);
+    totalProduced += Number(raw.produced_quantity ?? raw.produced_qty ?? 0);
   });
 
-  lines.push(`Showing ${orders.length} of ${total} manufacturing orders.`);
+  const statusSummary = Object.entries(statusCounts)
+    .map(([s, c]) => `${c} ${s.toLowerCase()}`)
+    .join(', ');
 
-  return lines.join('\n');
+  const overallProgress = totalPlanned > 0 ? Math.round((totalProduced / totalPlanned) * 100) : 0;
+
+  const response = {
+    summary: `${orders.length} of ${total} manufacturing orders: ${statusSummary}. Overall progress: ${overallProgress}%`,
+    pagination: {
+      showing: orders.length,
+      total,
+      startIdx: pagination?.startIdx ?? 1,
+      endIdx: pagination?.endIdx ?? orders.length,
+    },
+    orders: orders.map(buildManufacturingOrderObject),
+  };
+
+  return JSON.stringify(response);
 }
 
 // ============================================================================
@@ -373,211 +377,159 @@ function formatManufacturingOrdersResponse(
 // ============================================================================
 
 /**
- * Formats detailed customer order response for LLM consumption.
+ * Formats detailed customer order response as hybrid JSON for LLM consumption.
  * Includes header info and line items with quantities and prices.
  */
 function formatCustomerOrderDetails(order: CustomerOrder): string {
-  const lines: string[] = [];
-
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const raw = order as any;
 
-  // Header info
-  const orderId = raw.cust_ord_id ?? raw.id ?? 'Unknown';
-  const orderNumber = raw.code ?? raw.number ?? 'N/A';
-  const reference = raw.reference ?? '';
-  const status = raw.status;
+  const orderCode = raw.code ?? raw.number ?? 'N/A';
+  const status = formatCustomerOrderStatus(raw.status);
   const customerName = raw.customer_name ?? 'Unknown';
-  const customerCode = raw.customer_code ?? '';
-  const orderDate = raw.created;
-  const deliveryDate = raw.delivery_date;
-  const actualDeliveryDate = raw.actual_delivery_date;
-  const total = raw.total_price ?? 0;
-  const currency = raw.currency ?? '€';
-  const notes = raw.notes ?? raw.comment ?? '';
-
-  lines.push('=== Customer Order Details ===');
-  lines.push('');
-  lines.push(`Order #${orderNumber} (ID: ${orderId})`);
-  if (reference) lines.push(`Reference: ${reference}`);
-  lines.push(`Status: ${formatCustomerOrderStatus(status)}`);
-  lines.push('');
-  lines.push('--- Customer ---');
-  lines.push(`Name: ${customerName}`);
-  if (customerCode) lines.push(`Code: ${customerCode}`);
-  lines.push('');
-  lines.push('--- Dates ---');
-  lines.push(`Order Date: ${formatDate(orderDate)}`);
-  lines.push(`Requested Delivery: ${deliveryDate ? formatDate(deliveryDate) : 'Not set'}`);
-  if (actualDeliveryDate) {
-    lines.push(`Actual Delivery: ${formatDate(actualDeliveryDate)}`);
-  }
-  lines.push('');
+  const total = Number(raw.total_price ?? 0);
+  const currency = raw.currency ?? 'EUR';
 
   // Line items - MRPeasy returns these as "products"
-  const items = raw.products ?? raw.items ?? raw.lines ?? raw.order_items ?? [];
-  if (items.length > 0) {
-    lines.push('--- Line Items ---');
-    lines.push('');
-    items.forEach((item: Record<string, unknown>, idx: number) => {
-      const itemCode = item.item_code ?? item.code ?? item.item_number ?? 'N/A';
-      const itemName = item.item_title ?? item.item_name ?? item.name ?? item.title ?? 'Unknown';
-      const qty = item.quantity ?? item.qty ?? 0;
-      const shippedQty = item.shipped ?? item.delivered_quantity ?? item.delivered_qty ?? item.delivered ?? 0;
-      const price = item.item_price ?? item.item_price_cur ?? item.price ?? item.unit_price ?? 0;
-      const lineTotal = item.total_price ?? item.total_price_cur ?? item.total ?? item.line_total ?? (Number(qty) * Number(price));
-      const unit = item.unit ?? 'pcs';
-      const itemStatus = item.part_status_txt ?? item.status_txt ?? item.status ?? '';
+  const rawItems = raw.products ?? raw.items ?? raw.lines ?? raw.order_items ?? [];
 
-      // Extract MO code from source array if available
-      const sourceArray = item.source as Array<Record<string, unknown>> | undefined;
-      const moSource = sourceArray?.map(s => s.manufacturing_order_code).filter(Boolean).join(', ') || '';
+  // Build line items array
+  const items = rawItems.map((item: Record<string, unknown>) => {
+    const sourceArray = item.source as Array<Record<string, unknown>> | undefined;
+    const moSources = sourceArray?.map(s => s.manufacturing_order_code).filter(Boolean) ?? [];
 
-      lines.push(`${idx + 1}. ${itemName}`);
-      lines.push(`   Code: ${itemCode}`);
-      if (itemStatus) lines.push(`   Status: ${itemStatus}`);
-      if (moSource) lines.push(`   Source: ${moSource}`);
-      lines.push(`   Quantity: ${qty} ${unit}`);
-      lines.push(`   Shipped: ${shippedQty} ${unit}`);
-      lines.push(`   Unit Price: ${currency} ${Number(price).toFixed(2)}`);
-      lines.push(`   Line Total: ${currency} ${Number(lineTotal).toFixed(2)}`);
-      lines.push('');
-    });
-  } else {
-    lines.push('--- Line Items ---');
-    lines.push('No line items found in this order.');
-    lines.push('');
-  }
+    return {
+      code: item.item_code ?? item.code ?? item.item_number,
+      name: item.item_title ?? item.item_name ?? item.name ?? item.title ?? 'Unknown',
+      status: item.part_status_txt ?? item.status_txt ?? null,
+      source: moSources.length > 0 ? moSources : null,
+      quantity: Number(item.quantity ?? item.qty ?? 0),
+      shipped: Number(item.shipped ?? item.delivered_quantity ?? 0),
+      unit: item.unit ?? 'pcs',
+      unitPrice: Number(item.item_price ?? item.item_price_cur ?? item.price ?? 0),
+      lineTotal: Number(item.total_price ?? item.total_price_cur ?? item.total ?? 0),
+    };
+  });
 
-  lines.push('--- Total ---');
-  lines.push(`Order Total: ${currency} ${Number(total).toFixed(2)}`);
+  // Build summary
+  const totalQty = items.reduce((sum: number, i: Record<string, unknown>) => sum + Number(i.quantity), 0);
+  const totalShipped = items.reduce((sum: number, i: Record<string, unknown>) => sum + Number(i.shipped), 0);
+  const statusCounts: Record<string, number> = {};
+  items.forEach((i: Record<string, unknown>) => {
+    const s = String(i.status ?? 'Unknown');
+    statusCounts[s] = (statusCounts[s] ?? 0) + 1;
+  });
+  const statusSummary = Object.entries(statusCounts)
+    .map(([s, c]) => `${c} ${s.toLowerCase()}`)
+    .join(', ');
 
-  if (notes) {
-    lines.push('');
-    lines.push('--- Notes ---');
-    lines.push(notes);
-  }
+  const response = {
+    summary: `${orderCode}: ${items.length} items, ${currency} ${total.toFixed(2)}, ${status}. ${totalShipped}/${totalQty} shipped. ${statusSummary}`,
+    order: {
+      id: raw.cust_ord_id ?? raw.id,
+      code: orderCode,
+      reference: raw.reference || null,
+      status,
+      statusCode: raw.status,
+      customer: {
+        id: raw.customer_id,
+        code: raw.customer_code,
+        name: customerName,
+      },
+      created: formatDate(raw.created),
+      deliveryDate: raw.delivery_date ? formatDate(raw.delivery_date) : null,
+      actualDeliveryDate: raw.actual_delivery_date ? formatDate(raw.actual_delivery_date) : null,
+      total,
+      currency,
+      notes: raw.notes ?? raw.comment ?? null,
+    },
+    items,
+  };
 
-  return lines.join('\n');
+  return JSON.stringify(response);
 }
 
 /**
- * Formats detailed manufacturing order response for LLM consumption.
+ * Formats detailed manufacturing order response as hybrid JSON for LLM consumption.
  * Includes header info, operations/routing, and BOM parts/materials.
  */
 function formatManufacturingOrderDetails(order: ManufacturingOrder): string {
-  const lines: string[] = [];
-
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const raw = order as any;
 
-  // Header info
-  const moId = raw.man_ord_id ?? raw.id ?? 'Unknown';
-  const moNumber = raw.code ?? raw.number ?? 'N/A';
-  const status = raw.status;
-  const productId = raw.article_id ?? raw.product_id ?? 'N/A';
+  const moCode = raw.code ?? raw.number ?? 'N/A';
+  const status = formatManufacturingOrderStatus(raw.status);
   const productName = raw.item_title ?? raw.product_name ?? 'Unknown';
-  const productCode = raw.item_code ?? raw.product_number ?? '';
-  const quantity = raw.quantity ?? 0;
-  const producedQty = raw.produced_quantity ?? raw.produced_qty ?? 0;
-  const startDate = raw.start_date;
-  const dueDate = raw.due_date ?? raw.finish_date;
-  const actualFinish = raw.actual_finish_date ?? raw.finished_date;
-  const totalCost = raw.total_cost ?? 0;
-  const itemCost = raw.item_cost ?? 0;
-  const notes = raw.notes ?? raw.comment ?? '';
-  const coNumber = raw.cust_ord_code ?? raw.customer_order_number ?? '';
+  const quantity = Number(raw.quantity ?? 0);
+  const produced = Number(raw.produced_quantity ?? raw.produced_qty ?? 0);
+  const progress = quantity > 0 ? Math.round((produced / quantity) * 100) : 0;
 
-  lines.push('=== Manufacturing Order Details ===');
-  lines.push('');
-  lines.push(`MO #${moNumber} (ID: ${moId})`);
-  lines.push(`Status: ${formatManufacturingOrderStatus(status)}`);
-  lines.push('');
-  lines.push('--- Product ---');
-  lines.push(`Name: ${productName}`);
-  if (productCode) lines.push(`Code: ${productCode}`);
-  lines.push(`Product ID: ${productId}`);
-  lines.push('');
-  lines.push('--- Quantities ---');
-  lines.push(`Planned: ${quantity}`);
-  lines.push(`Produced: ${producedQty}`);
-  const remaining = Number(quantity) - Number(producedQty);
-  lines.push(`Remaining: ${remaining}`);
-  const progress = Number(quantity) > 0 ? Math.round((Number(producedQty) / Number(quantity)) * 100) : 0;
-  lines.push(`Progress: ${progress}%`);
-  lines.push('');
-  lines.push('--- Schedule ---');
-  lines.push(`Start Date: ${formatDate(startDate)}`);
-  lines.push(`Due Date: ${formatDate(dueDate)}`);
-  if (actualFinish) lines.push(`Actual Finish: ${formatDate(actualFinish)}`);
-  if (coNumber) lines.push(`Customer Order: ${coNumber}`);
-  lines.push('');
+  // Operations
+  const rawOperations = raw.operations ?? raw.routing ?? raw.work_orders ?? [];
+  const operations = rawOperations.map((op: Record<string, unknown>, idx: number) => ({
+    number: op.operation_number ?? op.sequence ?? op.op_number ?? (idx + 1),
+    name: op.operation_name ?? op.name ?? op.title ?? 'Operation',
+    workstation: op.workstation ?? op.work_center ?? op.machine ?? null,
+    setupTime: Number(op.setup_time ?? op.setup_minutes ?? 0),
+    runTime: Number(op.run_time ?? op.runtime ?? op.cycle_time ?? 0),
+    status: op.status ?? null,
+  }));
 
-  // Operations/Routing
-  const operations = raw.operations ?? raw.routing ?? raw.work_orders ?? [];
-  if (operations.length > 0) {
-    lines.push('--- Operations/Routing ---');
-    lines.push('');
-    operations.forEach((op: Record<string, unknown>, idx: number) => {
-      const opNumber = op.operation_number ?? op.sequence ?? op.op_number ?? (idx + 1);
-      const opName = op.operation_name ?? op.name ?? op.title ?? 'Operation';
-      const workstation = op.workstation ?? op.work_center ?? op.machine ?? 'N/A';
-      const setupTime = op.setup_time ?? op.setup_minutes ?? 0;
-      const runTime = op.run_time ?? op.runtime ?? op.cycle_time ?? 0;
-      const opStatus = op.status ?? 'Unknown';
+  // Materials/BOM
+  const rawMaterials = raw.materials ?? raw.bom ?? raw.parts ?? raw.components ?? [];
+  const materials = rawMaterials.map((mat: Record<string, unknown>) => ({
+    code: mat.item_code ?? mat.code ?? mat.part_number,
+    name: mat.item_name ?? mat.name ?? mat.title ?? 'Unknown',
+    required: Number(mat.required_quantity ?? mat.quantity ?? mat.qty ?? 0),
+    consumed: Number(mat.consumed_quantity ?? mat.consumed ?? mat.used_qty ?? 0),
+    unit: mat.unit ?? mat.uom ?? 'pcs',
+  }));
 
-      lines.push(`${opNumber}. ${opName}`);
-      lines.push(`   Workstation: ${workstation}`);
-      lines.push(`   Setup Time: ${setupTime} min`);
-      lines.push(`   Run Time: ${runTime} min`);
-      lines.push(`   Status: ${opStatus}`);
-      lines.push('');
-    });
-  } else {
-    lines.push('--- Operations/Routing ---');
-    lines.push('No operations found for this MO.');
-    lines.push('');
-  }
+  // Build summary
+  const coNumber = raw.cust_ord_code ?? raw.customer_order_number ?? null;
+  const summaryParts = [
+    `${moCode}: ${productName}, ${status}`,
+    `${produced}/${quantity} (${progress}%)`,
+  ];
+  if (coNumber) summaryParts.push(`for ${coNumber}`);
+  if (operations.length > 0) summaryParts.push(`${operations.length} ops`);
+  if (materials.length > 0) summaryParts.push(`${materials.length} materials`);
 
-  // BOM/Materials
-  const materials = raw.materials ?? raw.bom ?? raw.parts ?? raw.components ?? [];
-  if (materials.length > 0) {
-    lines.push('--- BOM/Materials ---');
-    lines.push('');
-    materials.forEach((mat: Record<string, unknown>, idx: number) => {
-      const matCode = mat.item_code ?? mat.code ?? mat.part_number ?? 'N/A';
-      const matName = mat.item_name ?? mat.name ?? mat.title ?? 'Unknown';
-      const reqQty = mat.required_quantity ?? mat.quantity ?? mat.qty ?? 0;
-      const consumedQty = mat.consumed_quantity ?? mat.consumed ?? mat.used_qty ?? 0;
-      const unit = mat.unit ?? mat.uom ?? 'pcs';
+  const response = {
+    summary: summaryParts.join('. '),
+    order: {
+      id: raw.man_ord_id ?? raw.id,
+      code: moCode,
+      status,
+      statusCode: raw.status,
+      product: {
+        id: raw.article_id ?? raw.product_id,
+        code: raw.item_code ?? raw.product_number,
+        name: productName,
+      },
+      quantity: {
+        planned: quantity,
+        produced,
+        remaining: quantity - produced,
+        progress,
+      },
+      schedule: {
+        startDate: formatDate(raw.start_date),
+        dueDate: formatDate(raw.due_date ?? raw.finish_date),
+        actualFinish: raw.actual_finish_date ? formatDate(raw.actual_finish_date) : null,
+      },
+      customerOrder: coNumber,
+      costs: {
+        itemCost: Number(raw.item_cost ?? 0),
+        totalCost: Number(raw.total_cost ?? 0),
+      },
+      notes: raw.notes ?? raw.comment ?? null,
+    },
+    operations,
+    materials,
+  };
 
-      lines.push(`${idx + 1}. ${matName}`);
-      lines.push(`   Code: ${matCode}`);
-      lines.push(`   Required: ${reqQty} ${unit}`);
-      lines.push(`   Consumed: ${consumedQty} ${unit}`);
-      const shortfall = Number(reqQty) - Number(consumedQty);
-      if (shortfall > 0) {
-        lines.push(`   Remaining: ${shortfall} ${unit}`);
-      }
-      lines.push('');
-    });
-  } else {
-    lines.push('--- BOM/Materials ---');
-    lines.push('No materials/BOM found for this MO.');
-    lines.push('');
-  }
-
-  lines.push('--- Costs ---');
-  lines.push(`Item Cost: ${Number(itemCost).toFixed(2)}`);
-  lines.push(`Total Cost: ${Number(totalCost).toFixed(2)}`);
-
-  if (notes) {
-    lines.push('');
-    lines.push('--- Notes ---');
-    lines.push(notes);
-  }
-
-  return lines.join('\n');
+  return JSON.stringify(response);
 }
 
 // ============================================================================
