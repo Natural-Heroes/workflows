@@ -390,7 +390,8 @@ function formatCustomerOrderDetails(order: CustomerOrder): string {
   const customerName = raw.customer_name ?? 'Unknown';
   const customerCode = raw.customer_code ?? '';
   const orderDate = raw.created;
-  const deliveryDate = raw.delivery_date ?? raw.actual_delivery_date;
+  const deliveryDate = raw.delivery_date;
+  const actualDeliveryDate = raw.actual_delivery_date;
   const total = raw.total_price ?? 0;
   const currency = raw.currency ?? '€';
   const notes = raw.notes ?? raw.comment ?? '';
@@ -407,7 +408,10 @@ function formatCustomerOrderDetails(order: CustomerOrder): string {
   lines.push('');
   lines.push('--- Dates ---');
   lines.push(`Order Date: ${formatDate(orderDate)}`);
-  lines.push(`Delivery Date: ${formatDate(deliveryDate)}`);
+  lines.push(`Requested Delivery: ${deliveryDate ? formatDate(deliveryDate) : 'Not set'}`);
+  if (actualDeliveryDate) {
+    lines.push(`Actual Delivery: ${formatDate(actualDeliveryDate)}`);
+  }
   lines.push('');
 
   // Line items - MRPeasy returns these as "products"
@@ -419,15 +423,22 @@ function formatCustomerOrderDetails(order: CustomerOrder): string {
       const itemCode = item.item_code ?? item.code ?? item.item_number ?? 'N/A';
       const itemName = item.item_title ?? item.item_name ?? item.name ?? item.title ?? 'Unknown';
       const qty = item.quantity ?? item.qty ?? 0;
-      const deliveredQty = item.shipped ?? item.delivered_quantity ?? item.delivered_qty ?? item.delivered ?? 0;
+      const shippedQty = item.shipped ?? item.delivered_quantity ?? item.delivered_qty ?? item.delivered ?? 0;
       const price = item.item_price ?? item.item_price_cur ?? item.price ?? item.unit_price ?? 0;
       const lineTotal = item.total_price ?? item.total_price_cur ?? item.total ?? item.line_total ?? (Number(qty) * Number(price));
       const unit = item.unit ?? 'pcs';
+      const itemStatus = item.part_status_txt ?? item.status_txt ?? item.status ?? '';
+
+      // Extract MO code from source array if available
+      const sourceArray = item.source as Array<Record<string, unknown>> | undefined;
+      const moSource = sourceArray?.map(s => s.manufacturing_order_code).filter(Boolean).join(', ') || '';
 
       lines.push(`${idx + 1}. ${itemName}`);
       lines.push(`   Code: ${itemCode}`);
+      if (itemStatus) lines.push(`   Status: ${itemStatus}`);
+      if (moSource) lines.push(`   Source: ${moSource}`);
       lines.push(`   Quantity: ${qty} ${unit}`);
-      lines.push(`   Delivered: ${deliveredQty} ${unit}`);
+      lines.push(`   Shipped: ${shippedQty} ${unit}`);
       lines.push(`   Unit Price: ${currency} ${Number(price).toFixed(2)}`);
       lines.push(`   Line Total: ${currency} ${Number(lineTotal).toFixed(2)}`);
       lines.push('');
