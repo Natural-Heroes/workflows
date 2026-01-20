@@ -2,12 +2,14 @@
  * MCP Tool: get_product
  *
  * Retrieves detailed product/item information from MRPeasy.
+ * Supports lookup by article_id OR code (part number/SKU).
  * Note: BOM data requires a separate /boms endpoint call (not yet implemented).
  */
 
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { MrpEasyClient } from '../../services/mrpeasy/index.js';
+import type { StockItem } from '../../services/mrpeasy/types.js';
 import { logger } from '../../lib/logger.js';
 import { handleToolError } from './error-handler.js';
 
@@ -23,31 +25,96 @@ export function registerProductTools(
 ): void {
   server.tool(
     'get_product',
-    'Get detailed product/item information including name, stock levels, costs, and pricing. Use the article_id from inventory results.',
+    'Get detailed product/item information by article_id OR code (part number/SKU). Provide either id or code, not both. The code is the Part No. shown in MRPeasy (e.g., "P-APB-NH-3").',
     {
-      product_id: z
+      id: z
         .string()
-        .describe('The article ID (from inventory results) to fetch'),
+        .optional()
+        .describe('The article_id (numeric ID from URL or inventory results)'),
+      code: z
+        .string()
+        .optional()
+        .describe('The part number/SKU code (e.g., "P-APB-NH-3")'),
     },
     async (params) => {
       logger.debug('get_product tool called', { params });
 
       try {
-        const productId = parseInt(params.product_id, 10);
-
-        if (isNaN(productId)) {
+        // Validate: must provide either id or code
+        if (!params.id && !params.code) {
           return {
             content: [
               {
                 type: 'text',
-                text: 'Error: product_id must be a valid number.',
+                text: 'Error: Provide either id (article_id) or code (part number/SKU).',
               },
             ],
             isError: true,
           };
         }
 
-        const item = await client.getProduct(productId);
+        let item: StockItem | undefined;
+
+        if (params.id) {
+          // Lookup by article_id
+          const articleId = parseInt(params.id, 10);
+          if (isNaN(articleId)) {
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: 'Error: id must be a valid number.',
+                },
+              ],
+              isError: true,
+            };
+          }
+          item = await client.getProduct(articleId);
+        } else if (params.code) {
+          // Lookup by code - fetch items and find exact match
+          const items = await client.getItems({ per_page: 100 });
+          item = items.find(
+            (i) => i.code?.toLowerCase() === params.code!.toLowerCase()
+          );
+
+          if (!item) {
+            // Try fetching more pages if not found
+            let page = 2;
+            const maxPages = 50; // Limit search to avoid infinite loop
+            while (!item && page <= maxPages) {
+              const moreItems = await client.getItems({ page, per_page: 100 });
+              if (moreItems.length === 0) break;
+              item = moreItems.find(
+                (i) => i.code?.toLowerCase() === params.code!.toLowerCase()
+              );
+              page++;
+            }
+          }
+
+          if (!item) {
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: `No item found with code "${params.code}". Check that the part number is correct.`,
+                },
+              ],
+              isError: true,
+            };
+          }
+        }
+
+        if (!item) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: 'Error: Item not found.',
+              },
+            ],
+            isError: true,
+          };
+        }
 
         // Format response for LLM consumption
         const lines: string[] = [];

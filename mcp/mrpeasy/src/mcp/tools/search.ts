@@ -1,13 +1,15 @@
 /**
  * MCP Tool: search_items
  *
- * Searches for items (products, parts, materials) in MRPeasy by name or SKU.
- * Provides filtering by item type and pagination support.
+ * Searches for items (products, parts, materials) in MRPeasy by name or code.
+ * Since MRPeasy's server-side search doesn't filter by code reliably,
+ * this tool fetches items and filters client-side for accurate results.
  */
 
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { MrpEasyClient } from '../../services/mrpeasy/index.js';
+import type { StockItem } from '../../services/mrpeasy/types.js';
 import { logger } from '../../lib/logger.js';
 import { handleToolError } from './error-handler.js';
 
@@ -23,16 +25,17 @@ export function registerSearchTools(
 ): void {
   server.tool(
     'search_items',
-    'Search for items (products, parts, materials) by name or SKU/part number. Returns matching items with basic info. Use get_product for detailed product information.',
+    'Search for items by name or code (part number/SKU). Searches both the item title and the code field. Use get_product with code parameter for exact code lookup.',
     {
       query: z
         .string()
         .min(2)
-        .describe('Search term (minimum 2 characters)'),
-      type: z
-        .enum(['product', 'part', 'material', 'all'])
+        .describe('Search term - matches against item name OR code (part number)'),
+      include_deleted: z
+        .boolean()
         .optional()
-        .describe('Filter by item type: product, part, material, or all'),
+        .default(false)
+        .describe('Include deleted items in results (default: false)'),
       page: z
         .number()
         .int()
@@ -51,26 +54,52 @@ export function registerSearchTools(
       logger.debug('search_items tool called', { params });
 
       try {
-        // Build API parameters - MRPeasy uses different param names
-        const apiParams: Record<string, string | number | undefined> = {
-          search: params.query,
-          page: params.page,
-          per_page: params.per_page,
-        };
+        const searchQuery = params.query.toLowerCase();
 
-        const items = await client.getItems(apiParams);
+        // Fetch items - we'll filter client-side for accurate code matching
+        // Fetch more items to ensure we have enough after filtering
+        const fetchPerPage = 100;
+        const allMatchingItems: StockItem[] = [];
+        let page = 1;
+        const maxPages = 20; // Limit to avoid excessive API calls
+        let totalItems = 0;
 
-        // Parse pagination from Content-Range header (format: "items 0-99/3633")
-        let total = items.length;
-        let startIdx = 1;
-        const contentRange = (items as { _contentRange?: string })._contentRange;
-        if (contentRange) {
-          const match = contentRange.match(/items (\d+)-(\d+)\/(\d+)/);
-          if (match) {
-            startIdx = parseInt(match[1], 10) + 1;
-            total = parseInt(match[3], 10);
+        // Fetch and filter until we have enough results or exhausted pages
+        while (allMatchingItems.length < params.per_page * params.page && page <= maxPages) {
+          const items = await client.getItems({ page, per_page: fetchPerPage });
+
+          if (items.length === 0) break;
+
+          // Parse total from Content-Range header
+          const contentRange = (items as { _contentRange?: string })._contentRange;
+          if (contentRange) {
+            const match = contentRange.match(/items \d+-\d+\/(\d+)/);
+            if (match) {
+              totalItems = parseInt(match[1], 10);
+            }
           }
+
+          // Filter items that match query in code OR title
+          const filtered = items.filter((item) => {
+            // Skip deleted items unless explicitly requested
+            if (item.deleted && !params.include_deleted) return false;
+
+            const codeMatch = item.code?.toLowerCase().includes(searchQuery);
+            const titleMatch = item.title?.toLowerCase().includes(searchQuery);
+            return codeMatch || titleMatch;
+          });
+
+          allMatchingItems.push(...filtered);
+
+          // If we've checked all items, stop
+          if (page * fetchPerPage >= totalItems) break;
+          page++;
         }
+
+        // Apply pagination to filtered results
+        const startIdx = (params.page - 1) * params.per_page;
+        const endIdx = startIdx + params.per_page;
+        const paginatedItems = allMatchingItems.slice(startIdx, endIdx);
 
         // Format response for LLM consumption
         const lines: string[] = [];
@@ -78,11 +107,14 @@ export function registerSearchTools(
         lines.push(`Search Results for "${params.query}":`);
         lines.push('');
 
-        if (items.length === 0) {
+        if (paginatedItems.length === 0) {
           lines.push(`No items found matching "${params.query}".`);
+          if (!params.include_deleted) {
+            lines.push('Note: Deleted items are hidden. Set include_deleted=true to include them.');
+          }
         } else {
-          items.forEach((item, index) => {
-            const num = startIdx + index;
+          paginatedItems.forEach((item, index) => {
+            const num = startIdx + index + 1;
             lines.push(`${num}. ${item.title ?? 'Unknown'} (ID: ${item.article_id})`);
             lines.push(`   Code: ${item.code ?? 'N/A'} | Type: ${item.is_raw ? 'Raw Material' : 'Product'}`);
             lines.push(`   Group: ${item.group_title ?? 'Unknown'}`);
@@ -91,7 +123,10 @@ export function registerSearchTools(
             lines.push('');
           });
 
-          lines.push(`Showing ${items.length} of ${total} matching items.`);
+          lines.push(`Showing ${paginatedItems.length} of ${allMatchingItems.length} matching items.`);
+          if (allMatchingItems.length > endIdx) {
+            lines.push(`Use page=${params.page + 1} to see more results.`);
+          }
         }
 
         return {
