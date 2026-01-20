@@ -89,20 +89,117 @@ const GetManufacturingOrdersInputSchema = z.object({
 });
 
 // ============================================================================
+// Utility Functions
+// ============================================================================
+
+/**
+ * Formats a Unix timestamp or ISO date string to human-readable format.
+ * Handles both Unix timestamps (seconds) and ISO date strings.
+ */
+function formatDate(value: unknown): string {
+  if (value === null || value === undefined) return 'N/A';
+
+  // If it's a number, treat as Unix timestamp
+  if (typeof value === 'number') {
+    // Distinguish between seconds and milliseconds
+    // Unix timestamps in seconds are ~10 digits, in ms ~13 digits
+    const ms = value > 9999999999 ? value : value * 1000;
+    const date = new Date(ms);
+    if (isNaN(date.getTime())) return 'N/A';
+    return date.toISOString().split('T')[0]; // YYYY-MM-DD
+  }
+
+  // If it's a string, try to parse it
+  if (typeof value === 'string') {
+    if (value === '' || value === '0') return 'N/A';
+    // Try parsing as ISO string or number string
+    const numVal = Number(value);
+    if (!isNaN(numVal) && numVal > 0) {
+      const ms = numVal > 9999999999 ? numVal : numVal * 1000;
+      const date = new Date(ms);
+      if (!isNaN(date.getTime())) return date.toISOString().split('T')[0];
+    }
+    // Try as ISO date string
+    const date = new Date(value);
+    if (!isNaN(date.getTime())) return date.toISOString().split('T')[0];
+    return value; // Return as-is if can't parse
+  }
+
+  return 'N/A';
+}
+
+/**
+ * Maps numeric status code to readable string for customer orders.
+ * MRPeasy uses numeric codes: 10=Draft, 20=Pending, 30=Confirmed, etc.
+ */
+function formatCustomerOrderStatus(status: unknown): string {
+  if (status === null || status === undefined) return 'Unknown';
+
+  const statusMap: Record<number, string> = {
+    10: 'Draft',
+    20: 'Pending',
+    30: 'Confirmed',
+    40: 'In Production',
+    50: 'Ready',
+    60: 'Shipped',
+    70: 'Completed',
+    80: 'Cancelled',
+    90: 'On Hold',
+  };
+
+  const numStatus = typeof status === 'number' ? status : parseInt(String(status), 10);
+  return statusMap[numStatus] ?? String(status);
+}
+
+/**
+ * Maps numeric status code to readable string for manufacturing orders.
+ */
+function formatManufacturingOrderStatus(status: unknown): string {
+  if (status === null || status === undefined) return 'Unknown';
+
+  const statusMap: Record<number, string> = {
+    10: 'Draft',
+    20: 'Pending',
+    30: 'Scheduled',
+    40: 'In Progress',
+    50: 'Completed',
+    60: 'Cancelled',
+    70: 'On Hold',
+  };
+
+  const numStatus = typeof status === 'number' ? status : parseInt(String(status), 10);
+  return statusMap[numStatus] ?? String(status);
+}
+
+// ============================================================================
 // Response Formatters
 // ============================================================================
 
 /**
  * Formats a single customer order for LLM-readable output.
+ * MRPeasy API uses different field names than our types expect.
  */
 function formatCustomerOrder(order: CustomerOrder): string {
   const lines: string[] = [];
 
-  lines.push(`Order #${order.number ?? 'N/A'} (ID: ${order.id ?? 'Unknown'})`);
-  lines.push(`Status: ${order.status ?? 'Unknown'}`);
-  lines.push(`Customer: ${order.customer_name ?? 'Unknown'}`);
-  lines.push(`Order Date: ${order.order_date ?? 'N/A'}`);
-  lines.push(`Delivery Date: ${order.delivery_date ?? 'N/A'}`);
+  // MRPeasy API field mapping - try multiple possible field names
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const raw = order as any;
+
+  const orderId = raw.co_id ?? raw.id ?? raw.order_id ?? 'Unknown';
+  const orderNumber = raw.co_number ?? raw.number ?? raw.order_number ?? 'N/A';
+  const status = raw.co_status ?? raw.status;
+  const customerName = raw.customer_name ?? raw.partner_name ?? 'Unknown';
+  const orderDate = raw.order_date ?? raw.co_date ?? raw.date ?? raw.created;
+  const deliveryDate = raw.delivery_date ?? raw.due_date ?? raw.ship_date;
+  const total = raw.total ?? raw.grand_total ?? raw.amount ?? 0;
+  const currency = raw.currency ?? raw.currency_code ?? '€';
+
+  lines.push(`Order #${orderNumber} (ID: ${orderId})`);
+  lines.push(`Status: ${formatCustomerOrderStatus(status)}`);
+  lines.push(`Customer: ${customerName}`);
+  lines.push(`Order Date: ${formatDate(orderDate)}`);
+  lines.push(`Delivery Date: ${formatDate(deliveryDate)}`);
 
   if (order.items && order.items.length > 0) {
     lines.push('Items:');
@@ -111,9 +208,8 @@ function formatCustomerOrder(order: CustomerOrder): string {
     }
   }
 
-  const total = order.total != null ? order.total.toFixed(2) : '0.00';
-  const currency = order.currency ?? 'USD';
-  lines.push(`Total: ${currency} ${total}`);
+  const totalFormatted = typeof total === 'number' ? total.toFixed(2) : '0.00';
+  lines.push(`Total: ${currency} ${totalFormatted}`);
 
   return lines.join('\n');
 }
@@ -167,20 +263,42 @@ function formatCustomerOrdersResponse(
 
 /**
  * Formats a single manufacturing order for LLM-readable output.
+ * MRPeasy API uses different field names than our types expect.
  */
 function formatManufacturingOrder(order: ManufacturingOrder): string {
   const lines: string[] = [];
 
-  lines.push(`MO #${order.number ?? 'N/A'} (ID: ${order.id ?? 'Unknown'})`);
-  lines.push(`Status: ${order.status ?? 'Unknown'}`);
-  lines.push(`Product: ${order.product_name ?? 'Unknown'} (ID: ${order.product_id ?? 'N/A'})`);
-  lines.push(`Quantity: ${order.quantity ?? 0}`);
-  lines.push(`Start Date: ${order.start_date ?? 'N/A'}`);
-  lines.push(`Due Date: ${order.finish_date ?? 'N/A'}`);
+  // MRPeasy API field mapping - try multiple possible field names
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const raw = order as any;
+
+  const moId = raw.mo_id ?? raw.id ?? raw.order_id ?? 'Unknown';
+  const moNumber = raw.mo_number ?? raw.number ?? raw.order_number ?? 'N/A';
+  const status = raw.mo_status ?? raw.status;
+  const productId = raw.product_id ?? raw.article_id ?? raw.item_id ?? 'N/A';
+  const productName = raw.product_name ?? raw.article_name ?? raw.item_name ?? raw.product_title ?? raw.name ?? 'Unknown';
+  const productCode = raw.product_code ?? raw.article_code ?? raw.item_code ?? raw.code;
+  const quantity = raw.quantity ?? raw.qty ?? 0;
+  const producedQty = raw.produced_quantity ?? raw.produced_qty ?? raw.completed ?? 0;
+  const startDate = raw.start_date ?? raw.start ?? raw.scheduled_start;
+  const finishDate = raw.finish_date ?? raw.end_date ?? raw.due_date ?? raw.deadline;
+
+  lines.push(`MO #${moNumber} (ID: ${moId})`);
+  lines.push(`Status: ${formatManufacturingOrderStatus(status)}`);
+
+  // Show product name with code if available
+  const productDisplay = productCode
+    ? `${productName} [${productCode}]`
+    : productName;
+  lines.push(`Product: ${productDisplay} (ID: ${productId})`);
+
+  lines.push(`Quantity: ${quantity}`);
+  lines.push(`Start Date: ${formatDate(startDate)}`);
+  lines.push(`Due Date: ${formatDate(finishDate)}`);
 
   // Calculate progress percentage with null safety
-  const qty = order.quantity ?? 0;
-  const produced = order.produced_quantity ?? 0;
+  const qty = typeof quantity === 'number' ? quantity : 0;
+  const produced = typeof producedQty === 'number' ? producedQty : 0;
   const percentage = qty > 0 ? Math.round((produced / qty) * 100) : 0;
   lines.push(`Progress: ${produced}/${qty} (${percentage}%)`);
 

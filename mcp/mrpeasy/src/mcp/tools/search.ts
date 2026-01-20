@@ -71,45 +71,105 @@ export function registerSearchTools(
 
       try {
         const searchQuery = params.query.toLowerCase();
+        const seenIds = new Set<number>(); // Track seen article_ids for deduplication
         const allResults: SearchResult[] = [];
 
-        // Search /items endpoint (inventory items)
-        const fetchPerPage = 100;
-        let page = 1;
-        const maxPages = 20;
-        let totalItems = 0;
-
-        while (page <= maxPages) {
-          const items = await client.getItems({ page, per_page: fetchPerPage });
-          if (items.length === 0) break;
-
-          const contentRange = (items as { _contentRange?: string })._contentRange;
-          if (contentRange) {
-            const match = contentRange.match(/items \d+-\d+\/(\d+)/);
-            if (match) totalItems = parseInt(match[1], 10);
+        // Helper to add item if not already seen (deduplication by article_id)
+        const addResult = (result: SearchResult) => {
+          if (!seenIds.has(result.id)) {
+            seenIds.add(result.id);
+            allResults.push(result);
           }
+        };
 
-          for (const item of items) {
+        // First, try to use the API's code filter for direct code matches
+        // This is important for finding products with P- codes that don't appear in default listings
+        logger.debug('Trying code filter search', { query: searchQuery });
+        try {
+          const codeFilterItems = await client.getItems({ code: params.query, per_page: 100 });
+          for (const item of codeFilterItems) {
             if (item.deleted && !params.include_deleted) continue;
-            const codeMatch = item.code?.toLowerCase().includes(searchQuery);
-            const titleMatch = item.title?.toLowerCase().includes(searchQuery);
-            if (codeMatch || titleMatch) {
-              allResults.push({
-                id: item.article_id,
-                code: item.code ?? 'N/A',
-                title: item.title ?? 'Unknown',
-                type: item.is_raw ? 'Raw Material' : 'Product',
-                group: item.group_title ?? 'Unknown',
-                inStock: item.in_stock ?? 0,
-                available: item.available ?? 0,
-                deleted: item.deleted ?? false,
-                source: 'inventory',
-              });
-            }
+            addResult({
+              id: item.article_id,
+              code: item.code ?? 'N/A',
+              title: item.title ?? 'Unknown',
+              type: item.is_raw ? 'Raw Material' : 'Product',
+              group: item.group_title ?? 'Unknown',
+              inStock: item.in_stock ?? 0,
+              available: item.available ?? 0,
+              deleted: item.deleted ?? false,
+              source: 'inventory',
+            });
           }
+          logger.debug('Code filter returned items', { count: codeFilterItems.length });
+        } catch (codeFilterError) {
+          logger.debug('Code filter failed', {
+            error: codeFilterError instanceof Error ? codeFilterError.message : 'Unknown',
+          });
+        }
 
-          if (page * fetchPerPage >= totalItems) break;
-          page++;
+        // Also try the API's search parameter for name/title matches
+        logger.debug('Trying search parameter', { query: params.query });
+        try {
+          const searchItems = await client.getItems({ search: params.query, per_page: 100 });
+          for (const item of searchItems) {
+            if (item.deleted && !params.include_deleted) continue;
+            addResult({
+              id: item.article_id,
+              code: item.code ?? 'N/A',
+              title: item.title ?? 'Unknown',
+              type: item.is_raw ? 'Raw Material' : 'Product',
+              group: item.group_title ?? 'Unknown',
+              inStock: item.in_stock ?? 0,
+              available: item.available ?? 0,
+              deleted: item.deleted ?? false,
+              source: 'inventory',
+            });
+          }
+          logger.debug('Search parameter returned items', { count: searchItems.length });
+        } catch (searchError) {
+          logger.debug('Search parameter failed, falling back to pagination', {
+            error: searchError instanceof Error ? searchError.message : 'Unknown',
+          });
+
+          // Fallback: Search /items endpoint with pagination (client-side filtering)
+          const fetchPerPage = 100;
+          let page = 1;
+          const maxPages = 20;
+          let totalItems = 0;
+
+          while (page <= maxPages) {
+            const items = await client.getItems({ page, per_page: fetchPerPage });
+            if (items.length === 0) break;
+
+            const contentRange = (items as { _contentRange?: string })._contentRange;
+            if (contentRange) {
+              const match = contentRange.match(/items \d+-\d+\/(\d+)/);
+              if (match) totalItems = parseInt(match[1], 10);
+            }
+
+            for (const item of items) {
+              if (item.deleted && !params.include_deleted) continue;
+              const codeMatch = item.code?.toLowerCase().includes(searchQuery);
+              const titleMatch = item.title?.toLowerCase().includes(searchQuery);
+              if (codeMatch || titleMatch) {
+                addResult({
+                  id: item.article_id,
+                  code: item.code ?? 'N/A',
+                  title: item.title ?? 'Unknown',
+                  type: item.is_raw ? 'Raw Material' : 'Product',
+                  group: item.group_title ?? 'Unknown',
+                  inStock: item.in_stock ?? 0,
+                  available: item.available ?? 0,
+                  deleted: item.deleted ?? false,
+                  source: 'inventory',
+                });
+              }
+            }
+
+            if (page * fetchPerPage >= totalItems) break;
+            page++;
+          }
         }
 
         // Also search /products endpoint (manufactured items)
