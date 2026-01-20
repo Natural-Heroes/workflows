@@ -82,13 +82,24 @@ export function registerSearchTools(
           }
         };
 
+        // Helper to check if an item matches the search query
+        const itemMatchesQuery = (code?: string, title?: string): boolean => {
+          const codeMatch = code?.toLowerCase().includes(searchQuery);
+          const titleMatch = title?.toLowerCase().includes(searchQuery);
+          return codeMatch || titleMatch || false;
+        };
+
         // First, try to use the API's code filter for direct code matches
         // This is important for finding products with P- codes that don't appear in default listings
         logger.debug('Trying code filter search', { query: searchQuery });
         try {
           const codeFilterItems = await client.getItems({ code: params.query, per_page: 100 });
+          let matchCount = 0;
           for (const item of codeFilterItems) {
             if (item.deleted && !params.include_deleted) continue;
+            // Always filter client-side - API may not filter properly
+            if (!itemMatchesQuery(item.code, item.title)) continue;
+            matchCount++;
             addResult({
               id: item.article_id,
               code: item.code ?? 'N/A',
@@ -101,7 +112,7 @@ export function registerSearchTools(
               source: 'inventory',
             });
           }
-          logger.debug('Code filter returned items', { count: codeFilterItems.length });
+          logger.debug('Code filter returned items', { count: codeFilterItems.length, matched: matchCount });
         } catch (codeFilterError) {
           logger.debug('Code filter failed', {
             error: codeFilterError instanceof Error ? codeFilterError.message : 'Unknown',
@@ -112,8 +123,12 @@ export function registerSearchTools(
         logger.debug('Trying search parameter', { query: params.query });
         try {
           const searchItems = await client.getItems({ search: params.query, per_page: 100 });
+          let matchCount = 0;
           for (const item of searchItems) {
             if (item.deleted && !params.include_deleted) continue;
+            // Always filter client-side - API may not filter properly
+            if (!itemMatchesQuery(item.code, item.title)) continue;
+            matchCount++;
             addResult({
               id: item.article_id,
               code: item.code ?? 'N/A',
@@ -126,13 +141,16 @@ export function registerSearchTools(
               source: 'inventory',
             });
           }
-          logger.debug('Search parameter returned items', { count: searchItems.length });
+          logger.debug('Search parameter returned items', { count: searchItems.length, matched: matchCount });
         } catch (searchError) {
           logger.debug('Search parameter failed, falling back to pagination', {
             error: searchError instanceof Error ? searchError.message : 'Unknown',
           });
+        }
 
-          // Fallback: Search /items endpoint with pagination (client-side filtering)
+        // If no results yet, fallback to paginated search with client-side filtering
+        if (allResults.length === 0) {
+          logger.debug('No matches from API filters, trying paginated search');
           const fetchPerPage = 100;
           let page = 1;
           const maxPages = 20;
@@ -150,21 +168,18 @@ export function registerSearchTools(
 
             for (const item of items) {
               if (item.deleted && !params.include_deleted) continue;
-              const codeMatch = item.code?.toLowerCase().includes(searchQuery);
-              const titleMatch = item.title?.toLowerCase().includes(searchQuery);
-              if (codeMatch || titleMatch) {
-                addResult({
-                  id: item.article_id,
-                  code: item.code ?? 'N/A',
-                  title: item.title ?? 'Unknown',
-                  type: item.is_raw ? 'Raw Material' : 'Product',
-                  group: item.group_title ?? 'Unknown',
-                  inStock: item.in_stock ?? 0,
-                  available: item.available ?? 0,
-                  deleted: item.deleted ?? false,
-                  source: 'inventory',
-                });
-              }
+              if (!itemMatchesQuery(item.code, item.title)) continue;
+              addResult({
+                id: item.article_id,
+                code: item.code ?? 'N/A',
+                title: item.title ?? 'Unknown',
+                type: item.is_raw ? 'Raw Material' : 'Product',
+                group: item.group_title ?? 'Unknown',
+                inStock: item.in_stock ?? 0,
+                available: item.available ?? 0,
+                deleted: item.deleted ?? false,
+                source: 'inventory',
+              });
             }
 
             if (page * fetchPerPage >= totalItems) break;

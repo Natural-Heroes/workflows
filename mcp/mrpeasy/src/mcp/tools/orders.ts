@@ -246,6 +246,17 @@ function formatCustomerOrdersResponse(
   const endIdx = pagination?.endIdx ?? orders.length;
   const total = pagination?.total ?? orders.length;
 
+  // Debug: Log first order's field names to help with mapping
+  if (orders.length > 0) {
+    const firstOrder = orders[0] as unknown as Record<string, unknown>;
+    logger.debug('Customer order field names (first order)', {
+      fields: Object.keys(firstOrder),
+      sampleValues: Object.fromEntries(
+        Object.entries(firstOrder).slice(0, 10).map(([k, v]) => [k, v])
+      ),
+    });
+  }
+
   lines.push(`Customer Orders (${startIdx}-${endIdx} of ${total}):`);
   lines.push('');
 
@@ -321,6 +332,17 @@ function formatManufacturingOrdersResponse(
   const startIdx = pagination?.startIdx ?? 1;
   const endIdx = pagination?.endIdx ?? orders.length;
   const total = pagination?.total ?? orders.length;
+
+  // Debug: Log first MO's field names to help with mapping
+  if (orders.length > 0) {
+    const firstOrder = orders[0] as unknown as Record<string, unknown>;
+    logger.debug('Manufacturing order field names (first order)', {
+      fields: Object.keys(firstOrder),
+      sampleValues: Object.fromEntries(
+        Object.entries(firstOrder).slice(0, 15).map(([k, v]) => [k, v])
+      ),
+    });
+  }
 
   lines.push(`Manufacturing Orders (${startIdx}-${endIdx} of ${total}):`);
   lines.push('');
