@@ -87,7 +87,7 @@ export function registerInventoryTools(
           lines.push('No inventory items found matching the criteria.');
         } else {
           for (const item of items) {
-            lines.push(`Item: ${item.title ?? 'Unknown'} (Code: ${item.code ?? 'N/A'})`);
+            lines.push(`Item: ${item.title ?? 'Unknown'} (Code: ${item.code ?? 'N/A'}, ID: ${item.article_id})`);
             lines.push(`  - In Stock: ${item.in_stock ?? 0}`);
             lines.push(`  - Reserved: ${item.booked ?? 0}`);
             lines.push(`  - Available: ${item.available ?? 0}`);
