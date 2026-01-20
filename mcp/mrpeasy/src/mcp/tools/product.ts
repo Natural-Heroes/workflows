@@ -71,60 +71,38 @@ export function registerProductTools(
           }
           item = await client.getProduct(articleId);
         } else if (params.code) {
-          // Lookup by code - search both /items and /products endpoints
-          const searchCode = params.code.toLowerCase();
+          // Lookup by code - try API filter first, then fallback to pagination
+          const searchCode = params.code;
 
-          // First try /items endpoint (inventory items)
-          const items = await client.getItems({ per_page: 100 });
-          item = items.find((i) => i.code?.toLowerCase() === searchCode);
-
-          if (!item) {
-            // Try fetching more pages from /items
-            let page = 2;
-            const maxPages = 50;
-            while (!item && page <= maxPages) {
-              const moreItems = await client.getItems({ page, per_page: 100 });
-              if (moreItems.length === 0) break;
-              item = moreItems.find((i) => i.code?.toLowerCase() === searchCode);
-              page++;
+          // First try the API's code filter parameter (most efficient)
+          logger.debug('Trying code filter', { code: searchCode });
+          try {
+            const filteredItems = await client.getItems({ code: searchCode, per_page: 10 });
+            if (filteredItems.length > 0) {
+              item = filteredItems[0];
+              logger.debug('Found item via code filter', { article_id: item.article_id });
             }
+          } catch (filterError) {
+            logger.debug('Code filter failed, falling back to pagination', {
+              error: filterError instanceof Error ? filterError.message : 'Unknown',
+            });
           }
 
-          // If not found in /items, try /products endpoint
+          // If code filter didn't work, search through paginated results
           if (!item) {
-            try {
-              const productsResponse = await client.getProducts({ per_page: 100 });
-              if (productsResponse?.data) {
-                const matchedProduct = productsResponse.data.find(
-                  (p) => p.number?.toLowerCase() === searchCode
-                );
-                if (matchedProduct) {
-                  // Convert Product to StockItem-like format for display
-                  item = {
-                    article_id: matchedProduct.id,
-                    product_id: matchedProduct.id,
-                    code: matchedProduct.number,
-                    title: matchedProduct.name,
-                    in_stock: 0,
-                    booked: 0,
-                    available: 0,
-                    avg_cost: matchedProduct.cost ?? null,
-                    selling_price: matchedProduct.price ?? 0,
-                    group_id: 0,
-                    group_code: matchedProduct.group ?? '',
-                    group_title: matchedProduct.group ?? 'Unknown',
-                    is_raw: false,
-                    deleted: !matchedProduct.active,
-                    expected_total: 0,
-                    expected_available: 0,
-                    min_quantity: '0',
-                  } as StockItem;
-                }
+            const lowerCode = searchCode.toLowerCase();
+            const items = await client.getItems({ per_page: 100 });
+            item = items.find((i) => i.code?.toLowerCase() === lowerCode);
+
+            if (!item) {
+              let page = 2;
+              const maxPages = 50;
+              while (!item && page <= maxPages) {
+                const moreItems = await client.getItems({ page, per_page: 100 });
+                if (moreItems.length === 0) break;
+                item = moreItems.find((i) => i.code?.toLowerCase() === lowerCode);
+                page++;
               }
-            } catch (productsError) {
-              logger.debug('Products endpoint lookup failed', {
-                error: productsError instanceof Error ? productsError.message : 'Unknown',
-              });
             }
           }
 
@@ -133,7 +111,7 @@ export function registerProductTools(
               content: [
                 {
                   type: 'text',
-                  text: `No item found with code "${params.code}". Check that the part number is correct.\n\nNote: The code must exactly match the Part No. in MRPeasy (e.g., "P-APB-NH-3" or "A-00006").`,
+                  text: `No item found with code "${params.code}". Check that the part number is correct.\n\nNote: The code must exactly match the Part No. in MRPeasy (e.g., "P-APB-NH-3" or "A-00006").\n\nTip: Try searching with search_items to find items by partial name or code.`,
                 },
               ],
               isError: true,

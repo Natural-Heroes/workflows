@@ -265,6 +265,8 @@ export interface StockItemsParams extends PaginationParams {
   warehouse_id?: number;
   /** Filter by item number (partial match) */
   item_number?: string;
+  /** Filter by code (exact match) */
+  code?: string;
 }
 
 /**
@@ -319,4 +321,6 @@ export interface ItemsParams extends PaginationParams {
   group?: string;
   /** Filter by active status */
   active?: boolean;
+  /** Filter by code (exact match) */
+  code?: string;
 }
