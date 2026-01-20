@@ -833,9 +833,8 @@ export function registerOrderTools(
           const codeNumber = parseInt(numericPart, 10);
           logger.debug('Searching for MO by code', { mo_code: params.mo_code, codeNumber });
 
-          // Strategy: MO codes are sequential, so use the code number to estimate position
-          // First get a small batch to find total count and calibrate
-          const calibrationBatch = await client.getManufacturingOrders({ per_page: 10 });
+          // First get a small batch to find total count
+          const calibrationBatch = await client.getManufacturingOrdersWithRange(0, 10);
           const contentRangeHeader = (calibrationBatch as { _contentRange?: string })._contentRange;
           let totalOrders = 0;
 
@@ -848,29 +847,25 @@ export function registerOrderTools(
 
           logger.debug('Total MO count', { totalOrders });
 
-          // Search strategy:
-          // 1. If code number is large, start from the end (newest orders)
-          // 2. Search in windows around the estimated position
+          // Search strategy using Range headers (MRPeasy ignores page param)
+          // For codes > 30000, start from end (newest); otherwise start from beginning
           let foundOrder = null;
-          const perPage = 100;
+          const batchSize = 100;
           const maxSearches = 15; // Search up to 1500 orders
-
-          // If code number suggests a recent order, start from end
-          // Otherwise start from beginning
           const searchFromEnd = codeNumber > 30000;
 
           for (let i = 0; i < maxSearches && !foundOrder; i++) {
-            let page: number;
+            let offset: number;
             if (searchFromEnd) {
-              // Start from the newest orders (highest page numbers)
-              const lastPage = Math.ceil(totalOrders / perPage);
-              page = lastPage - i;
-              if (page < 1) break;
+              // Start from the end of the list (newest orders)
+              offset = Math.max(0, totalOrders - (i + 1) * batchSize);
             } else {
-              page = i + 1;
+              offset = i * batchSize;
             }
 
-            const orders = await client.getManufacturingOrders({ per_page: perPage, page });
+            if (offset >= totalOrders) break;
+
+            const orders = await client.getManufacturingOrdersWithRange(offset, batchSize);
 
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             foundOrder = orders.find((o: any) => {
@@ -883,7 +878,7 @@ export function registerOrderTools(
             });
 
             if (foundOrder) break;
-            if (orders.length < perPage) break; // Last page
+            if (orders.length < batchSize) break; // No more data
           }
 
           if (foundOrder) {

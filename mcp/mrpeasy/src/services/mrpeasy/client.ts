@@ -391,6 +391,30 @@ export class MrpEasyClient {
     return this.request<ManufacturingOrder>(`/manufacturing-orders/${id}`);
   }
 
+  /**
+   * Get manufacturing orders with Range header pagination.
+   *
+   * MRPeasy API ignores query string pagination (page, per_page, offset).
+   * Use HTTP Range headers instead: Range: items=0-99
+   *
+   * @param offset - Starting item index (0-based)
+   * @param limit - Number of items to fetch
+   * @param params - Additional query parameters for filtering
+   * @returns Array of manufacturing orders with _contentRange metadata
+   */
+  async getManufacturingOrdersWithRange(
+    offset: number,
+    limit: number,
+    params?: Omit<ManufacturingOrdersParams, 'page' | 'per_page'>
+  ): Promise<ManufacturingOrder[] & { _contentRange?: string }> {
+    const rangeHeader = `items=${offset}-${offset + limit - 1}`;
+    return this.request<ManufacturingOrder[] & { _contentRange?: string }>(
+      '/manufacturing-orders',
+      params as ManufacturingOrdersParams,
+      rangeHeader
+    );
+  }
+
   // ===========================================================================
   // Products
   // ===========================================================================
