@@ -148,13 +148,16 @@ export function registerSearchTools(
           });
         }
 
-        // If no results yet, fallback to paginated search with client-side filtering
+        // If no results yet from /items, fallback to paginated search with client-side filtering
+        // This catches cases where MRPeasy API doesn't match substrings in the middle of names
+        // (e.g., "nilotica" in "Shea Nilotica" won't match MRPeasy's search parameter)
         if (allResults.length === 0) {
           logger.debug('No matches from API filters, trying paginated search');
           const fetchPerPage = 100;
           let page = 1;
-          const maxPages = 20;
+          const maxPages = 100; // Cover up to 10000 items
           let totalItems = 0;
+          const maxResults = 100; // Stop early if we've found enough matches
 
           while (page <= maxPages) {
             const items = await client.getItems({ page, per_page: fetchPerPage });
@@ -182,9 +185,16 @@ export function registerSearchTools(
               });
             }
 
+            // Early termination: if we found enough results, stop paginating
+            if (allResults.length >= maxResults) {
+              logger.debug('Found enough results, stopping pagination early', { count: allResults.length });
+              break;
+            }
+
             if (page * fetchPerPage >= totalItems) break;
             page++;
           }
+          logger.debug('Paginated search completed', { pages: page, totalItems, found: allResults.length });
         }
 
         // Also search /products endpoint (manufactured items)
