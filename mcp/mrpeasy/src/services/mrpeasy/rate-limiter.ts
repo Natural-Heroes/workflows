@@ -83,10 +83,12 @@ export class TokenBucket {
 /**
  * Creates a rate limiter with MRPeasy defaults.
  *
- * MRPeasy limits: 100 requests per 10 seconds = 10 tokens/second.
+ * MRPeasy docs state 100 requests per 10 seconds, but actual limits
+ * seem stricter. Using conservative 50 capacity / 5 tokens per second
+ * to avoid 429 errors during large searches.
  *
  * @returns TokenBucket configured for MRPeasy API limits
  */
 export function createRateLimiter(): TokenBucket {
-  return new TokenBucket(100, 10);
+  return new TokenBucket(50, 5);
 }

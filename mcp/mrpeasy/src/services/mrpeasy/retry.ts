@@ -24,9 +24,9 @@ export interface RetryConfig {
 }
 
 const DEFAULT_CONFIG: RetryConfig = {
-  maxAttempts: 3,
-  baseDelayMs: 1000,
-  maxDelayMs: 30000,
+  maxAttempts: 5,
+  baseDelayMs: 2000,
+  maxDelayMs: 60000,
   jitterFactor: 0.2,
   retryableStatuses: [429, 503],
 };
@@ -69,6 +69,7 @@ function isRetryable(error: unknown, config: RetryConfig): boolean {
  * Executes a function with retry logic.
  *
  * Retries on retryable errors (429, 503 by default) with exponential backoff.
+ * For 429 responses, respects Retry-After header if provided.
  *
  * @param fn - Async function to execute
  * @param config - Partial retry configuration (merged with defaults)
@@ -93,13 +94,30 @@ export async function withRetry<T>(
         throw error;
       }
 
-      const delay = calculateDelay(attempt, cfg);
-      logger.warn('Retrying request', {
-        attempt: attempt + 1,
-        maxAttempts: cfg.maxAttempts,
-        delayMs: delay,
-        error: error instanceof Error ? error.message : String(error),
-      });
+      // For 429 errors, use Retry-After header if available
+      let delay: number;
+      if (
+        error instanceof MrpEasyApiError &&
+        error.status === 429 &&
+        error.retryAfterSeconds
+      ) {
+        // Use server-provided retry delay (convert to ms, add small buffer)
+        delay = error.retryAfterSeconds * 1000 + 500;
+        logger.warn('Rate limited, using Retry-After header', {
+          attempt: attempt + 1,
+          maxAttempts: cfg.maxAttempts,
+          retryAfterSeconds: error.retryAfterSeconds,
+          delayMs: delay,
+        });
+      } else {
+        delay = calculateDelay(attempt, cfg);
+        logger.warn('Retrying request', {
+          attempt: attempt + 1,
+          maxAttempts: cfg.maxAttempts,
+          delayMs: delay,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
 
       await new Promise((r) => setTimeout(r, delay));
     }
