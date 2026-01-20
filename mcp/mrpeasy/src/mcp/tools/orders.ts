@@ -44,6 +44,9 @@ const ManufacturingOrderStatusSchema = z.enum([
  * Input schema for get_customer_orders tool.
  */
 const GetCustomerOrdersInputSchema = z.object({
+  open_only: z.boolean().optional().describe(
+    'If true, only return open orders (excludes Delivered and Cancelled). Recommended for finding active work.'
+  ),
   status: CustomerOrderStatusSchema.optional().describe(
     'Filter by order status: pending, confirmed, in_production, shipped, completed, or cancelled'
   ),
@@ -68,6 +71,9 @@ const GetCustomerOrdersInputSchema = z.object({
  * Input schema for get_manufacturing_orders tool.
  */
 const GetManufacturingOrdersInputSchema = z.object({
+  open_only: z.boolean().optional().describe(
+    'If true, only return open MOs (excludes Completed and Cancelled). Recommended for finding active production.'
+  ),
   status: ManufacturingOrderStatusSchema.optional().describe(
     'Filter by order status: pending, scheduled, in_progress, completed, or cancelled'
   ),
@@ -560,8 +566,9 @@ export function registerOrderTools(
   // -------------------------------------------------------------------------
   server.tool(
     'get_customer_orders',
-    'Get customer orders with optional filtering by status, customer, or date range. Returns order details including items, quantities, and delivery dates.',
+    'Get customer orders with optional filtering. Use open_only=true to get only active orders (excludes Delivered/Cancelled). Can also filter by status, customer, or date range.',
     {
+      open_only: GetCustomerOrdersInputSchema.shape.open_only,
       status: GetCustomerOrdersInputSchema.shape.status,
       customer_id: GetCustomerOrdersInputSchema.shape.customer_id,
       date_from: GetCustomerOrdersInputSchema.shape.date_from,
@@ -579,8 +586,21 @@ export function registerOrderTools(
           per_page: params.per_page ?? 20,
         };
 
-        if (params.status) {
-          apiParams.status = params.status;
+        // open_only: exclude Delivered (80) and Cancelled (90)
+        // Include: 10 (Quotation), 30 (Confirmed), 70 (Shipped)
+        if (params.open_only) {
+          apiParams['status[]'] = [10, 30, 70];
+        } else if (params.status) {
+          // Map friendly status names to API codes
+          const statusMap: Record<string, number> = {
+            pending: 20,
+            confirmed: 30,
+            in_production: 40,
+            shipped: 70,
+            completed: 80,
+            cancelled: 90,
+          };
+          apiParams.status = statusMap[params.status] ?? params.status;
         }
         if (params.customer_id) {
           apiParams.customer_id = parseInt(params.customer_id, 10);
@@ -620,8 +640,9 @@ export function registerOrderTools(
   // -------------------------------------------------------------------------
   server.tool(
     'get_manufacturing_orders',
-    'Get manufacturing orders (MOs) showing production status. Filter by status, SKU (item_code), product ID, or date range. Shows what is being produced, quantities, and production schedule.',
+    'Get manufacturing orders (MOs) showing production status. Use open_only=true to get only active MOs (excludes Completed/Cancelled). Can also filter by status, SKU (item_code), product ID, or date range.',
     {
+      open_only: GetManufacturingOrdersInputSchema.shape.open_only,
       status: GetManufacturingOrdersInputSchema.shape.status,
       item_code: GetManufacturingOrdersInputSchema.shape.item_code,
       product_id: GetManufacturingOrdersInputSchema.shape.product_id,
@@ -640,8 +661,20 @@ export function registerOrderTools(
           per_page: params.per_page ?? 20,
         };
 
-        if (params.status) {
-          apiParams.status = params.status;
+        // open_only: exclude Completed (50), Closed (60), and Cancelled (70)
+        // Include: 10 (New), 20 (Scheduled), 30 (In Progress), 40 (Done but not closed)
+        if (params.open_only) {
+          apiParams['status[]'] = [10, 20, 30, 40];
+        } else if (params.status) {
+          // Map friendly status names to API codes
+          const statusMap: Record<string, number> = {
+            pending: 10,
+            scheduled: 20,
+            in_progress: 30,
+            completed: 50,
+            cancelled: 70,
+          };
+          apiParams.status = statusMap[params.status] ?? params.status;
         }
         if (params.item_code) {
           apiParams.item_code = params.item_code;
