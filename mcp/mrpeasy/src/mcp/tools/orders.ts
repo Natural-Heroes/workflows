@@ -71,6 +71,9 @@ const GetManufacturingOrdersInputSchema = z.object({
   status: ManufacturingOrderStatusSchema.optional().describe(
     'Filter by order status: pending, scheduled, in_progress, completed, or cancelled'
   ),
+  item_code: z.string().optional().describe(
+    'Filter by item/product SKU code (e.g., "ZPEO-NH-1"). Finds MOs for a specific product.'
+  ),
   product_id: z.string().optional().describe(
     'Filter by product ID being manufactured'
   ),
@@ -617,9 +620,10 @@ export function registerOrderTools(
   // -------------------------------------------------------------------------
   server.tool(
     'get_manufacturing_orders',
-    'Get manufacturing orders (MOs) showing production status. Filter by status, product, or date range. Shows what is being produced, quantities, and production schedule.',
+    'Get manufacturing orders (MOs) showing production status. Filter by status, SKU (item_code), product ID, or date range. Shows what is being produced, quantities, and production schedule.',
     {
       status: GetManufacturingOrdersInputSchema.shape.status,
+      item_code: GetManufacturingOrdersInputSchema.shape.item_code,
       product_id: GetManufacturingOrdersInputSchema.shape.product_id,
       date_from: GetManufacturingOrdersInputSchema.shape.date_from,
       date_to: GetManufacturingOrdersInputSchema.shape.date_to,
@@ -638,6 +642,9 @@ export function registerOrderTools(
 
         if (params.status) {
           apiParams.status = params.status;
+        }
+        if (params.item_code) {
+          apiParams.item_code = params.item_code;
         }
         if (params.product_id) {
           apiParams.product_id = parseInt(params.product_id, 10);
