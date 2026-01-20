@@ -828,39 +828,61 @@ export function registerOrderTools(
 
         // If mo_code is provided, search for the MO to get its man_ord_id
         if (params.mo_code && !resolvedId) {
-          const searchCode = params.mo_code.toUpperCase().replace(/^(MO-|WO-)/, '');
-          logger.debug('Searching for MO by code', { mo_code: params.mo_code, searchCode });
+          const codeUpper = params.mo_code.toUpperCase();
+          const numericPart = codeUpper.replace(/^(MO-|WO-)/, '');
+          const codeNumber = parseInt(numericPart, 10);
+          logger.debug('Searching for MO by code', { mo_code: params.mo_code, codeNumber });
 
-          // Search manufacturing orders - paginate through up to 1000 orders to find the match
-          const maxPages = 10;
-          const perPage = 100;
+          // Strategy: MO codes are sequential, so use the code number to estimate position
+          // First get a small batch to find total count and calibrate
+          const calibrationBatch = await client.getManufacturingOrders({ per_page: 10 });
+          const contentRangeHeader = (calibrationBatch as { _contentRange?: string })._contentRange;
+          let totalOrders = 0;
+
+          if (contentRangeHeader) {
+            const rangeMatch = contentRangeHeader.match(/items \d+-\d+\/(\d+)/);
+            if (rangeMatch) {
+              totalOrders = parseInt(rangeMatch[1], 10);
+            }
+          }
+
+          logger.debug('Total MO count', { totalOrders });
+
+          // Search strategy:
+          // 1. If code number is large, start from the end (newest orders)
+          // 2. Search in windows around the estimated position
           let foundOrder = null;
+          const perPage = 100;
+          const maxSearches = 15; // Search up to 1500 orders
 
-          for (let page = 1; page <= maxPages && !foundOrder; page++) {
+          // If code number suggests a recent order, start from end
+          // Otherwise start from beginning
+          const searchFromEnd = codeNumber > 30000;
+
+          for (let i = 0; i < maxSearches && !foundOrder; i++) {
+            let page: number;
+            if (searchFromEnd) {
+              // Start from the newest orders (highest page numbers)
+              const lastPage = Math.ceil(totalOrders / perPage);
+              page = lastPage - i;
+              if (page < 1) break;
+            } else {
+              page = i + 1;
+            }
+
             const orders = await client.getManufacturingOrders({ per_page: perPage, page });
 
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             foundOrder = orders.find((o: any) => {
               const orderCode = (o.code ?? '').toUpperCase();
-              // Match exact code or just the numeric part
-              return orderCode === params.mo_code?.toUpperCase() ||
-                     orderCode === `WO-${searchCode}` ||
-                     orderCode === `MO-${searchCode}` ||
-                     orderCode.endsWith(searchCode);
+              // Match exact code or variations
+              return orderCode === codeUpper ||
+                     orderCode === `WO-${numericPart}` ||
+                     orderCode === `MO-${numericPart}` ||
+                     orderCode.endsWith(numericPart);
             });
 
             if (foundOrder) break;
-
-            // Check if we've reached the end of results
-            const contentRange = (orders as { _contentRange?: string })._contentRange;
-            if (contentRange) {
-              const match = contentRange.match(/items \d+-(\d+)\/(\d+)/);
-              if (match) {
-                const endIdx = parseInt(match[1], 10);
-                const total = parseInt(match[2], 10);
-                if (endIdx >= total - 1) break; // No more pages
-              }
-            }
             if (orders.length < perPage) break; // Last page
           }
 
@@ -873,7 +895,7 @@ export function registerOrderTools(
               content: [
                 {
                   type: 'text',
-                  text: `Manufacturing order with code "${params.mo_code}" not found in the first 1000 orders.\n\nTip: Try using get_manufacturing_orders with date filters to find the order first, then use the man_ord_id from the results.`,
+                  text: `Manufacturing order with code "${params.mo_code}" not found.\n\nTip: Try using get_manufacturing_orders to browse orders, or use the internal man_ord_id directly if you know it.`,
                 },
               ],
             };
