@@ -189,39 +189,79 @@ export function registerSearchTools(
 
         // Also search /products endpoint (manufactured items)
         // These might have different codes (like P-XXX)
-        try {
-          const productsResponse = await client.getProducts({ per_page: 100 });
-          if (productsResponse?.data) {
-            for (const product of productsResponse.data) {
-              if (!product.active && !params.include_deleted) continue;
-              const codeMatch = product.number?.toLowerCase().includes(searchQuery);
-              const nameMatch = product.name?.toLowerCase().includes(searchQuery);
-              if (codeMatch || nameMatch) {
-                // Check if already in results (avoid duplicates)
-                const exists = allResults.some(
-                  (r) => r.code === product.number || r.id === product.id
-                );
-                if (!exists) {
-                  allResults.push({
-                    id: product.id,
-                    code: product.number ?? 'N/A',
-                    title: product.name ?? 'Unknown',
-                    type: 'Manufactured Product',
-                    group: product.group ?? 'Unknown',
-                    inStock: 0, // Products endpoint doesn't have stock info
-                    available: 0,
-                    deleted: !product.active,
-                    source: 'products',
-                  });
-                }
-              }
+        // Helper to add product to results
+        const addProductToResults = (product: { id: number; number?: string; name?: string; group?: string; active?: boolean }) => {
+          if (!product.active && !params.include_deleted) return;
+          const codeMatch = product.number?.toLowerCase().includes(searchQuery);
+          const nameMatch = product.name?.toLowerCase().includes(searchQuery);
+          if (codeMatch || nameMatch) {
+            // Check if already in results (avoid duplicates)
+            const exists = allResults.some(
+              (r) => r.code === product.number || r.id === product.id
+            );
+            if (!exists) {
+              allResults.push({
+                id: product.id,
+                code: product.number ?? 'N/A',
+                title: product.name ?? 'Unknown',
+                type: 'Manufactured Product',
+                group: product.group ?? 'Unknown',
+                inStock: 0, // Products endpoint doesn't have stock info
+                available: 0,
+                deleted: !product.active,
+                source: 'products',
+              });
             }
           }
-        } catch (productsError) {
-          // Products endpoint might not be available or return different format
-          logger.debug('Products endpoint search failed, continuing with items only', {
-            error: productsError instanceof Error ? productsError.message : 'Unknown error',
+        };
+
+        try {
+          // First try search parameter (might be supported)
+          logger.debug('Searching /products with search param', { query: params.query });
+          const searchProducts = await client.getProducts({ search: params.query, per_page: 100 });
+          if (searchProducts?.data) {
+            for (const product of searchProducts.data) {
+              addProductToResults(product);
+            }
+            logger.debug('/products search param returned', { count: searchProducts.data.length });
+          }
+        } catch (searchError) {
+          logger.debug('/products search param failed', {
+            error: searchError instanceof Error ? searchError.message : 'Unknown',
           });
+        }
+
+        // If no product results yet from search, paginate through /products with client-side filtering
+        const productResultsBefore = allResults.filter(r => r.source === 'products').length;
+        if (productResultsBefore === 0) {
+          try {
+            logger.debug('Paginating /products with client-side filtering');
+            let page = 1;
+            const maxProductPages = 10; // Limit to 1000 products
+            while (page <= maxProductPages) {
+              const productsResponse = await client.getProducts({ page, per_page: 100 });
+              if (!productsResponse?.data || productsResponse.data.length === 0) break;
+
+              for (const product of productsResponse.data) {
+                addProductToResults(product);
+              }
+
+              // Check if there are more pages
+              const contentRange = (productsResponse as { _contentRange?: string })._contentRange;
+              if (contentRange) {
+                const match = contentRange.match(/items \d+-\d+\/(\d+)/);
+                if (match) {
+                  const total = parseInt(match[1], 10);
+                  if (page * 100 >= total) break;
+                }
+              }
+              page++;
+            }
+          } catch (productsError) {
+            logger.debug('Products endpoint pagination failed', {
+              error: productsError instanceof Error ? productsError.message : 'Unknown error',
+            });
+          }
         }
 
         // Apply pagination to combined results
