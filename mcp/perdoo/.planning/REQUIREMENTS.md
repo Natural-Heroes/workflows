@@ -73,39 +73,39 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INFRA-01 | - | Pending |
-| INFRA-02 | - | Pending |
-| INFRA-03 | - | Pending |
-| INFRA-04 | - | Pending |
-| INFRA-05 | - | Pending |
-| INFRA-06 | - | Pending |
-| INFRA-07 | - | Pending |
-| OBJ-01 | - | Pending |
-| OBJ-02 | - | Pending |
-| OBJ-03 | - | Pending |
-| OBJ-04 | - | Pending |
-| KR-01 | - | Pending |
-| KR-02 | - | Pending |
-| KR-03 | - | Pending |
-| KR-04 | - | Pending |
-| KPI-01 | - | Pending |
-| KPI-02 | - | Pending |
-| KPI-03 | - | Pending |
-| KPI-04 | - | Pending |
-| INIT-01 | - | Pending |
-| INIT-02 | - | Pending |
-| INIT-03 | - | Pending |
-| INIT-04 | - | Pending |
-| PILLAR-01 | - | Pending |
-| PILLAR-02 | - | Pending |
-| PILLAR-03 | - | Pending |
-| PILLAR-04 | - | Pending |
+| INFRA-01 | Phase 1 | Pending |
+| INFRA-02 | Phase 1 | Pending |
+| INFRA-03 | Phase 1 | Pending |
+| INFRA-04 | Phase 1 | Pending |
+| INFRA-05 | Phase 1 | Pending |
+| INFRA-06 | Phase 1 | Pending |
+| INFRA-07 | Phase 1 | Pending |
+| OBJ-01 | Phase 1 | Pending |
+| OBJ-02 | Phase 1 | Pending |
+| OBJ-03 | Phase 1 | Pending |
+| OBJ-04 | Phase 1 | Pending |
+| KR-01 | Phase 2 | Pending |
+| KR-02 | Phase 2 | Pending |
+| KR-03 | Phase 2 | Pending |
+| KR-04 | Phase 2 | Pending |
+| KPI-01 | Phase 2 | Pending |
+| KPI-02 | Phase 2 | Pending |
+| KPI-03 | Phase 2 | Pending |
+| KPI-04 | Phase 2 | Pending |
+| INIT-01 | Phase 3 | Pending |
+| INIT-02 | Phase 3 | Pending |
+| INIT-03 | Phase 3 | Pending |
+| INIT-04 | Phase 3 | Pending |
+| PILLAR-01 | Phase 3 | Pending |
+| PILLAR-02 | Phase 3 | Pending |
+| PILLAR-03 | Phase 3 | Pending |
+| PILLAR-04 | Phase 3 | Pending |
 
 **Coverage:**
 - v1 requirements: 27 total
-- Mapped to phases: 0
-- Unmapped: 27 (pending roadmap creation)
+- Mapped to phases: 27
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-01-23*
-*Last updated: 2026-01-23 after initial definition*
+*Last updated: 2026-01-23 after roadmap creation*
