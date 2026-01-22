@@ -26,12 +26,12 @@ Build a GraphQL-to-MCP bridge server that exposes Perdoo's OKR management API as
   3. LLM can create a new objective and retrieve it by ID to confirm creation
   4. LLM can update an existing objective and verify the change persists
   5. Server instructions resource describes available tools and usage patterns to the LLM
-**Plans**: TBD
+**Plans:** 3 plans
 
 Plans:
-- [ ] 01-01: Project scaffolding, GraphQL client with resilience stack, and schema introspection
-- [ ] 01-02: Objectives tools (list, get, create, update) and Express transport
-- [ ] 01-03: Instructions resource and end-to-end validation
+- [ ] 01-01-PLAN.md -- Project scaffolding, GraphQL client with resilience stack, and introspection query
+- [ ] 01-02-PLAN.md -- Objective tools (list, get, create, update), Express transport, and instructions resource
+- [ ] 01-03-PLAN.md -- Schema introspection, operation correction, and end-to-end validation
 
 ### Phase 2: Key Results + KPIs
 **Goal**: LLMs can manage key results and KPIs through MCP tools, using the proven pattern from Phase 1
