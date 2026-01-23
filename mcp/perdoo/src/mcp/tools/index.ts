@@ -11,12 +11,13 @@ import { createPerdooClient } from '../../services/perdoo/index.js';
 import { registerObjectiveTools } from './objectives.js';
 import { registerKeyResultTools } from './key-results.js';
 import { registerKpiTools } from './kpis.js';
+import { registerInitiativeTools } from './initiatives.js';
 
 /**
  * Brief server description shown during initialization.
  */
 const SERVER_DESCRIPTION =
-  'Perdoo OKR integration. Manage objectives, key results, and strategic pillars. Read the perdoo://instructions resource for usage guide.';
+  'Perdoo OKR integration. Manage objectives, key results, initiatives, KPIs, and strategic pillars. Read the perdoo://instructions resource for usage guide.';
 
 /**
  * Detailed instructions for LLMs, served as a resource.
@@ -38,6 +39,12 @@ This server provides access to Perdoo OKR data including objectives, key results
 - **get_key_result**: Get a single key result by UUID with full details including progress, metric values, and objective reference.
 - **create_key_result**: Create a new key result. \`name\` and \`objective\` (parent objective UUID) are required. Provide \`type\`, \`start_value\`, \`target_value\`, \`current_value\`, \`unit\`, \`lead\`, or \`additional_fields\`.
 - **update_key_result**: Update an existing key result by UUID. Provide any fields to change (\`name\`, \`current_value\`, \`target_value\`, \`lead\`, \`archived\`, etc.).
+
+### Initiatives
+- **list_initiatives**: List initiatives with pagination and filters. Supports \`limit\`, \`cursor\`, \`name_contains\`, \`objective_id\`, \`lead_id\`, \`archived\`, \`status\`, \`timeframe_id\`, \`order_by\`.
+- **get_initiative**: Get a single initiative by UUID with full details including objective reference and progress.
+- **create_initiative**: Create a new initiative. \`name\` and \`objective\` (parent objective UUID) are required. Provide \`start_value\`, \`target_value\`, \`current_value\`, \`unit\`, \`lead\`, or \`additional_fields\`.
+- **update_initiative**: Update an existing initiative by UUID. Provide any fields to change (\`name\`, \`current_value\`, \`target_value\`, \`lead\`, \`archived\`, etc.).
 
 ### KPIs
 - **list_kpis**: List KPIs with pagination and filters. Supports \`limit\`, \`cursor\`, \`name_contains\`, \`lead_id\`, \`group_id\`, \`archived\`, \`status\`, \`is_company_goal\`, \`goal_id\`, \`parent_id\`, \`order_by\`.
@@ -62,6 +69,12 @@ This server provides access to Perdoo OKR data including objectives, key results
 ### Key Result Type
 - **KEY_RESULT**: Quantitative metric (has start/target/current values)
 - **INITIATIVE**: Qualitative deliverable (progress is manual)
+
+### Initiative vs Key Result
+- **Initiatives** are projects or tasks that support key results
+- Initiatives do NOT contribute to objective progress (only key results do)
+- Initiatives can track progress via Binary, Milestone, or metric values
+- Use \`list_initiatives\` (not \`list_key_results\` with type filter) for cleaner results
 
 ### KPI Metric Unit
 - **NUMERICAL**: Plain number
@@ -114,6 +127,14 @@ Example flow:
 - \`objective_stage\`: Filter by parent objective stage
 - \`timeframe_id\`: Filter by timeframe UUID
 
+### list_initiatives filters:
+- \`name_contains\`: Case-insensitive name search
+- \`objective_id\`: Filter by parent objective UUID
+- \`lead_id\`: Filter by lead user UUID
+- \`archived\`: Filter by archived status
+- \`status\`: Filter by commit status
+- \`timeframe_id\`: Filter by timeframe UUID
+
 ### list_kpis filters:
 - \`name_contains\`: Case-insensitive name search
 - \`lead_id\`: Filter by lead user UUID
@@ -128,6 +149,8 @@ Example flow:
 
 - **Objectives** contain **Key Results** (accessible via get_objective)
 - **Key Results** belong to an **Objective** (parent, required for creation)
+- **Initiatives** belong to an **Objective** (parent, required for creation)
+- **Initiatives** do NOT contribute to objective progress
 - **KPIs** can align to a **Goal** (strategic pillar)
 - **KPIs** can have a **Parent** KPI (hierarchy for aggregation)
 - **KPIs** can have **Children** KPIs (sub-KPIs)
@@ -155,6 +178,7 @@ Example flow:
 All create and update operations use Perdoo's upsert mutations:
 - **create_objective** / **update_objective**: Uses \`upsertObjective\` mutation
 - **create_key_result** / **update_key_result**: Uses \`upsertKeyResult\` mutation
+- **create_initiative** / **update_initiative**: Uses \`upsertKeyResult\` mutation with type set to INITIATIVE
 - **create_kpi** / **update_kpi**: Uses \`upsertKpi\` mutation
 
 Mutation behavior:
@@ -218,6 +242,7 @@ export function createMcpServer(): McpServer {
   registerObjectiveTools(server, client);
   registerKeyResultTools(server, client);
   registerKpiTools(server, client);
+  registerInitiativeTools(server, client);
 
   logger.info('MCP server created with all tools registered');
   return server;

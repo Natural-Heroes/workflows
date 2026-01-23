@@ -36,6 +36,7 @@ import {
   KEY_RESULT_QUERY,
   UPSERT_KEY_RESULT_MUTATION,
 } from './operations/key-results.js';
+import { INITIATIVES_QUERY } from './operations/initiatives.js';
 import {
   KPIS_QUERY,
   KPI_QUERY,
@@ -51,6 +52,7 @@ import type {
   KeyResultData,
   UpsertKeyResultData,
   UpsertKeyResultInput,
+  InitiativesData,
   KpisData,
   KpiData,
   UpsertKpiData,
@@ -431,6 +433,96 @@ export class PerdooClient {
   async updateKpi(id: string, input: Omit<UpsertKpiInput, 'id'>): Promise<UpsertKpiData> {
     return this.execute<UpsertKpiData>(
       UPSERT_KPI_MUTATION,
+      { input: { ...input, id } },
+      { isMutation: true }
+    );
+  }
+
+  // ===========================================================================
+  // Initiative Operations
+  // ===========================================================================
+
+  /**
+   * Lists initiatives with pagination and optional filters.
+   *
+   * Uses the dedicated `initiatives(...)` root query which is pre-filtered
+   * server-side to return only key results with type=INITIATIVE.
+   * Initiatives are key results with type=INITIATIVE under the hood.
+   *
+   * @param params - Pagination and filter parameters
+   * @returns Initiatives connection data (same KeyResult type, filtered by type=INITIATIVE)
+   */
+  async listInitiatives(params?: {
+    first?: number;
+    after?: string;
+    name_Icontains?: string;
+    objective?: string;
+    lead_Id?: string;
+    archived?: boolean;
+    status_In?: string;
+    objectiveStage?: string;
+    timeframe?: string;
+    orderBy?: string;
+  }): Promise<InitiativesData> {
+    return this.execute<InitiativesData>(INITIATIVES_QUERY, {
+      first: params?.first ?? 20,
+      after: params?.after,
+      name_Icontains: params?.name_Icontains,
+      objective: params?.objective,
+      lead_Id: params?.lead_Id,
+      archived: params?.archived,
+      status_In: params?.status_In,
+      objectiveStage: params?.objectiveStage,
+      timeframe: params?.timeframe,
+      orderBy: params?.orderBy,
+    });
+  }
+
+  /**
+   * Gets a single initiative by UUID with full details.
+   *
+   * Reuses the `result(id: UUID!)` root query (works for both key results
+   * and initiatives since they are the same underlying type).
+   *
+   * @param id - Initiative UUID
+   * @returns Key result data (initiative is a key result with type=INITIATIVE)
+   */
+  async getInitiative(id: string): Promise<KeyResultData> {
+    return this.execute<KeyResultData>(KEY_RESULT_QUERY, { id });
+  }
+
+  /**
+   * Creates a new initiative (upsert without id, type forced to INITIATIVE).
+   *
+   * Mutations are never retried to prevent duplicate side effects.
+   * Uses the upsertKeyResult mutation with type set to INITIATIVE.
+   * Initiatives are key results with type=INITIATIVE under the hood.
+   *
+   * @param input - Initiative creation input (must include name and objective)
+   * @returns Upsert result with key result (initiative) and errors
+   */
+  async createInitiative(input: Omit<UpsertKeyResultInput, 'id' | 'type'>): Promise<UpsertKeyResultData> {
+    return this.execute<UpsertKeyResultData>(
+      UPSERT_KEY_RESULT_MUTATION,
+      { input: { ...input, type: 'INITIATIVE' } },
+      { isMutation: true }
+    );
+  }
+
+  /**
+   * Updates an existing initiative (upsert with id).
+   *
+   * Mutations are never retried to prevent duplicate side effects.
+   * Uses the upsertKeyResult mutation with the ID included.
+   * Does not force type on update (initiative type is already set).
+   *
+   * @param id - Initiative UUID to update
+   * @param input - Fields to update
+   * @returns Upsert result with key result (initiative) and errors
+   */
+  async updateInitiative(id: string, input: Omit<UpsertKeyResultInput, 'id'>): Promise<UpsertKeyResultData> {
+    return this.execute<UpsertKeyResultData>(
+      UPSERT_KEY_RESULT_MUTATION,
       { input: { ...input, id } },
       { isMutation: true }
     );

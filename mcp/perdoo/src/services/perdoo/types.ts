@@ -299,6 +299,17 @@ export interface KeyResultData {
 }
 
 /**
+ * Response type for initiatives list query.
+ *
+ * Initiatives are key results with type=INITIATIVE. The dedicated `initiatives(...)`
+ * root query returns the same keyResultConnection type, pre-filtered to only
+ * include initiatives. Reuses the KeyResult type since the schema type is identical.
+ */
+export interface InitiativesData {
+  initiatives: Connection<KeyResult>;
+}
+
+/**
  * Response type for upsertKeyResult mutation.
  *
  * Uses same upsert pattern as objectives:
