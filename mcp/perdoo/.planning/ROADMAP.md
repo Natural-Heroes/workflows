@@ -11,7 +11,7 @@ Build a GraphQL-to-MCP bridge server that exposes Perdoo's OKR management API as
 - Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
 
 - [x] **Phase 1: Foundation + Objectives** - Infrastructure, GraphQL client, resilience stack, and first entity proving the integration pattern
-- [ ] **Phase 2: Key Results + KPIs** - High/medium-confidence entities replicating the proven pattern
+- [x] **Phase 2: Key Results + KPIs** - High/medium-confidence entities replicating the proven pattern
 - [ ] **Phase 3: Initiatives + Strategic Pillars** - Medium/low-confidence entities completing full API coverage
 
 ## Phase Details
@@ -45,8 +45,8 @@ Plans:
 **Plans:** 2 plans
 
 Plans:
-- [ ] 02-01-PLAN.md -- Introspect KR schema, create operations/types/client/tools for Key Results
-- [ ] 02-02-PLAN.md -- Introspect KPI schema, create operations/types/client/tools for KPIs, update instructions
+- [x] 02-01-PLAN.md -- Introspect KR schema, create operations/types/client/tools for Key Results
+- [x] 02-02-PLAN.md -- Introspect KPI schema, create operations/types/client/tools for KPIs, update instructions
 
 ### Phase 3: Initiatives + Strategic Pillars
 **Goal**: Full API coverage -- LLMs can manage all five Perdoo entity types through a single MCP interface
@@ -71,5 +71,5 @@ Phases execute in numeric order: 1 -> 2 -> 3
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation + Objectives | 3/3 | Complete | 2026-01-23 |
-| 2. Key Results + KPIs | 0/2 | Not started | - |
+| 2. Key Results + KPIs | 2/2 | Complete | 2026-01-23 |
 | 3. Initiatives + Strategic Pillars | 0/2 | Not started | - |

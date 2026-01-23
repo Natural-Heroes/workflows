@@ -7,34 +7,34 @@
 
 ### Infrastructure
 
-- [ ] **INFRA-01**: Server validates Bearer token at startup (fail-fast on missing credentials)
-- [ ] **INFRA-02**: GraphQL client executes queries/mutations against Perdoo endpoint with resilience stack (retry, rate limiter, circuit breaker, request queue)
-- [ ] **INFRA-03**: GraphQL error responses (200 with errors array) are detected and surfaced as typed errors
-- [ ] **INFRA-04**: Mutations are not retried (only queries are safe to retry)
-- [ ] **INFRA-05**: Session-based MCP-over-HTTP transport via Express (matching MRPeasy pattern)
-- [ ] **INFRA-06**: Server instructions resource provides LLM usage guidance
-- [ ] **INFRA-07**: Schema introspection query runs to discover exact types/fields before tool implementation
+- [x] **INFRA-01**: Server validates Bearer token at startup (fail-fast on missing credentials)
+- [x] **INFRA-02**: GraphQL client executes queries/mutations against Perdoo endpoint with resilience stack (retry, rate limiter, circuit breaker, request queue)
+- [x] **INFRA-03**: GraphQL error responses (200 with errors array) are detected and surfaced as typed errors
+- [x] **INFRA-04**: Mutations are not retried (only queries are safe to retry)
+- [x] **INFRA-05**: Session-based MCP-over-HTTP transport via Express (matching MRPeasy pattern)
+- [x] **INFRA-06**: Server instructions resource provides LLM usage guidance
+- [x] **INFRA-07**: Schema introspection query runs to discover exact types/fields before tool implementation
 
 ### Objectives
 
-- [ ] **OBJ-01**: User can list objectives with pagination and filtering
-- [ ] **OBJ-02**: User can get a single objective by ID
-- [ ] **OBJ-03**: User can create an objective with required fields
-- [ ] **OBJ-04**: User can update an existing objective
+- [x] **OBJ-01**: User can list objectives with pagination and filtering
+- [x] **OBJ-02**: User can get a single objective by ID
+- [x] **OBJ-03**: User can create an objective with required fields
+- [x] **OBJ-04**: User can update an existing objective
 
 ### Key Results
 
-- [ ] **KR-01**: User can list key results with pagination and filtering
-- [ ] **KR-02**: User can get a single key result by ID
-- [ ] **KR-03**: User can create a key result under an objective
-- [ ] **KR-04**: User can update an existing key result
+- [x] **KR-01**: User can list key results with pagination and filtering
+- [x] **KR-02**: User can get a single key result by ID
+- [x] **KR-03**: User can create a key result under an objective
+- [x] **KR-04**: User can update an existing key result
 
 ### KPIs
 
-- [ ] **KPI-01**: User can list KPIs with pagination and filtering
-- [ ] **KPI-02**: User can get a single KPI by ID
-- [ ] **KPI-03**: User can create a KPI
-- [ ] **KPI-04**: User can update an existing KPI
+- [x] **KPI-01**: User can list KPIs with pagination and filtering
+- [x] **KPI-02**: User can get a single KPI by ID
+- [x] **KPI-03**: User can create a KPI
+- [x] **KPI-04**: User can update an existing KPI
 
 ### Initiatives
 
@@ -84,14 +84,14 @@
 | OBJ-02 | Phase 1 | Complete |
 | OBJ-03 | Phase 1 | Complete |
 | OBJ-04 | Phase 1 | Complete |
-| KR-01 | Phase 2 | Pending |
-| KR-02 | Phase 2 | Pending |
-| KR-03 | Phase 2 | Pending |
-| KR-04 | Phase 2 | Pending |
-| KPI-01 | Phase 2 | Pending |
-| KPI-02 | Phase 2 | Pending |
-| KPI-03 | Phase 2 | Pending |
-| KPI-04 | Phase 2 | Pending |
+| KR-01 | Phase 2 | Complete |
+| KR-02 | Phase 2 | Complete |
+| KR-03 | Phase 2 | Complete |
+| KR-04 | Phase 2 | Complete |
+| KPI-01 | Phase 2 | Complete |
+| KPI-02 | Phase 2 | Complete |
+| KPI-03 | Phase 2 | Complete |
+| KPI-04 | Phase 2 | Complete |
 | INIT-01 | Phase 3 | Pending |
 | INIT-02 | Phase 3 | Pending |
 | INIT-03 | Phase 3 | Pending |
@@ -108,4 +108,4 @@
 
 ---
 *Requirements defined: 2026-01-23*
-*Last updated: 2026-01-23 after Phase 1 completion*
+*Last updated: 2026-01-23 after Phase 2 completion*
