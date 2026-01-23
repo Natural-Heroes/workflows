@@ -1,0 +1,38 @@
+{
+  "name": "perdoo-mcp",
+  "version": "0.1.0",
+  "description": "MCP server for Perdoo OKR GraphQL API integration",
+  "type": "module",
+  "main": "dist/server.js",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "typecheck": "tsc --noEmit",
+    "introspect": "tsx src/scripts/introspect.ts",
+    "docker:build": "docker build -t perdoo-mcp .",
+    "docker:run": "docker run -p 3001:3001 --env-file .env perdoo-mcp"
+  },
+  "keywords": [
+    "mcp",
+    "perdoo",
+    "okr",
+    "graphql"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.15.0",
+    "express": "^4.21.0",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.10.7",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

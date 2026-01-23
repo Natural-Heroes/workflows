@@ -1,0 +1,799 @@
+/**
+ * Perdoo GraphQL API types.
+ *
+ * Types for Perdoo OKR entities. Validated against real Perdoo API
+ * via __type introspection queries (full introspection is disabled).
+ */
+
+// ============================================================================
+// Pagination Types
+// ============================================================================
+
+/**
+ * GraphQL connection pagination info.
+ */
+export interface PageInfo {
+  /** Whether there are more pages */
+  hasNextPage: boolean;
+  /** Whether there are previous pages */
+  hasPreviousPage: boolean;
+  /** Cursor for the first item */
+  startCursor?: string;
+  /** Cursor for the last item */
+  endCursor?: string;
+}
+
+/**
+ * Generic GraphQL connection type for paginated results.
+ */
+export interface Connection<T> {
+  /** Array of edge nodes */
+  edges: Array<{
+    node: T;
+    cursor: string;
+  }>;
+  /** Pagination info */
+  pageInfo: PageInfo;
+  /** Total count of items */
+  totalCount?: number;
+}
+
+// ============================================================================
+// Enums (validated via __type queries)
+// ============================================================================
+
+/**
+ * Objective commit status (progress indicator).
+ */
+export type CommitStatus =
+  | 'NO_STATUS'
+  | 'OFF_TRACK'
+  | 'NEEDS_ATTENTION'
+  | 'ON_TRACK'
+  | 'ACCOMPLISHED';
+
+/**
+ * Objective lifecycle stage.
+ */
+export type ObjectiveStage = 'DRAFT' | 'ACTIVE' | 'CLOSED';
+
+/**
+ * How objective progress is calculated.
+ */
+export type ProgressDriver = 'KEY_RESULTS' | 'ALIGNED_OBJECTIVES' | 'BOTH';
+
+/**
+ * Goal update cadence.
+ */
+export type GoalUpdateCycle =
+  | 'WEEKLY'
+  | 'BIWEEKLY'
+  | 'MONTHLY'
+  | 'QUARTERLY'
+  | 'EVERY_4_MONTHS';
+
+/**
+ * Key result type (metric vs initiative).
+ *
+ * Discovered via PerdooApiKeyResultTypeChoices enum reference
+ * in the objectives query filter (keyResults_Type).
+ */
+export type KeyResultType = 'KEY_RESULT' | 'INITIATIVE';
+
+/**
+ * KPI metric unit (currency or numerical type).
+ *
+ * Discovered via MetricUnit enum introspection.
+ * Includes NUMERICAL, PERCENTAGE, and ISO 4217 currency codes.
+ */
+export type MetricUnit =
+  | 'NUMERICAL'
+  | 'PERCENTAGE'
+  | 'AED' | 'EUR' | 'USD' | 'GBP' | 'AUD' | 'BRL' | 'CAD' | 'CHF'
+  | 'CLP' | 'CNY' | 'CZK' | 'DKK' | 'HKD' | 'HUF' | 'IDR' | 'ILS'
+  | 'INR' | 'IQD' | 'JOD' | 'JPY' | 'KES' | 'KRW' | 'KWD' | 'KZT'
+  | 'MXN' | 'MYR' | 'NGN' | 'NOK' | 'NZD' | 'PHP' | 'PKR' | 'PLN'
+  | 'RON' | 'RUB' | 'SAR' | 'SEK' | 'SGD' | 'THB' | 'TRY' | 'TWD'
+  | 'ZAR';
+
+/**
+ * KPI target type (direction of progress).
+ *
+ * Discovered via TargetType enum introspection.
+ */
+export type KpiTargetType =
+  | 'STAY_AT_OR_ABOVE'
+  | 'STAY_AT_OR_BELOW'
+  | 'INCREASE_TO'
+  | 'DECREASE_TO';
+
+/**
+ * KPI goal operator (comparison direction for targets).
+ *
+ * Discovered via PerdooApiKpiGoalOperatorChoices enum introspection.
+ */
+export type KpiGoalOperator =
+  | 'GREATER_THAN_OR_EQUAL'
+  | 'LESS_THAN_OR_EQUAL';
+
+/**
+ * KPI aggregation method (how child KPIs roll up).
+ *
+ * Discovered via AggregationMethod enum introspection.
+ */
+export type KpiAggregationMethod = 'WEIGHTED_AVERAGE' | 'SUM';
+
+/**
+ * KPI target frequency (how often targets are set).
+ *
+ * Discovered via GoalTargetFrequency enum introspection.
+ */
+export type KpiTargetFrequency = 'WEEKLY' | 'MONTHLY' | 'QUARTERLY' | 'YEARLY';
+
+/**
+ * KPI progress driver choices (how progress is calculated).
+ *
+ * Discovered via ProgressDriverChoices enum introspection.
+ * Different from objective ProgressDriver -- KPIs support MANUAL, INTEGRATION, ALIGNED_GOALS.
+ */
+export type KpiProgressDriver = 'MANUAL' | 'INTEGRATION' | 'ALIGNED_GOALS';
+
+// ============================================================================
+// Domain Types (validated against real Perdoo API)
+// ============================================================================
+
+/**
+ * Perdoo user reference (lead, contributor).
+ */
+export interface PerdooUser {
+  id: string;
+  name: string;
+  email?: string;
+}
+
+/**
+ * Perdoo group (team/department).
+ */
+export interface PerdooGroup {
+  id: string;
+  name: string;
+}
+
+/**
+ * Perdoo timeframe (quarter, year, etc.).
+ */
+export interface PerdooTimeframe {
+  id: string;
+  name: string;
+}
+
+/**
+ * Perdoo key result reference.
+ */
+export interface PerdooKeyResult {
+  id: string;
+  name: string;
+}
+
+/**
+ * Perdoo tag reference.
+ */
+export interface PerdooTag {
+  id: string;
+  name: string;
+}
+
+/**
+ * Perdoo Objective entity.
+ *
+ * Type name in API is lowercase `objective`. Uses UUID scalars for IDs.
+ * Status is a CommitStatus enum, stage is ObjectiveStage enum.
+ */
+export interface Objective {
+  id: string;
+  name: string;
+  description?: string | null;
+  progress?: number | null;
+  status: CommitStatus;
+  stage: ObjectiveStage;
+  weight: number;
+  private: boolean;
+  isCompanyGoal: boolean;
+  completed: boolean;
+  progressDriver: ProgressDriver;
+  goalUpdateCycle: GoalUpdateCycle;
+  lead?: PerdooUser | null;
+  timeframe: PerdooTimeframe;
+  parent?: { id: string; name: string } | null;
+  groups: Connection<PerdooGroup>;
+  keyResults?: Connection<PerdooKeyResult> | null;
+  children: Connection<{ id: string; name: string }>;
+  contributors: Connection<PerdooUser>;
+  tags: Connection<PerdooTag>;
+  startDate?: string | null;
+  dueDate?: string | null;
+  createdDate: string;
+  lastEditedDate: string;
+}
+
+/**
+ * Response type for objectives list query.
+ */
+export interface ObjectivesData {
+  objectives: Connection<Objective>;
+}
+
+/**
+ * Response type for single objective query.
+ */
+export interface ObjectiveData {
+  objective: Objective;
+}
+
+/**
+ * Response type for upsertObjective mutation.
+ *
+ * The API uses a single upsert mutation for both create and update.
+ * When input.id is null/omitted, it creates. When present, it updates.
+ */
+export interface UpsertObjectiveData {
+  upsertObjective: {
+    objective: Objective | null;
+    errors: Array<{ field: string; messages: string[] }>;
+    clientMutationId?: string | null;
+  };
+}
+
+// ============================================================================
+// Key Result Types (validated via __type queries + Query/Mutation introspection)
+// ============================================================================
+
+/**
+ * Perdoo Key Result entity.
+ *
+ * Type name in API is lowercase `keyResult`. Uses UUID scalars for IDs.
+ * Status is a CommitStatus enum, type is KeyResultType.
+ * Singular query: `result(id: UUID!)`
+ * Plural query: `keyResults(...)`
+ */
+export interface KeyResult {
+  id: string;
+  name: string;
+  description?: string | null;
+  status: CommitStatus;
+  type: KeyResultType;
+  weight: number;
+  startValue?: number | null;
+  endValue?: number | null;
+  currentValue?: number | null;
+  metricUnit?: string | null;
+  targetType?: string | null;
+  archived?: boolean;
+  lead?: PerdooUser | null;
+  objective?: { id: string; name: string } | null;
+  parent?: { id: string; name: string } | null;
+  childrenCount?: number;
+  contributors?: Connection<PerdooUser> | null;
+  tags?: Connection<PerdooTag> | null;
+  startDate?: string | null;
+  dueDate?: string | null;
+  createdDate?: string;
+  lastEditedDate?: string;
+}
+
+/**
+ * Response type for keyResults list query.
+ */
+export interface KeyResultsData {
+  keyResults: Connection<KeyResult>;
+}
+
+/**
+ * Response type for single key result query (result query).
+ *
+ * Note: The singular query is `result(id: UUID!)` not `keyResult(id: ...)`.
+ */
+export interface KeyResultData {
+  result: KeyResult;
+}
+
+/**
+ * Response type for initiatives list query.
+ *
+ * Initiatives are key results with type=INITIATIVE. The dedicated `initiatives(...)`
+ * root query returns the same keyResultConnection type, pre-filtered to only
+ * include initiatives. Reuses the KeyResult type since the schema type is identical.
+ */
+export interface InitiativesData {
+  initiatives: Connection<KeyResult>;
+}
+
+/**
+ * Response type for upsertResult mutation (key results and initiatives).
+ *
+ * Uses same upsert pattern as objectives:
+ * - When input.id is omitted, creates a new key result
+ * - When input.id is provided, updates the existing key result
+ * - Mutation is `upsertResult`, payload field is `keyResult`
+ */
+export interface UpsertKeyResultData {
+  upsertResult: {
+    keyResult: KeyResult | null;
+    errors: Array<{ field: string; messages: string[] }>;
+    clientMutationId?: string | null;
+  };
+}
+
+// ============================================================================
+// KPI Types (validated via __type queries + Query/Mutation introspection)
+// ============================================================================
+
+/**
+ * Perdoo KPI entity.
+ *
+ * Type name in API is lowercase `kpi`. Uses UUID scalars for IDs.
+ * Status is CommitStatus enum (field: lastCommitStatus), metricUnit is MetricUnit enum.
+ * Singular query: `kpi(id: UUID!)`
+ * Plural query: `allKpis(...)`
+ */
+export interface Kpi {
+  id: string;
+  name: string;
+  description?: string | null;
+  lastCommitStatus: CommitStatus;
+  metricUnit: MetricUnit;
+  startValue?: number | null;
+  currentValue?: number | null;
+  targetType: KpiTargetType;
+  goalOperator?: KpiGoalOperator | null;
+  weight: number;
+  isCompanyGoal: boolean;
+  archived: boolean;
+  private: boolean;
+  progressDriver: KpiProgressDriver;
+  goalUpdateCycle: GoalUpdateCycle;
+  targetFrequency: KpiTargetFrequency;
+  resetTargetEveryCycle: boolean;
+  aggregationMethod: KpiAggregationMethod;
+  goalThreshold?: number | null;
+  isOutdated: boolean;
+  progress?: number | null;
+  createdDate: string;
+  archivedDate?: string | null;
+  lead?: PerdooUser | null;
+  parent?: { id: string; name: string } | null;
+  goal?: { id: string; name: string } | null;
+  groups?: Connection<PerdooGroup> | null;
+  tags?: Connection<PerdooTag> | null;
+  children?: Connection<{ id: string; name: string }> | null;
+}
+
+/**
+ * Response type for allKpis list query.
+ */
+export interface KpisData {
+  allKpis: Connection<Kpi>;
+}
+
+/**
+ * Response type for single KPI query.
+ */
+export interface KpiData {
+  kpi: Kpi;
+}
+
+/**
+ * Response type for upsertKpi mutation.
+ *
+ * Uses same upsert pattern as objectives and key results:
+ * - When input.id is omitted, creates a new KPI
+ * - When input.id is provided, updates the existing KPI
+ *
+ * Input type name is UpsertKPIMutationInput (uppercase KPI).
+ */
+export interface UpsertKpiData {
+  upsertKpi: {
+    kpi: Kpi | null;
+    errors: Array<{ field: string; messages: string[] }>;
+    clientMutationId?: string | null;
+  };
+}
+
+// ============================================================================
+// Input Types (validated via __type on UpsertObjectiveMutationInput)
+// ============================================================================
+
+/**
+ * Input for upserting an objective (create or update).
+ *
+ * Maps to UpsertObjectiveMutationInput in the Perdoo GraphQL schema.
+ * All fields are optional. When `id` is omitted, a new objective is created.
+ * When `id` is provided, the existing objective is updated.
+ */
+export interface UpsertObjectiveInput {
+  /** Objective ID (omit for create, provide for update) */
+  id?: string;
+  /** Objective name/title */
+  name?: string;
+  /** Objective description */
+  description?: string;
+  /** Lead user ID */
+  lead?: string;
+  /** Group IDs */
+  groups?: string[];
+  /** Timeframe ID */
+  timeframe?: string;
+  /** Parent objective ID */
+  parent?: string;
+  /** Lifecycle stage (DRAFT, ACTIVE, CLOSED) */
+  stage?: string;
+  /** Contributor user IDs */
+  contributors?: string[];
+  /** Whether objective is private */
+  private?: boolean;
+  /** Progress driver (KEY_RESULTS, ALIGNED_OBJECTIVES, BOTH) */
+  progressDriver?: string;
+  /** Whether this is a company-level goal */
+  isCompanyGoal?: boolean;
+  /** Update cadence (WEEKLY, BIWEEKLY, MONTHLY, QUARTERLY, EVERY_4_MONTHS) */
+  goalUpdateCycle?: string;
+  /** Display order index */
+  mapIndex?: number;
+  /** Strategic pillar/goal ID */
+  goal?: string;
+  /** KPI ID */
+  kpi?: string;
+  /** Parent key result ID */
+  parentKeyResult?: string;
+  /** Tag IDs */
+  tags?: string[];
+  /** Client mutation ID for request tracking */
+  clientMutationId?: string;
+}
+
+// ============================================================================
+// Key Result Input Types
+// ============================================================================
+
+/**
+ * Input for upserting a key result (create or update).
+ *
+ * Maps to UpsertResultMutationInput in the Perdoo GraphQL schema.
+ * Follows same upsert pattern as objectives.
+ * When `id` is omitted, a new key result is created.
+ * When `id` is provided, the existing key result is updated.
+ */
+export interface UpsertKeyResultInput {
+  /** Key result ID (omit for create, provide for update) */
+  id?: string;
+  /** Key result name/title */
+  name?: string;
+  /** Key result description */
+  description?: string;
+  /** Parent objective ID (required for create) */
+  objective?: string;
+  /** Lead user ID */
+  lead?: string;
+  /** Key result type (KEY_RESULT or INITIATIVE) */
+  type?: string;
+  /** Starting value for metric tracking */
+  startValue?: number;
+  /** End/target value for metric tracking */
+  endValue?: number;
+  /** Current value for metric tracking */
+  currentValue?: number;
+  /** Metric unit (NUMERICAL, PERCENTAGE, or currency code) */
+  metricUnit?: string;
+  /** Target type direction (INCREASE_TO, DECREASE_TO, etc.) */
+  targetType?: string;
+  /** Weight for progress contribution */
+  weight?: number;
+  /** Whether key result is archived */
+  archived?: boolean;
+  /** Client mutation ID for request tracking */
+  clientMutationId?: string;
+}
+
+// ============================================================================
+// KPI Input Types (validated via __type on UpsertKPIMutationInput)
+// ============================================================================
+
+/**
+ * Input for upserting a KPI (create or update).
+ *
+ * Maps to UpsertKPIMutationInput in the Perdoo GraphQL schema.
+ * Follows same upsert pattern as objectives and key results.
+ * When `id` is omitted, a new KPI is created.
+ * When `id` is provided, the existing KPI is updated.
+ *
+ * Note: The input type name uses uppercase KPI (UpsertKPIMutationInput)
+ * while the entity type uses lowercase (kpi).
+ */
+export interface UpsertKpiInput {
+  /** KPI ID (omit for create, provide for update) */
+  id?: string;
+  /** KPI name/title */
+  name?: string;
+  /** KPI description */
+  description?: string;
+  /** Lead user ID */
+  lead?: string;
+  /** Group IDs */
+  groups?: string[];
+  /** Metric unit (NUMERICAL, PERCENTAGE, or currency code) */
+  metricUnit?: string;
+  /** Current metric value */
+  currentValue?: number;
+  /** Starting metric value */
+  startValue?: number;
+  /** Target type direction (STAY_AT_OR_ABOVE, STAY_AT_OR_BELOW, INCREASE_TO, DECREASE_TO) */
+  targetType?: string;
+  /** Goal operator (GREATER_THAN_OR_EQUAL, LESS_THAN_OR_EQUAL) */
+  goalOperator?: string;
+  /** Weight for aggregation contribution */
+  weight?: number;
+  /** Whether this is a company-level KPI */
+  isCompanyGoal?: boolean;
+  /** Strategic goal ID */
+  goal?: string;
+  /** Parent KPI ID */
+  parent?: string;
+  /** Whether KPI is private */
+  private?: boolean;
+  /** Progress driver (MANUAL, INTEGRATION, ALIGNED_GOALS) */
+  progressDriver?: string;
+  /** Update cadence (WEEKLY, BIWEEKLY, MONTHLY, QUARTERLY, EVERY_4_MONTHS) */
+  goalUpdateCycle?: string;
+  /** Target frequency (WEEKLY, MONTHLY, QUARTERLY, YEARLY) */
+  targetFrequency?: string;
+  /** Whether to reset target every cycle */
+  resetTargetEveryCycle?: boolean;
+  /** Aggregation method (WEIGHTED_AVERAGE, SUM) */
+  aggregationMethod?: string;
+  /** Goal threshold value */
+  goalThreshold?: number;
+  /** Whether KPI is archived */
+  archived?: boolean;
+  /** Tag IDs */
+  tags?: string[];
+  /** Users visible to (for private KPIs) */
+  visibleTo?: string[];
+  /** Integration ID */
+  integration?: string;
+  /** Integration field name */
+  integrationField?: string;
+  /** Progress integration ID */
+  progressIntegration?: string;
+  /** Progress integration config JSON */
+  progressIntegrationConfig?: string;
+  /** Data source identifier */
+  source?: string;
+  /** Client mutation ID for request tracking */
+  clientMutationId?: string;
+}
+
+// ============================================================================
+// Strategic Pillar Types (Goal type, validated via __type queries)
+// ============================================================================
+
+/**
+ * Perdoo Goal type choices (filter for goals query).
+ *
+ * Used to filter the `goals(...)` query by goal type.
+ * STRATEGIC_PILLAR identifies strategic pillar goals.
+ */
+export type GoalTypeChoice = 'STRATEGIC_PILLAR';
+
+/**
+ * Perdoo Goal status choices.
+ *
+ * Used to filter strategic pillars by status.
+ * Mirrors the PerdooApiGoalStatusChoices enum.
+ */
+export type GoalStatusChoice =
+  | 'NO_STATUS'
+  | 'OFF_TRACK'
+  | 'NEEDS_ATTENTION'
+  | 'ON_TRACK'
+  | 'ACCOMPLISHED';
+
+/**
+ * Perdoo Strategic Pillar entity (Goal type in API).
+ *
+ * Strategic pillars are long-term focus areas that define organizational direction.
+ * In the API, they are represented as Goal objects with type=STRATEGIC_PILLAR.
+ * Singular query: `goal(id: UUID!)`
+ * Plural query: `goals(type: STRATEGIC_PILLAR, ...)`
+ *
+ * Mutation: `upsertGoal` with type set to STRATEGIC_PILLAR.
+ */
+export interface StrategicPillar {
+  id: string;
+  name: string;
+  description?: string | null;
+  status: GoalStatusChoice;
+  type: GoalTypeChoice;
+  progress?: number | null;
+  currentValue?: number | null;
+  startDate?: string | null;
+  endDate?: string | null;
+  archived?: boolean;
+  private?: boolean;
+  isCompanyGoal?: boolean;
+  createdDate?: string;
+  lead?: PerdooUser | null;
+  timeframe?: PerdooTimeframe | null;
+  parent?: { id: string; name: string } | null;
+  groups?: Connection<PerdooGroup> | null;
+  children?: Connection<{ id: string; name: string }> | null;
+  tags?: Connection<PerdooTag> | null;
+}
+
+/**
+ * Response type for goals list query (strategic pillars).
+ */
+export interface StrategicPillarsData {
+  goals: Connection<StrategicPillar>;
+}
+
+/**
+ * Response type for single goal query (strategic pillar).
+ */
+export interface StrategicPillarData {
+  goal: StrategicPillar;
+}
+
+/**
+ * Response type for upsertGoal mutation.
+ */
+export interface UpsertGoalData {
+  upsertGoal: {
+    goal: StrategicPillar | null;
+    errors: Array<{ field: string; messages: string[] }> | null;
+    clientMutationId?: string | null;
+  };
+}
+
+/**
+ * Input type for upsertGoal mutation.
+ *
+ * Maps to UpsertGoalMutationInput in the Perdoo GraphQL schema.
+ * When `id` is omitted, a new goal is created.
+ * When `id` is provided, the existing goal is updated.
+ */
+export interface UpsertGoalInput {
+  /** Goal ID (omit for create, provide for update) */
+  id?: string;
+  /** Goal name/title */
+  name?: string;
+  /** Goal description */
+  description?: string;
+  /** Goal type (always STRATEGIC_PILLAR for strategic pillars) */
+  type?: string;
+  /** Whether this is a company-wide goal */
+  isCompanyGoal?: boolean;
+  /** Lead user ID */
+  lead?: string;
+  /** Group IDs */
+  groups?: string[];
+  /** Goal stage */
+  stage?: string;
+  /** Timeframe ID */
+  timeframe?: string;
+  /** Whether goal is archived */
+  archived?: boolean;
+  /** Data source identifier */
+  source?: string;
+  /** Client mutation ID for request tracking */
+  clientMutationId?: string;
+}
+
+// ============================================================================
+// Introspection Types
+// ============================================================================
+
+/**
+ * Response type for schema introspection query.
+ */
+export interface IntrospectionData {
+  __schema: {
+    queryType: { name: string } | null;
+    mutationType: { name: string } | null;
+    subscriptionType: { name: string } | null;
+    types: Array<{
+      kind: string;
+      name: string;
+      description?: string;
+      fields?: Array<{
+        name: string;
+        description?: string;
+        args: Array<{
+          name: string;
+          description?: string;
+          type: IntrospectionTypeRef;
+          defaultValue?: string;
+        }>;
+        type: IntrospectionTypeRef;
+        isDeprecated?: boolean;
+        deprecationReason?: string;
+      }>;
+      inputFields?: Array<{
+        name: string;
+        description?: string;
+        type: IntrospectionTypeRef;
+        defaultValue?: string;
+      }>;
+      enumValues?: Array<{
+        name: string;
+        description?: string;
+        isDeprecated?: boolean;
+        deprecationReason?: string;
+      }>;
+    }>;
+  };
+}
+
+/**
+ * GraphQL introspection type reference (recursive).
+ */
+export interface IntrospectionTypeRef {
+  kind: string;
+  name?: string;
+  ofType?: IntrospectionTypeRef;
+}
+
+// ============================================================================
+// Helper Types (timeframes, users, groups)
+// ============================================================================
+
+/**
+ * Perdoo timeframe entity.
+ */
+export interface Timeframe {
+  id: string;
+  name: string;
+  startDate: string;
+  endDate: string;
+  status?: string;
+  active?: boolean;
+}
+
+/**
+ * Response type for timeframes query.
+ */
+export interface TimeframesData {
+  timeframes: Connection<Timeframe>;
+}
+
+/**
+ * Perdoo user entity.
+ */
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  role?: string;
+  isActive?: boolean;
+}
+
+/**
+ * Response type for allUsers query.
+ */
+export interface UsersData {
+  allUsers: Connection<User>;
+}
+
+/**
+ * Perdoo group entity.
+ */
+export interface Group {
+  id: string;
+  name: string;
+}
+
+/**
+ * Response type for allGroups query.
+ */
+export interface GroupsData {
+  allGroups: Connection<Group>;
+}
