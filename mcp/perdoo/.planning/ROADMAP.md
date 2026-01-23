@@ -42,11 +42,11 @@ Plans:
   2. LLM can create a key result under a specific objective and update its properties
   3. LLM can list and get KPIs with filtering
   4. LLM can create and update KPIs
-**Plans**: TBD
+**Plans:** 2 plans
 
 Plans:
-- [ ] 02-01: Key Results operations and tools
-- [ ] 02-02: KPIs operations and tools
+- [ ] 02-01-PLAN.md -- Introspect KR schema, create operations/types/client/tools for Key Results
+- [ ] 02-02-PLAN.md -- Introspect KPI schema, create operations/types/client/tools for KPIs, update instructions
 
 ### Phase 3: Initiatives + Strategic Pillars
 **Goal**: Full API coverage -- LLMs can manage all five Perdoo entity types through a single MCP interface
