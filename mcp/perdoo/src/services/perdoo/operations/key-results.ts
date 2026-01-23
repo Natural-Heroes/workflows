@@ -42,7 +42,9 @@ export const KEY_RESULTS_QUERY = `
     $status_In: String,
     $objectiveStage: String,
     $timeframe: UUID,
-    $orderBy: String
+    $orderBy: String,
+    $parent: UUID,
+    $parent_Isnull: Boolean
   ) {
     keyResults(
       first: $first,
@@ -55,7 +57,9 @@ export const KEY_RESULTS_QUERY = `
       status_In: $status_In,
       objectiveStage: $objectiveStage,
       timeframe: $timeframe,
-      orderBy: $orderBy
+      orderBy: $orderBy,
+      parent: $parent,
+      parent_Isnull: $parent_Isnull
     ) {
       pageInfo {
         hasNextPage
@@ -79,11 +83,16 @@ export const KEY_RESULTS_QUERY = `
           archived
           startDate
           dueDate
+          childrenCount
           lead {
             id
             name
           }
           objective {
+            id
+            name
+          }
+          parent {
             id
             name
           }

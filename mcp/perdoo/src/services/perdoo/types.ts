@@ -271,6 +271,8 @@ export interface KeyResult {
   archived?: boolean;
   lead?: PerdooUser | null;
   objective?: { id: string; name: string } | null;
+  parent?: { id: string; name: string } | null;
+  childrenCount?: number;
   contributors?: Connection<PerdooUser> | null;
   tags?: Connection<PerdooTag> | null;
   startDate?: string | null;

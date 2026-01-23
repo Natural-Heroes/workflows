@@ -89,11 +89,27 @@ export function registerKeyResultTools(
         .string()
         .optional()
         .describe('Sort field (e.g., "name", "-createdDate")'),
+      parent_id: z
+        .string()
+        .nullable()
+        .optional()
+        .describe('Filter by parent key result UUID. Pass a UUID to get direct children, pass null to get only top-level key results (no parent), omit to get all.'),
     },
     async (params) => {
       logger.debug('list_key_results tool called', { params });
 
       try {
+        // Handle parent_id filter: string = children of that parent, null = top-level only
+        let parentFilter: string | undefined;
+        let parentIsnull: boolean | undefined;
+        if (params.parent_id !== undefined) {
+          if (params.parent_id === null) {
+            parentIsnull = true;
+          } else {
+            parentFilter = params.parent_id;
+          }
+        }
+
         const data = await client.listKeyResults({
           first: params.limit,
           after: params.cursor,
@@ -106,6 +122,8 @@ export function registerKeyResultTools(
           objectiveStage: params.objective_stage,
           timeframe: params.timeframe_id,
           orderBy: params.order_by,
+          parent: parentFilter,
+          parent_Isnull: parentIsnull,
         });
 
         const connection = data.keyResults;
@@ -123,6 +141,8 @@ export function registerKeyResultTools(
           archived: edge.node.archived ?? false,
           lead: edge.node.lead ? { id: edge.node.lead.id, name: edge.node.lead.name } : null,
           objective: edge.node.objective ? { id: edge.node.objective.id, name: edge.node.objective.name } : null,
+          parent: edge.node.parent ? { id: edge.node.parent.id, name: edge.node.parent.name } : null,
+          children_count: edge.node.childrenCount ?? 0,
         }));
 
         const response = {

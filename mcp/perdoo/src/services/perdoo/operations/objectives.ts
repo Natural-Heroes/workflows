@@ -22,7 +22,8 @@ export const OBJECTIVES_QUERY = `
     $lead_Id: UUID,
     $groups_Id: UUID,
     $timeframe_Cadence_Id: UUID,
-    $status: CommitStatus
+    $status: CommitStatus,
+    $parent_Id: String
   ) {
     objectives(
       first: $first,
@@ -32,7 +33,8 @@ export const OBJECTIVES_QUERY = `
       lead_Id: $lead_Id,
       groups_Id: $groups_Id,
       timeframe_Cadence_Id: $timeframe_Cadence_Id,
-      status: $status
+      status: $status,
+      parent_Id: $parent_Id
     ) {
       pageInfo {
         hasNextPage
@@ -56,6 +58,13 @@ export const OBJECTIVES_QUERY = `
           timeframe {
             id
             name
+          }
+          parent {
+            id
+            name
+          }
+          children {
+            totalCount
           }
           groups {
             edges {

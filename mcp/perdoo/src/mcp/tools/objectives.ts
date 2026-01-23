@@ -72,23 +72,35 @@ export function registerObjectiveTools(
         .string()
         .optional()
         .describe('Filter by group UUID'),
+      parent_id: z
+        .string()
+        .nullable()
+        .optional()
+        .describe('Filter by parent objective UUID. Pass a UUID to get direct children, pass null to get only top-level objectives (no parent), omit to get all.'),
     },
     async (params) => {
       logger.debug('list_objectives tool called', { params });
 
       try {
+        // Handle parent_id filter: string = children of that parent, null = top-level only
+        const isTopLevelOnly = params.parent_id === null;
+        const parentIdFilter = (params.parent_id !== undefined && params.parent_id !== null)
+          ? params.parent_id
+          : undefined;
+
         const data = await client.listObjectives({
-          first: params.limit,
+          first: isTopLevelOnly ? 100 : params.limit,
           after: params.cursor,
           name_Icontains: params.name_contains,
           stage: params.stage,
           status: params.status,
           lead_Id: params.lead_id,
           groups_Id: params.group_id,
+          parent_Id: parentIdFilter,
         });
 
         const connection = data.objectives;
-        const objectives = connection.edges.map((edge) => ({
+        let objectives = connection.edges.map((edge) => ({
           id: edge.node.id,
           name: edge.node.name,
           description: edge.node.description ?? null,
@@ -97,8 +109,15 @@ export function registerObjectiveTools(
           stage: edge.node.stage,
           lead: edge.node.lead ? { id: edge.node.lead.id, name: edge.node.lead.name } : null,
           timeframe: edge.node.timeframe ? { id: edge.node.timeframe.id, name: edge.node.timeframe.name } : null,
+          parent: edge.node.parent ? { id: edge.node.parent.id, name: edge.node.parent.name } : null,
+          children_count: edge.node.children?.totalCount ?? 0,
           groups: edge.node.groups?.edges?.map((g) => ({ id: g.node.id, name: g.node.name })) ?? [],
         }));
+
+        // Client-side filter for top-level only (API doesn't support parent_Isnull for objectives)
+        if (isTopLevelOnly) {
+          objectives = objectives.filter(o => o.parent === null).slice(0, params.limit);
+        }
 
         const response = {
           summary: `${objectives.length} objective${objectives.length !== 1 ? 's' : ''} returned.${connection.pageInfo.hasNextPage ? ' More available.' : ''}`,

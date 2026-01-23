@@ -211,6 +211,7 @@ export class PerdooClient {
     groups_Id?: string;
     timeframe_Cadence_Id?: string;
     status?: string;
+    parent_Id?: string;
   }): Promise<ObjectivesData> {
     return this.execute<ObjectivesData>(OBJECTIVES_QUERY, {
       first: params?.first ?? 20,
@@ -221,6 +222,7 @@ export class PerdooClient {
       groups_Id: params?.groups_Id,
       timeframe_Cadence_Id: params?.timeframe_Cadence_Id,
       status: params?.status,
+      parent_Id: params?.parent_Id,
     });
   }
 
@@ -294,6 +296,8 @@ export class PerdooClient {
     objectiveStage?: string;
     timeframe?: string;
     orderBy?: string;
+    parent?: string;
+    parent_Isnull?: boolean;
   }): Promise<KeyResultsData> {
     return this.execute<KeyResultsData>(KEY_RESULTS_QUERY, {
       first: params?.first ?? 20,
@@ -307,6 +311,8 @@ export class PerdooClient {
       objectiveStage: params?.objectiveStage,
       timeframe: params?.timeframe,
       orderBy: params?.orderBy,
+      parent: params?.parent,
+      parent_Isnull: params?.parent_Isnull,
     });
   }
 
