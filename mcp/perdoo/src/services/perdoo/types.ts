@@ -581,6 +581,77 @@ export interface UpsertKpiInput {
 }
 
 // ============================================================================
+// Strategic Pillar Types (Goal type, validated via __type queries)
+// ============================================================================
+
+/**
+ * Perdoo Goal type choices (filter for goals query).
+ *
+ * Used to filter the `goals(...)` query by goal type.
+ * STRATEGIC_PILLAR identifies strategic pillar goals.
+ */
+export type GoalTypeChoice = 'STRATEGIC_PILLAR';
+
+/**
+ * Perdoo Goal status choices.
+ *
+ * Used to filter strategic pillars by status.
+ * Mirrors the PerdooApiGoalStatusChoices enum.
+ */
+export type GoalStatusChoice =
+  | 'NO_STATUS'
+  | 'OFF_TRACK'
+  | 'NEEDS_ATTENTION'
+  | 'ON_TRACK'
+  | 'ACCOMPLISHED';
+
+/**
+ * Perdoo Strategic Pillar entity (Goal type in API).
+ *
+ * Strategic pillars are long-term focus areas that define organizational direction.
+ * In the API, they are represented as Goal objects with type=STRATEGIC_PILLAR.
+ * Singular query: `goal(id: UUID!)`
+ * Plural query: `goals(type: STRATEGIC_PILLAR, ...)`
+ *
+ * Note: Strategic pillars are read-only via the API (no mutation exists).
+ */
+export interface StrategicPillar {
+  id: string;
+  name: string;
+  description?: string | null;
+  status: GoalStatusChoice;
+  type: GoalTypeChoice;
+  progress?: number | null;
+  currentValue?: number | null;
+  startDate?: string | null;
+  endDate?: string | null;
+  archived?: boolean;
+  private?: boolean;
+  isCompanyGoal?: boolean;
+  createdDate?: string;
+  lead?: PerdooUser | null;
+  timeframe?: PerdooTimeframe | null;
+  parent?: { id: string; name: string } | null;
+  groups?: Connection<PerdooGroup> | null;
+  children?: Connection<{ id: string; name: string }> | null;
+  tags?: Connection<PerdooTag> | null;
+}
+
+/**
+ * Response type for goals list query (strategic pillars).
+ */
+export interface StrategicPillarsData {
+  goals: Connection<StrategicPillar>;
+}
+
+/**
+ * Response type for single goal query (strategic pillar).
+ */
+export interface StrategicPillarData {
+  goal: StrategicPillar;
+}
+
+// ============================================================================
 // Introspection Types
 // ============================================================================
 

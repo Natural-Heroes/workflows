@@ -38,6 +38,10 @@ import {
 } from './operations/key-results.js';
 import { INITIATIVES_QUERY } from './operations/initiatives.js';
 import {
+  STRATEGIC_PILLARS_QUERY,
+  STRATEGIC_PILLAR_QUERY,
+} from './operations/strategic-pillars.js';
+import {
   KPIS_QUERY,
   KPI_QUERY,
   UPSERT_KPI_MUTATION,
@@ -57,6 +61,8 @@ import type {
   KpiData,
   UpsertKpiData,
   UpsertKpiInput,
+  StrategicPillarsData,
+  StrategicPillarData,
   IntrospectionData,
 } from './types.js';
 
@@ -526,6 +532,55 @@ export class PerdooClient {
       { input: { ...input, id } },
       { isMutation: true }
     );
+  }
+
+  // ===========================================================================
+  // Strategic Pillar Operations
+  // ===========================================================================
+
+  /**
+   * Lists strategic pillars with pagination and optional filters.
+   *
+   * Uses the `goals(...)` root query with type pre-set to STRATEGIC_PILLAR.
+   * Returns a relay-style connection with pageInfo and edges.
+   * Supports Django-style filter arguments.
+   *
+   * Note: Strategic pillars are read-only (no mutation exists in the API).
+   *
+   * @param params - Pagination and filter parameters
+   * @returns Strategic pillars connection data
+   */
+  async listStrategicPillars(params?: {
+    first?: number;
+    after?: string;
+    status?: string;
+    lead_Id?: string;
+    parent_Id?: string;
+    archived?: boolean;
+    orderBy?: string;
+  }): Promise<StrategicPillarsData> {
+    return this.execute<StrategicPillarsData>(STRATEGIC_PILLARS_QUERY, {
+      first: params?.first ?? 20,
+      after: params?.after,
+      type: 'STRATEGIC_PILLAR',
+      status: params?.status,
+      lead_Id: params?.lead_Id,
+      parent_Id: params?.parent_Id,
+      archived: params?.archived,
+      orderBy: params?.orderBy,
+    });
+  }
+
+  /**
+   * Gets a single strategic pillar by UUID with full details.
+   *
+   * Uses the `goal(id: UUID!)` root query.
+   *
+   * @param id - Strategic pillar UUID
+   * @returns Strategic pillar data with all fields and relationships
+   */
+  async getStrategicPillar(id: string): Promise<StrategicPillarData> {
+    return this.execute<StrategicPillarData>(STRATEGIC_PILLAR_QUERY, { id });
   }
 
   // ===========================================================================

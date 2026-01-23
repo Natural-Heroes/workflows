@@ -12,6 +12,7 @@ import { registerObjectiveTools } from './objectives.js';
 import { registerKeyResultTools } from './key-results.js';
 import { registerKpiTools } from './kpis.js';
 import { registerInitiativeTools } from './initiatives.js';
+import { registerStrategicPillarTools } from './strategic-pillars.js';
 
 /**
  * Brief server description shown during initialization.
@@ -51,6 +52,10 @@ This server provides access to Perdoo OKR data including objectives, key results
 - **get_kpi**: Get a single KPI by UUID with full details including metric values, targets, and configuration.
 - **create_kpi**: Create a new KPI. \`name\` is required. Provide \`metric_unit\`, \`target_type\`, \`current_value\`, \`lead\`, \`goal\`, \`parent\`, or \`additional_fields\`.
 - **update_kpi**: Update an existing KPI by UUID. Provide any fields to change (\`name\`, \`current_value\`, \`metric_unit\`, \`target_type\`, \`lead\`, \`archived\`, etc.).
+
+### Strategic Pillars
+- **list_strategic_pillars**: List strategic pillars with pagination and filters. Supports \`limit\`, \`cursor\`, \`status\`, \`lead_id\`, \`archived\`, \`order_by\`, \`parent_id\`.
+- **get_strategic_pillar**: Get a single strategic pillar by UUID with full details.
 
 ## Key Concepts
 
@@ -96,6 +101,13 @@ This server provides access to Perdoo OKR data including objectives, key results
 - **KEY_RESULTS**: Progress calculated from key results
 - **ALIGNED_OBJECTIVES**: Progress from child objectives
 - **BOTH**: Combined calculation
+
+### Strategic Pillars
+- Strategic pillars are long-term focus areas that define organizational direction
+- Objectives and KPIs can align to a strategic pillar via their \`goal\` field
+- Creating/modifying strategic pillars requires Superadmin permissions in Perdoo
+- Strategic pillars are read-only via the API (use Perdoo web interface to manage)
+- In the Perdoo API, strategic pillars are Goal entities with type=STRATEGIC_PILLAR
 
 ## Pagination
 
@@ -145,13 +157,21 @@ Example flow:
 - \`goal_id\`: Filter by strategic goal UUID
 - \`parent_id\`: Filter by parent KPI UUID
 
+### list_strategic_pillars filters:
+- \`status\`: Filter by goal status
+- \`lead_id\`: Filter by lead user UUID
+- \`archived\`: Filter by archived status
+- \`parent_id\`: Filter by parent pillar UUID (for sub-pillars)
+
 ## Entity Relationships
 
+- **Strategic Pillars** are long-term focus areas for the organization
+- **Objectives** can align to a **Strategic Pillar** (via goal field on create/update)
+- **KPIs** can align to a **Strategic Pillar** (via goal field on create/update)
 - **Objectives** contain **Key Results** (accessible via get_objective)
 - **Key Results** belong to an **Objective** (parent, required for creation)
 - **Initiatives** belong to an **Objective** (parent, required for creation)
 - **Initiatives** do NOT contribute to objective progress
-- **KPIs** can align to a **Goal** (strategic pillar)
 - **KPIs** can have a **Parent** KPI (hierarchy for aggregation)
 - **KPIs** can have **Children** KPIs (sub-KPIs)
 - **Objectives** and **KPIs** belong to **Groups** (teams/departments)
@@ -194,6 +214,10 @@ Errors are returned with actionable suggestions:
 - **Rate limits**: Wait before retrying (automatic backoff is applied)
 - **Service unavailable**: The circuit breaker is open; wait 30 seconds
 - **Validation errors**: Returned in response.errors array with field and messages
+
+## Limitations
+
+- **Strategic Pillars are read-only**: The Perdoo API does not expose a public mutation for creating or modifying strategic pillars. Use the Perdoo web interface for pillar management.
 `;
 
 /**
@@ -243,6 +267,7 @@ export function createMcpServer(): McpServer {
   registerKeyResultTools(server, client);
   registerKpiTools(server, client);
   registerInitiativeTools(server, client);
+  registerStrategicPillarTools(server, client);
 
   logger.info('MCP server created with all tools registered');
   return server;
