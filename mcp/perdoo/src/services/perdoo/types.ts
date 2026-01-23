@@ -112,18 +112,20 @@ export interface CreateObjectiveInput {
   ownerId?: string;
   teamId?: string;
   timeframeId?: string;
+  [key: string]: unknown;
 }
 
 /**
  * Input for updating an objective.
+ * Note: id is passed separately to the mutation, not in the input.
  */
 export interface UpdateObjectiveInput {
-  id: string;
   name?: string;
   description?: string;
   ownerId?: string;
   teamId?: string;
   timeframeId?: string;
+  [key: string]: unknown;
 }
 
 // ============================================================================
