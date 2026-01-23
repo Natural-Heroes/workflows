@@ -26,6 +26,22 @@ import {
   CircuitBreaker,
   createCircuitBreaker,
 } from './circuit-breaker.js';
+import {
+  OBJECTIVES_QUERY,
+  OBJECTIVE_QUERY,
+  CREATE_OBJECTIVE_MUTATION,
+  UPDATE_OBJECTIVE_MUTATION,
+} from './operations/objectives.js';
+import { INTROSPECTION_QUERY } from './operations/introspection.js';
+import type {
+  ObjectivesData,
+  ObjectiveData,
+  CreateObjectiveData,
+  UpdateObjectiveData,
+  CreateObjectiveInput,
+  UpdateObjectiveInput,
+  IntrospectionData,
+} from './types.js';
 
 /**
  * Perdoo client configuration.
@@ -146,6 +162,83 @@ export class PerdooClient {
       });
     });
   }
+
+  // ===========================================================================
+  // Typed Operations
+  // ===========================================================================
+
+  /**
+   * Lists objectives with pagination.
+   *
+   * Returns a relay-style connection with pageInfo and edges.
+   *
+   * @param params - Optional pagination parameters
+   * @returns Objectives connection data
+   */
+  async listObjectives(params?: { first?: number; after?: string }): Promise<ObjectivesData> {
+    return this.execute<ObjectivesData>(OBJECTIVES_QUERY, {
+      first: params?.first ?? 20,
+      after: params?.after,
+    });
+  }
+
+  /**
+   * Gets a single objective by ID with full details.
+   *
+   * @param id - Objective ID
+   * @returns Objective data with all fields and relationships
+   */
+  async getObjective(id: string): Promise<ObjectiveData> {
+    return this.execute<ObjectiveData>(OBJECTIVE_QUERY, { id });
+  }
+
+  /**
+   * Creates a new objective.
+   *
+   * Mutations are never retried to prevent duplicate side effects.
+   *
+   * @param input - Objective creation input
+   * @returns Created objective data
+   */
+  async createObjective(input: CreateObjectiveInput): Promise<CreateObjectiveData> {
+    return this.execute<CreateObjectiveData>(
+      CREATE_OBJECTIVE_MUTATION,
+      { input },
+      { isMutation: true }
+    );
+  }
+
+  /**
+   * Updates an existing objective.
+   *
+   * Mutations are never retried to prevent duplicate side effects.
+   *
+   * @param id - Objective ID to update
+   * @param input - Fields to update
+   * @returns Updated objective data
+   */
+  async updateObjective(id: string, input: UpdateObjectiveInput): Promise<UpdateObjectiveData> {
+    return this.execute<UpdateObjectiveData>(
+      UPDATE_OBJECTIVE_MUTATION,
+      { id, input },
+      { isMutation: true }
+    );
+  }
+
+  /**
+   * Runs a schema introspection query.
+   *
+   * Used to discover available types, fields, and operations.
+   *
+   * @returns Schema introspection data
+   */
+  async introspect(): Promise<IntrospectionData> {
+    return this.execute<IntrospectionData>(INTROSPECTION_QUERY);
+  }
+
+  // ===========================================================================
+  // Private Implementation
+  // ===========================================================================
 
   /**
    * Executes the actual GraphQL HTTP request.
