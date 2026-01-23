@@ -154,6 +154,8 @@ export interface IntrospectionData {
           defaultValue?: string;
         }>;
         type: IntrospectionTypeRef;
+        isDeprecated?: boolean;
+        deprecationReason?: string;
       }>;
       inputFields?: Array<{
         name: string;
@@ -164,6 +166,8 @@ export interface IntrospectionData {
       enumValues?: Array<{
         name: string;
         description?: string;
+        isDeprecated?: boolean;
+        deprecationReason?: string;
       }>;
     }>;
   };
