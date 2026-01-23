@@ -72,6 +72,14 @@ export type GoalUpdateCycle =
   | 'QUARTERLY'
   | 'EVERY_4_MONTHS';
 
+/**
+ * Key result type (metric vs initiative).
+ *
+ * Discovered via PerdooApiKeyResultTypeChoices enum reference
+ * in the objectives query filter (keyResults_Type).
+ */
+export type KeyResultType = 'KEY_RESULT' | 'INITIATIVE';
+
 // ============================================================================
 // Domain Types (validated against real Perdoo API)
 // ============================================================================
@@ -179,6 +187,75 @@ export interface UpsertObjectiveData {
 }
 
 // ============================================================================
+// Key Result Types (validated via __type queries + Query/Mutation introspection)
+// ============================================================================
+
+/**
+ * Perdoo Key Result entity.
+ *
+ * Type name in API is lowercase `keyResult`. Uses UUID scalars for IDs.
+ * Status is a CommitStatus enum, type is KeyResultType.
+ * Singular query: `result(id: UUID!)`
+ * Plural query: `keyResults(...)`
+ */
+export interface KeyResult {
+  id: string;
+  name: string;
+  description?: string | null;
+  progress?: number | null;
+  status: CommitStatus;
+  type: KeyResultType;
+  weight: number;
+  startValue?: number | null;
+  targetValue?: number | null;
+  currentValue?: number | null;
+  unit?: string | null;
+  private?: boolean;
+  archived?: boolean;
+  lead?: PerdooUser | null;
+  objective?: { id: string; name: string } | null;
+  timeframe?: PerdooTimeframe | null;
+  groups?: Connection<PerdooGroup> | null;
+  contributors?: Connection<PerdooUser> | null;
+  tags?: Connection<PerdooTag> | null;
+  startDate?: string | null;
+  dueDate?: string | null;
+  createdDate?: string;
+  lastEditedDate?: string;
+}
+
+/**
+ * Response type for keyResults list query.
+ */
+export interface KeyResultsData {
+  keyResults: Connection<KeyResult>;
+}
+
+/**
+ * Response type for single key result query (result query).
+ *
+ * Note: The singular query is `result(id: UUID!)` not `keyResult(id: ...)`.
+ */
+export interface KeyResultData {
+  result: KeyResult;
+}
+
+/**
+ * Response type for upsertKeyResult mutation.
+ *
+ * Uses same upsert pattern as objectives:
+ * - When input.id is omitted, creates a new key result
+ * - When input.id is provided, updates the existing key result
+ */
+export interface UpsertKeyResultData {
+  upsertKeyResult: {
+    keyResult: KeyResult | null;
+    errors: Array<{ field: string; messages: string[] }>;
+    clientMutationId?: string | null;
+  };
+}
+
+// ============================================================================
 // Input Types (validated via __type on UpsertObjectiveMutationInput)
 // ============================================================================
 
@@ -224,6 +301,57 @@ export interface UpsertObjectiveInput {
   kpi?: string;
   /** Parent key result ID */
   parentKeyResult?: string;
+  /** Tag IDs */
+  tags?: string[];
+  /** Client mutation ID for request tracking */
+  clientMutationId?: string;
+}
+
+// ============================================================================
+// Key Result Input Types
+// ============================================================================
+
+/**
+ * Input for upserting a key result (create or update).
+ *
+ * Maps to UpsertKeyResultMutationInput in the Perdoo GraphQL schema.
+ * Follows same upsert pattern as objectives.
+ * When `id` is omitted, a new key result is created.
+ * When `id` is provided, the existing key result is updated.
+ */
+export interface UpsertKeyResultInput {
+  /** Key result ID (omit for create, provide for update) */
+  id?: string;
+  /** Key result name/title */
+  name?: string;
+  /** Key result description */
+  description?: string;
+  /** Parent objective ID (required for create) */
+  objective?: string;
+  /** Lead user ID */
+  lead?: string;
+  /** Key result type (KEY_RESULT or INITIATIVE) */
+  type?: string;
+  /** Starting value for metric tracking */
+  startValue?: number;
+  /** Target value for metric tracking */
+  targetValue?: number;
+  /** Current value for metric tracking */
+  currentValue?: number;
+  /** Unit label for metric values */
+  unit?: string;
+  /** Weight for progress contribution */
+  weight?: number;
+  /** Timeframe ID */
+  timeframe?: string;
+  /** Whether key result is private */
+  private?: boolean;
+  /** Whether key result is archived */
+  archived?: boolean;
+  /** Contributor user IDs */
+  contributors?: string[];
+  /** Group IDs */
+  groups?: string[];
   /** Tag IDs */
   tags?: string[];
   /** Client mutation ID for request tracking */
