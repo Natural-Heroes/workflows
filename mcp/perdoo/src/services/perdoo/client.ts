@@ -29,17 +29,14 @@ import {
 import {
   OBJECTIVES_QUERY,
   OBJECTIVE_QUERY,
-  CREATE_OBJECTIVE_MUTATION,
-  UPDATE_OBJECTIVE_MUTATION,
+  UPSERT_OBJECTIVE_MUTATION,
 } from './operations/objectives.js';
 import { INTROSPECTION_QUERY } from './operations/introspection.js';
 import type {
   ObjectivesData,
   ObjectiveData,
-  CreateObjectiveData,
-  UpdateObjectiveData,
-  CreateObjectiveInput,
-  UpdateObjectiveInput,
+  UpsertObjectiveData,
+  UpsertObjectiveInput,
   IntrospectionData,
 } from './types.js';
 
@@ -168,24 +165,40 @@ export class PerdooClient {
   // ===========================================================================
 
   /**
-   * Lists objectives with pagination.
+   * Lists objectives with pagination and optional filters.
    *
    * Returns a relay-style connection with pageInfo and edges.
+   * Supports Django-style filter arguments.
    *
-   * @param params - Optional pagination parameters
+   * @param params - Pagination and filter parameters
    * @returns Objectives connection data
    */
-  async listObjectives(params?: { first?: number; after?: string }): Promise<ObjectivesData> {
+  async listObjectives(params?: {
+    first?: number;
+    after?: string;
+    name_Icontains?: string;
+    stage?: string;
+    lead_Id?: string;
+    groups_Id?: string;
+    timeframe_Cadence_Id?: string;
+    status?: string;
+  }): Promise<ObjectivesData> {
     return this.execute<ObjectivesData>(OBJECTIVES_QUERY, {
       first: params?.first ?? 20,
       after: params?.after,
+      name_Icontains: params?.name_Icontains,
+      stage: params?.stage,
+      lead_Id: params?.lead_Id,
+      groups_Id: params?.groups_Id,
+      timeframe_Cadence_Id: params?.timeframe_Cadence_Id,
+      status: params?.status,
     });
   }
 
   /**
-   * Gets a single objective by ID with full details.
+   * Gets a single objective by UUID with full details.
    *
-   * @param id - Objective ID
+   * @param id - Objective UUID
    * @returns Objective data with all fields and relationships
    */
   async getObjective(id: string): Promise<ObjectiveData> {
@@ -193,34 +206,36 @@ export class PerdooClient {
   }
 
   /**
-   * Creates a new objective.
+   * Creates a new objective (upsert without id).
    *
    * Mutations are never retried to prevent duplicate side effects.
+   * Uses the upsertObjective mutation with id omitted.
    *
-   * @param input - Objective creation input
-   * @returns Created objective data
+   * @param input - Objective creation input (must include name)
+   * @returns Upsert result with objective and errors
    */
-  async createObjective(input: CreateObjectiveInput): Promise<CreateObjectiveData> {
-    return this.execute<CreateObjectiveData>(
-      CREATE_OBJECTIVE_MUTATION,
+  async createObjective(input: Omit<UpsertObjectiveInput, 'id'>): Promise<UpsertObjectiveData> {
+    return this.execute<UpsertObjectiveData>(
+      UPSERT_OBJECTIVE_MUTATION,
       { input },
       { isMutation: true }
     );
   }
 
   /**
-   * Updates an existing objective.
+   * Updates an existing objective (upsert with id).
    *
    * Mutations are never retried to prevent duplicate side effects.
+   * Uses the upsertObjective mutation with id included.
    *
-   * @param id - Objective ID to update
+   * @param id - Objective UUID to update
    * @param input - Fields to update
-   * @returns Updated objective data
+   * @returns Upsert result with objective and errors
    */
-  async updateObjective(id: string, input: UpdateObjectiveInput): Promise<UpdateObjectiveData> {
-    return this.execute<UpdateObjectiveData>(
-      UPDATE_OBJECTIVE_MUTATION,
-      { id, input },
+  async updateObjective(id: string, input: Omit<UpsertObjectiveInput, 'id'>): Promise<UpsertObjectiveData> {
+    return this.execute<UpsertObjectiveData>(
+      UPSERT_OBJECTIVE_MUTATION,
+      { input: { ...input, id } },
       { isMutation: true }
     );
   }

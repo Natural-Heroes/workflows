@@ -4,6 +4,12 @@
  * Registers objective CRUD tools for the Perdoo MCP server.
  * Provides list, get, create, and update operations with
  * relay pagination flattening for LLM consumption.
+ *
+ * Validated against real Perdoo API schema:
+ * - Uses upsertObjective mutation (single endpoint for create/update)
+ * - Objective IDs are UUIDs
+ * - Status is CommitStatus enum, stage is ObjectiveStage enum
+ * - Supports Django-style filter args on list
  */
 
 import { z } from 'zod';
@@ -16,10 +22,10 @@ import { handleToolError } from './error-handler.js';
  * Registers objective-related MCP tools with the server.
  *
  * Tools registered:
- * - list_objectives: List objectives with pagination
- * - get_objective: Get a single objective by ID
- * - create_objective: Create a new objective
- * - update_objective: Update an existing objective
+ * - list_objectives: List objectives with pagination and filters
+ * - get_objective: Get a single objective by UUID
+ * - create_objective: Create a new objective (upsert without id)
+ * - update_objective: Update an existing objective (upsert with id)
  *
  * @param server - The MCP server instance
  * @param client - The Perdoo API client
@@ -33,7 +39,7 @@ export function registerObjectiveTools(
   // ===========================================================================
   server.tool(
     'list_objectives',
-    'List Perdoo objectives with pagination. Returns flattened list with pagination info. Use cursor for subsequent pages.',
+    'List Perdoo objectives with pagination and optional filters. Returns flattened list with pagination info. Use cursor for subsequent pages.',
     {
       limit: z
         .number()
@@ -46,6 +52,26 @@ export function registerObjectiveTools(
         .string()
         .optional()
         .describe('Pagination cursor from previous response for next page'),
+      name_contains: z
+        .string()
+        .optional()
+        .describe('Filter by name (case-insensitive contains)'),
+      stage: z
+        .enum(['DRAFT', 'ACTIVE', 'CLOSED'])
+        .optional()
+        .describe('Filter by lifecycle stage'),
+      status: z
+        .enum(['NO_STATUS', 'OFF_TRACK', 'NEEDS_ATTENTION', 'ON_TRACK', 'ACCOMPLISHED'])
+        .optional()
+        .describe('Filter by commit status'),
+      lead_id: z
+        .string()
+        .optional()
+        .describe('Filter by lead user UUID'),
+      group_id: z
+        .string()
+        .optional()
+        .describe('Filter by group UUID'),
     },
     async (params) => {
       logger.debug('list_objectives tool called', { params });
@@ -54,15 +80,24 @@ export function registerObjectiveTools(
         const data = await client.listObjectives({
           first: params.limit,
           after: params.cursor,
+          name_Icontains: params.name_contains,
+          stage: params.stage,
+          status: params.status,
+          lead_Id: params.lead_id,
+          groups_Id: params.group_id,
         });
 
         const connection = data.objectives;
         const objectives = connection.edges.map((edge) => ({
           id: edge.node.id,
           name: edge.node.name,
+          description: edge.node.description ?? null,
+          progress: edge.node.progress ?? null,
           status: edge.node.status,
-          progress: edge.node.progress,
-          timeframe: edge.node.timeframe?.name ?? null,
+          stage: edge.node.stage,
+          lead: edge.node.lead ? { id: edge.node.lead.id, name: edge.node.lead.name } : null,
+          timeframe: edge.node.timeframe ? { id: edge.node.timeframe.id, name: edge.node.timeframe.name } : null,
+          groups: edge.node.groups?.edges?.map((g) => ({ id: g.node.id, name: g.node.name })) ?? [],
         }));
 
         const response = {
@@ -93,11 +128,11 @@ export function registerObjectiveTools(
   // ===========================================================================
   server.tool(
     'get_objective',
-    'Get a single Perdoo objective by ID with full details including description, lead, groups, and key results.',
+    'Get a single Perdoo objective by UUID with full details including description, lead, groups, key results, children, and contributors.',
     {
       id: z
         .string()
-        .describe('The objective ID to retrieve'),
+        .describe('The objective UUID to retrieve'),
     },
     async (params) => {
       logger.debug('get_objective tool called', { id: params.id });
@@ -110,22 +145,42 @@ export function registerObjectiveTools(
           id: obj.id,
           name: obj.name,
           description: obj.description ?? null,
-          status: obj.status ?? null,
           progress: obj.progress ?? null,
-          timeframe: obj.timeframe?.name ?? null,
-          lead: obj.owner ? { id: obj.owner.id, name: obj.owner.name } : null,
-          groups: (obj.team as unknown as { edges?: Array<{ node: { id: string; name: string } }> })?.edges?.map(
-            (edge: { node: { id: string; name: string } }) => ({
-              id: edge.node.id,
-              name: edge.node.name,
-            })
-          ) ?? [],
-          results: (obj as unknown as { results?: { edges: Array<{ node: { id: string; name: string } }> } }).results?.edges?.map(
-            (edge: { node: { id: string; name: string } }) => ({
-              id: edge.node.id,
-              name: edge.node.name,
-            })
-          ) ?? [],
+          status: obj.status,
+          stage: obj.stage,
+          weight: obj.weight,
+          private: obj.private,
+          isCompanyGoal: obj.isCompanyGoal,
+          completed: obj.completed,
+          progressDriver: obj.progressDriver,
+          goalUpdateCycle: obj.goalUpdateCycle,
+          startDate: obj.startDate ?? null,
+          dueDate: obj.dueDate ?? null,
+          createdDate: obj.createdDate,
+          lastEditedDate: obj.lastEditedDate,
+          lead: obj.lead ? { id: obj.lead.id, name: obj.lead.name, email: obj.lead.email ?? null } : null,
+          timeframe: obj.timeframe ? { id: obj.timeframe.id, name: obj.timeframe.name } : null,
+          parent: obj.parent ? { id: obj.parent.id, name: obj.parent.name } : null,
+          groups: obj.groups?.edges?.map((edge) => ({
+            id: edge.node.id,
+            name: edge.node.name,
+          })) ?? [],
+          keyResults: obj.keyResults?.edges?.map((edge) => ({
+            id: edge.node.id,
+            name: edge.node.name,
+          })) ?? [],
+          children: obj.children?.edges?.map((edge) => ({
+            id: edge.node.id,
+            name: edge.node.name,
+          })) ?? [],
+          contributors: obj.contributors?.edges?.map((edge) => ({
+            id: edge.node.id,
+            name: edge.node.name,
+          })) ?? [],
+          tags: obj.tags?.edges?.map((edge) => ({
+            id: edge.node.id,
+            name: edge.node.name,
+          })) ?? [],
         };
 
         return {
@@ -147,7 +202,7 @@ export function registerObjectiveTools(
   // ===========================================================================
   server.tool(
     'create_objective',
-    'Create a new Perdoo objective. Name is required. Additional fields can be passed for schema-specific parameters.',
+    'Create a new Perdoo objective. Name and timeframe are required. Uses the upsertObjective mutation without an ID.',
     {
       name: z
         .string()
@@ -157,10 +212,30 @@ export function registerObjectiveTools(
         .string()
         .optional()
         .describe('Description of the objective'),
+      timeframe: z
+        .string()
+        .optional()
+        .describe('Timeframe UUID (required by Perdoo for new objectives)'),
+      lead: z
+        .string()
+        .optional()
+        .describe('Lead user UUID'),
+      groups: z
+        .array(z.string())
+        .optional()
+        .describe('Array of group UUIDs'),
+      parent: z
+        .string()
+        .optional()
+        .describe('Parent objective UUID for alignment'),
+      stage: z
+        .enum(['DRAFT', 'ACTIVE', 'CLOSED'])
+        .optional()
+        .describe('Lifecycle stage (defaults to DRAFT in Perdoo)'),
       additional_fields: z
         .record(z.unknown())
         .optional()
-        .describe('Additional input fields (e.g., ownerId, teamId, timeframeId). Schema-dependent.'),
+        .describe('Additional UpsertObjectiveMutationInput fields (e.g., progressDriver, isCompanyGoal, goalUpdateCycle)'),
     },
     async (params) => {
       logger.debug('create_objective tool called', { name: params.name });
@@ -169,19 +244,42 @@ export function registerObjectiveTools(
         const input = {
           name: params.name,
           ...(params.description && { description: params.description }),
+          ...(params.timeframe && { timeframe: params.timeframe }),
+          ...(params.lead && { lead: params.lead }),
+          ...(params.groups && { groups: params.groups }),
+          ...(params.parent && { parent: params.parent }),
+          ...(params.stage && { stage: params.stage }),
           ...(params.additional_fields ?? {}),
         };
 
         const data = await client.createObjective(input);
-        const created = data.createObjective.objective;
+        const result = data.upsertObjective;
 
+        // Check for validation errors
+        if (result.errors && result.errors.length > 0) {
+          return {
+            content: [
+              {
+                type: 'text' as const,
+                text: JSON.stringify({
+                  success: false,
+                  errors: result.errors,
+                }),
+              },
+            ],
+            isError: true,
+          };
+        }
+
+        const created = result.objective;
         const response = {
           success: true,
-          objective: {
+          objective: created ? {
             id: created.id,
             name: created.name,
-            status: created.status ?? null,
-          },
+            status: created.status,
+            stage: created.stage,
+          } : null,
         };
 
         return {
@@ -203,30 +301,88 @@ export function registerObjectiveTools(
   // ===========================================================================
   server.tool(
     'update_objective',
-    'Update an existing Perdoo objective. Provide the ID and any fields to update.',
+    'Update an existing Perdoo objective by UUID. Uses the upsertObjective mutation with the ID included.',
     {
       id: z
         .string()
-        .describe('The objective ID to update'),
-      fields: z
+        .describe('The objective UUID to update'),
+      name: z
+        .string()
+        .optional()
+        .describe('New name/title'),
+      description: z
+        .string()
+        .optional()
+        .describe('New description'),
+      lead: z
+        .string()
+        .optional()
+        .describe('New lead user UUID'),
+      groups: z
+        .array(z.string())
+        .optional()
+        .describe('New group UUIDs (replaces existing)'),
+      timeframe: z
+        .string()
+        .optional()
+        .describe('New timeframe UUID'),
+      parent: z
+        .string()
+        .optional()
+        .describe('New parent objective UUID'),
+      stage: z
+        .enum(['DRAFT', 'ACTIVE', 'CLOSED'])
+        .optional()
+        .describe('New lifecycle stage'),
+      additional_fields: z
         .record(z.unknown())
-        .describe('Fields to update (e.g., { name: "New Name", description: "Updated" })'),
+        .optional()
+        .describe('Additional UpsertObjectiveMutationInput fields (e.g., progressDriver, isCompanyGoal)'),
     },
     async (params) => {
       logger.debug('update_objective tool called', { id: params.id });
 
       try {
-        const data = await client.updateObjective(params.id, params.fields as Record<string, unknown>);
-        const updated = data.updateObjective.objective;
+        const input = {
+          ...(params.name && { name: params.name }),
+          ...(params.description !== undefined && { description: params.description }),
+          ...(params.lead && { lead: params.lead }),
+          ...(params.groups && { groups: params.groups }),
+          ...(params.timeframe && { timeframe: params.timeframe }),
+          ...(params.parent && { parent: params.parent }),
+          ...(params.stage && { stage: params.stage }),
+          ...(params.additional_fields ?? {}),
+        };
 
+        const data = await client.updateObjective(params.id, input);
+        const result = data.upsertObjective;
+
+        // Check for validation errors
+        if (result.errors && result.errors.length > 0) {
+          return {
+            content: [
+              {
+                type: 'text' as const,
+                text: JSON.stringify({
+                  success: false,
+                  errors: result.errors,
+                }),
+              },
+            ],
+            isError: true,
+          };
+        }
+
+        const updated = result.objective;
         const response = {
           success: true,
-          objective: {
+          objective: updated ? {
             id: updated.id,
             name: updated.name,
-            status: updated.status ?? null,
+            status: updated.status,
+            stage: updated.stage,
             progress: updated.progress ?? null,
-          },
+          } : null,
         };
 
         return {

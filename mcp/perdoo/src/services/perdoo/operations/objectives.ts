@@ -1,18 +1,39 @@
 /**
  * GraphQL operations for Perdoo Objectives.
  *
- * NOTE: These operation signatures are LOW confidence and will be
- * validated/updated after introspection in Plan 03.
+ * Validated against real Perdoo API via __type queries.
+ * - objectives query uses relay-style pagination with Django filter args
+ * - objective query takes UUID! argument
+ * - upsertObjective handles both create (no id) and update (with id)
  */
 
 /**
- * List objectives with relay-style pagination.
+ * List objectives with relay-style pagination and optional filters.
  *
- * Returns a connection with pageInfo and edges containing basic objective fields.
+ * Returns a connection with pageInfo and edges containing core objective fields.
+ * Filter args use Django-style naming (e.g., name_Icontains, stage, lead_Id).
  */
 export const OBJECTIVES_QUERY = `
-  query ListObjectives($first: Int, $after: String) {
-    objectives(first: $first, after: $after) {
+  query ListObjectives(
+    $first: Int,
+    $after: String,
+    $name_Icontains: String,
+    $stage: String,
+    $lead_Id: UUID,
+    $groups_Id: UUID,
+    $timeframe_Cadence_Id: UUID,
+    $status: CommitStatus
+  ) {
+    objectives(
+      first: $first,
+      after: $after,
+      name_Icontains: $name_Icontains,
+      stage: $stage,
+      lead_Id: $lead_Id,
+      groups_Id: $groups_Id,
+      timeframe_Cadence_Id: $timeframe_Cadence_Id,
+      status: $status
+    ) {
       pageInfo {
         hasNextPage
         hasPreviousPage
@@ -24,10 +45,25 @@ export const OBJECTIVES_QUERY = `
         node {
           id
           name
-          status
+          description
           progress
-          timeframe {
+          status
+          stage
+          lead {
+            id
             name
+          }
+          timeframe {
+            id
+            name
+          }
+          groups {
+            edges {
+              node {
+                id
+                name
+              }
+            }
           }
         }
       }
@@ -36,22 +72,40 @@ export const OBJECTIVES_QUERY = `
 `;
 
 /**
- * Get a single objective by ID with full details.
+ * Get a single objective by UUID with full details.
  *
  * Returns all available fields including relationships.
+ * Uses UUID! scalar type (not ID!).
  */
 export const OBJECTIVE_QUERY = `
-  query GetObjective($id: ID!) {
+  query GetObjective($id: UUID!) {
     objective(id: $id) {
       id
       name
       description
-      status
       progress
+      status
+      stage
+      weight
+      private
+      isCompanyGoal
+      completed
+      progressDriver
+      goalUpdateCycle
+      startDate
+      dueDate
+      createdDate
+      lastEditedDate
+      lead {
+        id
+        name
+        email
+      }
       timeframe {
+        id
         name
       }
-      lead {
+      parent {
         id
         name
       }
@@ -63,7 +117,31 @@ export const OBJECTIVE_QUERY = `
           }
         }
       }
-      results {
+      keyResults {
+        edges {
+          node {
+            id
+            name
+          }
+        }
+      }
+      children {
+        edges {
+          node {
+            id
+            name
+          }
+        }
+      }
+      contributors {
+        edges {
+          node {
+            id
+            name
+          }
+        }
+      }
+      tags {
         edges {
           node {
             id
@@ -76,36 +154,46 @@ export const OBJECTIVE_QUERY = `
 `;
 
 /**
- * Create a new objective.
+ * Upsert (create or update) an objective.
  *
- * Returns the created objective's basic fields.
+ * The Perdoo API uses a single upsert mutation instead of separate create/update.
+ * - To create: omit `id` from input
+ * - To update: include `id` in input
+ *
+ * Returns the objective and any validation errors.
  */
-export const CREATE_OBJECTIVE_MUTATION = `
-  mutation CreateObjective($input: CreateObjectiveInput!) {
-    createObjective(input: $input) {
+export const UPSERT_OBJECTIVE_MUTATION = `
+  mutation UpsertObjective($input: UpsertObjectiveMutationInput!) {
+    upsertObjective(input: $input) {
       objective {
         id
         name
-        status
-      }
-    }
-  }
-`;
-
-/**
- * Update an existing objective.
- *
- * Returns the updated objective's fields including progress.
- */
-export const UPDATE_OBJECTIVE_MUTATION = `
-  mutation UpdateObjective($id: ID!, $input: UpdateObjectiveInput!) {
-    updateObjective(id: $id, input: $input) {
-      objective {
-        id
-        name
-        status
+        description
         progress
+        status
+        stage
+        lead {
+          id
+          name
+        }
+        timeframe {
+          id
+          name
+        }
+        groups {
+          edges {
+            node {
+              id
+              name
+            }
+          }
+        }
       }
+      errors {
+        field
+        messages
+      }
+      clientMutationId
     }
   }
 `;

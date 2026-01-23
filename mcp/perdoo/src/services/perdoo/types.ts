@@ -1,8 +1,8 @@
 /**
  * Perdoo GraphQL API types.
  *
- * Types for Perdoo OKR entities. These are initial placeholder types
- * that will be refined after schema introspection in Phase 1 Plan 3.
+ * Types for Perdoo OKR entities. Validated against real Perdoo API
+ * via __type introspection queries (full introspection is disabled).
  */
 
 // ============================================================================
@@ -39,32 +39,115 @@ export interface Connection<T> {
 }
 
 // ============================================================================
-// Domain Types (Placeholders - refined after introspection)
+// Enums (validated via __type queries)
 // ============================================================================
 
 /**
+ * Objective commit status (progress indicator).
+ */
+export type CommitStatus =
+  | 'NO_STATUS'
+  | 'OFF_TRACK'
+  | 'NEEDS_ATTENTION'
+  | 'ON_TRACK'
+  | 'ACCOMPLISHED';
+
+/**
+ * Objective lifecycle stage.
+ */
+export type ObjectiveStage = 'DRAFT' | 'ACTIVE' | 'CLOSED';
+
+/**
+ * How objective progress is calculated.
+ */
+export type ProgressDriver = 'KEY_RESULTS' | 'ALIGNED_OBJECTIVES' | 'BOTH';
+
+/**
+ * Goal update cadence.
+ */
+export type GoalUpdateCycle =
+  | 'WEEKLY'
+  | 'BIWEEKLY'
+  | 'MONTHLY'
+  | 'QUARTERLY'
+  | 'EVERY_4_MONTHS';
+
+// ============================================================================
+// Domain Types (validated against real Perdoo API)
+// ============================================================================
+
+/**
+ * Perdoo user reference (lead, contributor).
+ */
+export interface PerdooUser {
+  id: string;
+  name: string;
+  email?: string;
+}
+
+/**
+ * Perdoo group (team/department).
+ */
+export interface PerdooGroup {
+  id: string;
+  name: string;
+}
+
+/**
+ * Perdoo timeframe (quarter, year, etc.).
+ */
+export interface PerdooTimeframe {
+  id: string;
+  name: string;
+}
+
+/**
+ * Perdoo key result reference.
+ */
+export interface PerdooKeyResult {
+  id: string;
+  name: string;
+}
+
+/**
+ * Perdoo tag reference.
+ */
+export interface PerdooTag {
+  id: string;
+  name: string;
+}
+
+/**
  * Perdoo Objective entity.
+ *
+ * Type name in API is lowercase `objective`. Uses UUID scalars for IDs.
+ * Status is a CommitStatus enum, stage is ObjectiveStage enum.
  */
 export interface Objective {
   id: string;
   name: string;
-  description?: string;
-  owner?: {
-    id: string;
-    name: string;
-  };
-  team?: {
-    id: string;
-    name: string;
-  };
-  timeframe?: {
-    id: string;
-    name: string;
-  };
-  progress?: number;
-  status?: string;
-  createdAt?: string;
-  updatedAt?: string;
+  description?: string | null;
+  progress?: number | null;
+  status: CommitStatus;
+  stage: ObjectiveStage;
+  weight: number;
+  private: boolean;
+  isCompanyGoal: boolean;
+  completed: boolean;
+  progressDriver: ProgressDriver;
+  goalUpdateCycle: GoalUpdateCycle;
+  lead?: PerdooUser | null;
+  timeframe: PerdooTimeframe;
+  parent?: { id: string; name: string } | null;
+  groups: Connection<PerdooGroup>;
+  keyResults?: Connection<PerdooKeyResult> | null;
+  children: Connection<{ id: string; name: string }>;
+  contributors: Connection<PerdooUser>;
+  tags: Connection<PerdooTag>;
+  startDate?: string | null;
+  dueDate?: string | null;
+  createdDate: string;
+  lastEditedDate: string;
 }
 
 /**
@@ -82,50 +165,69 @@ export interface ObjectiveData {
 }
 
 /**
- * Response type for create objective mutation.
+ * Response type for upsertObjective mutation.
+ *
+ * The API uses a single upsert mutation for both create and update.
+ * When input.id is null/omitted, it creates. When present, it updates.
  */
-export interface CreateObjectiveData {
-  createObjective: {
-    objective: Objective;
-  };
-}
-
-/**
- * Response type for update objective mutation.
- */
-export interface UpdateObjectiveData {
-  updateObjective: {
-    objective: Objective;
+export interface UpsertObjectiveData {
+  upsertObjective: {
+    objective: Objective | null;
+    errors: Array<{ field: string; messages: string[] }>;
+    clientMutationId?: string | null;
   };
 }
 
 // ============================================================================
-// Input Types (Placeholders - refined after introspection)
+// Input Types (validated via __type on UpsertObjectiveMutationInput)
 // ============================================================================
 
 /**
- * Input for creating an objective.
+ * Input for upserting an objective (create or update).
+ *
+ * Maps to UpsertObjectiveMutationInput in the Perdoo GraphQL schema.
+ * All fields are optional. When `id` is omitted, a new objective is created.
+ * When `id` is provided, the existing objective is updated.
  */
-export interface CreateObjectiveInput {
-  name: string;
-  description?: string;
-  ownerId?: string;
-  teamId?: string;
-  timeframeId?: string;
-  [key: string]: unknown;
-}
-
-/**
- * Input for updating an objective.
- * Note: id is passed separately to the mutation, not in the input.
- */
-export interface UpdateObjectiveInput {
+export interface UpsertObjectiveInput {
+  /** Objective ID (omit for create, provide for update) */
+  id?: string;
+  /** Objective name/title */
   name?: string;
+  /** Objective description */
   description?: string;
-  ownerId?: string;
-  teamId?: string;
-  timeframeId?: string;
-  [key: string]: unknown;
+  /** Lead user ID */
+  lead?: string;
+  /** Group IDs */
+  groups?: string[];
+  /** Timeframe ID */
+  timeframe?: string;
+  /** Parent objective ID */
+  parent?: string;
+  /** Lifecycle stage (DRAFT, ACTIVE, CLOSED) */
+  stage?: string;
+  /** Contributor user IDs */
+  contributors?: string[];
+  /** Whether objective is private */
+  private?: boolean;
+  /** Progress driver (KEY_RESULTS, ALIGNED_OBJECTIVES, BOTH) */
+  progressDriver?: string;
+  /** Whether this is a company-level goal */
+  isCompanyGoal?: boolean;
+  /** Update cadence (WEEKLY, BIWEEKLY, MONTHLY, QUARTERLY, EVERY_4_MONTHS) */
+  goalUpdateCycle?: string;
+  /** Display order index */
+  mapIndex?: number;
+  /** Strategic pillar/goal ID */
+  goal?: string;
+  /** KPI ID */
+  kpi?: string;
+  /** Parent key result ID */
+  parentKeyResult?: string;
+  /** Tag IDs */
+  tags?: string[];
+  /** Client mutation ID for request tracking */
+  clientMutationId?: string;
 }
 
 // ============================================================================
