@@ -309,14 +309,15 @@ export interface InitiativesData {
 }
 
 /**
- * Response type for upsertKeyResult mutation.
+ * Response type for upsertResult mutation (key results and initiatives).
  *
  * Uses same upsert pattern as objectives:
  * - When input.id is omitted, creates a new key result
  * - When input.id is provided, updates the existing key result
+ * - Mutation is `upsertResult`, payload field is `keyResult`
  */
 export interface UpsertKeyResultData {
-  upsertKeyResult: {
+  upsertResult: {
     keyResult: KeyResult | null;
     errors: Array<{ field: string; messages: string[] }>;
     clientMutationId?: string | null;
@@ -457,7 +458,7 @@ export interface UpsertObjectiveInput {
 /**
  * Input for upserting a key result (create or update).
  *
- * Maps to UpsertKeyResultMutationInput in the Perdoo GraphQL schema.
+ * Maps to UpsertResultMutationInput in the Perdoo GraphQL schema.
  * Follows same upsert pattern as objectives.
  * When `id` is omitted, a new key result is created.
  * When `id` is provided, the existing key result is updated.

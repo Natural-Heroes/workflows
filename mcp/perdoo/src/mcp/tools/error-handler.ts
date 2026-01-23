@@ -62,6 +62,24 @@ export function handleToolError(
   // Handle HTTP-level errors (non-2xx responses)
   if (error instanceof PerdooHttpError) {
     switch (error.status) {
+      case 400: {
+        // Bad request - show the actual validation error from the API
+        let detail = '';
+        if (error.responseBody) {
+          try {
+            const body = JSON.parse(error.responseBody);
+            if (body.errors) {
+              detail = body.errors.map((e: { message?: string }) => e.message).join('; ');
+            }
+          } catch {
+            detail = error.responseBody.slice(0, 200);
+          }
+        }
+        return formatMcpError(
+          `Bad request: ${detail || 'Invalid GraphQL operation or input.'}`,
+          'Check the operation parameters. The request was rejected by the Perdoo API.'
+        );
+      }
       case 401:
       case 403:
         return formatMcpError(
@@ -75,7 +93,7 @@ export function handleToolError(
         );
       default:
         return formatMcpError(
-          `Perdoo API is unavailable (HTTP ${error.status}).`,
+          `Perdoo API error (HTTP ${error.status}).`,
           'Try again in a few seconds. If the issue persists, check Perdoo status.'
         );
     }

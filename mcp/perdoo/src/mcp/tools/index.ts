@@ -198,8 +198,8 @@ Example flow:
 
 All create and update operations use Perdoo's upsert mutations:
 - **create_objective** / **update_objective**: Uses \`upsertObjective\` mutation
-- **create_key_result** / **update_key_result**: Uses \`upsertKeyResult\` mutation
-- **create_initiative** / **update_initiative**: Uses \`upsertKeyResult\` mutation with type set to INITIATIVE
+- **create_key_result** / **update_key_result**: Uses \`upsertResult\` mutation
+- **create_initiative** / **update_initiative**: Uses \`upsertResult\` mutation with type set to INITIATIVE
 - **create_kpi** / **update_kpi**: Uses \`upsertKpi\` mutation
 - **create_strategic_pillar** / **update_strategic_pillar**: Uses \`upsertGoal\` mutation with type set to STRATEGIC_PILLAR
 

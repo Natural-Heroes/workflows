@@ -86,11 +86,13 @@ export class PerdooApiError extends Error {
 export class PerdooHttpError extends Error {
   public readonly status: number;
   public readonly isRetryable: boolean;
+  public readonly responseBody?: string;
 
-  constructor(status: number, statusText: string) {
+  constructor(status: number, statusText: string, responseBody?: string) {
     super(`HTTP ${status}: ${statusText}`);
     this.name = 'PerdooHttpError';
     this.status = status;
     this.isRetryable = [429, 502, 503, 504].includes(status);
+    this.responseBody = responseBody;
   }
 }

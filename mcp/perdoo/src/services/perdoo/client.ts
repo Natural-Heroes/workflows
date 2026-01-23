@@ -332,7 +332,7 @@ export class PerdooClient {
    * Creates a new key result (upsert without id).
    *
    * Mutations are never retried to prevent duplicate side effects.
-   * Uses the upsertKeyResult mutation with id omitted.
+   * Uses the upsertResult mutation with id omitted.
    *
    * @param input - Key result creation input (must include name and objective)
    * @returns Upsert result with key result and errors
@@ -349,7 +349,7 @@ export class PerdooClient {
    * Updates an existing key result (upsert with id).
    *
    * Mutations are never retried to prevent duplicate side effects.
-   * Uses the upsertKeyResult mutation with id included.
+   * Uses the upsertResult mutation with id included.
    *
    * @param id - Key result UUID to update
    * @param input - Fields to update
@@ -510,7 +510,7 @@ export class PerdooClient {
    * Creates a new initiative (upsert without id, type forced to INITIATIVE).
    *
    * Mutations are never retried to prevent duplicate side effects.
-   * Uses the upsertKeyResult mutation with type set to INITIATIVE.
+   * Uses the upsertResult mutation with type set to INITIATIVE.
    * Initiatives are key results with type=INITIATIVE under the hood.
    *
    * @param input - Initiative creation input (must include name and objective)
@@ -528,7 +528,7 @@ export class PerdooClient {
    * Updates an existing initiative (upsert with id).
    *
    * Mutations are never retried to prevent duplicate side effects.
-   * Uses the upsertKeyResult mutation with the ID included.
+   * Uses the upsertResult mutation with the ID included.
    * Does not force type on update (initiative type is already set).
    *
    * @param id - Initiative UUID to update
@@ -682,13 +682,21 @@ export class PerdooClient {
 
       // Handle HTTP errors
       if (!response.ok) {
+        let responseBody: string | undefined;
+        try {
+          responseBody = await response.text();
+        } catch {
+          // Ignore read errors
+        }
+
         logger.error('Perdoo API HTTP error', {
           status: response.status,
           statusText: response.statusText,
           duration,
+          responseBody: responseBody?.slice(0, 500),
         });
 
-        throw new PerdooHttpError(response.status, response.statusText);
+        throw new PerdooHttpError(response.status, response.statusText, responseBody);
       }
 
       // Parse GraphQL response

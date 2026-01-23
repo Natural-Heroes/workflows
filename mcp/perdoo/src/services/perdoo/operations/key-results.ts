@@ -4,7 +4,7 @@
  * Validated against real Perdoo API via __type queries on the Query type.
  * - keyResults query uses relay-style pagination with Django filter args
  * - result query takes UUID! argument for singular key result
- * - upsertKeyResult handles both create (no id) and update (with id)
+ * - upsertResult handles both create (no id) and update (with id)
  *
  * Key findings from introspection:
  * - Singular query is `result(id: UUID!)` (NOT `keyResult`)
@@ -159,14 +159,17 @@ export const KEY_RESULT_QUERY = `
  * Upsert (create or update) a key result.
  *
  * The Perdoo API uses a single upsert mutation instead of separate create/update.
- * - To create: omit `id` from input (must include `objective` and `name`)
+ * - Mutation name: `upsertResult` (NOT `upsertKeyResult`)
+ * - Input type: `UpsertResultMutationInput` (NOT `UpsertKeyResultMutationInput`)
+ * - Payload returns `keyResult` field
+ * - To create: omit `id` from input (must include `objective`, `name`, `startValue`, `endValue`)
  * - To update: include `id` in input
  *
  * Returns the key result and any validation errors.
  */
 export const UPSERT_KEY_RESULT_MUTATION = `
-  mutation UpsertKeyResult($input: UpsertKeyResultMutationInput!) {
-    upsertKeyResult(input: $input) {
+  mutation UpsertResult($input: UpsertResultMutationInput!) {
+    upsertResult(input: $input) {
       keyResult {
         id
         name

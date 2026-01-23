@@ -246,7 +246,7 @@ export function registerInitiativeTools(
       additional_fields: z
         .record(z.unknown())
         .optional()
-        .describe('Additional UpsertKeyResultMutationInput fields'),
+        .describe('Additional UpsertResultMutationInput fields'),
     },
     async (params) => {
       logger.debug('create_initiative tool called', { name: params.name, objective: params.objective });
@@ -266,7 +266,7 @@ export function registerInitiativeTools(
         };
 
         const data = await client.createInitiative(input);
-        const result = data.upsertKeyResult;
+        const result = data.upsertResult;
 
         // Check for validation errors
         if (result.errors && result.errors.length > 0) {
@@ -359,7 +359,7 @@ export function registerInitiativeTools(
       additional_fields: z
         .record(z.unknown())
         .optional()
-        .describe('Additional UpsertKeyResultMutationInput fields (e.g., private, contributors, groups, tags, objective)'),
+        .describe('Additional UpsertResultMutationInput fields (e.g., private, contributors, groups, tags, objective)'),
     },
     async (params) => {
       logger.debug('update_initiative tool called', { id: params.id });
@@ -379,7 +379,7 @@ export function registerInitiativeTools(
         };
 
         const data = await client.updateInitiative(params.id, input);
-        const result = data.upsertKeyResult;
+        const result = data.upsertResult;
 
         // Check for validation errors
         if (result.errors && result.errors.length > 0) {

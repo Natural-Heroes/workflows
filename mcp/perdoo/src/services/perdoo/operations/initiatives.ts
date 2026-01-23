@@ -8,7 +8,7 @@
  * Key findings:
  * - Plural query is `initiatives(...)` (pre-filtered, returns keyResultConnection)
  * - Singular query reuses `result(id: UUID!)` (same as key results)
- * - Create/update reuses `upsertKeyResult` mutation with type: INITIATIVE
+ * - Create/update reuses `upsertResult` mutation with type: INITIATIVE
  */
 
 /**

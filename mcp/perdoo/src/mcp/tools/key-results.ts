@@ -6,7 +6,7 @@
  * relay pagination flattening for LLM consumption.
  *
  * Validated against real Perdoo API schema:
- * - Uses upsertKeyResult mutation (single endpoint for create/update)
+ * - Uses upsertResult mutation (single endpoint for create/update)
  * - Key result IDs are UUIDs
  * - Status is CommitStatus enum, type is PerdooApiKeyResultTypeChoices
  * - Supports Django-style filter args on list
@@ -282,7 +282,7 @@ export function registerKeyResultTools(
       additional_fields: z
         .record(z.unknown())
         .optional()
-        .describe('Additional UpsertKeyResultMutationInput fields (e.g., private, contributors, groups, tags)'),
+        .describe('Additional UpsertResultMutationInput fields (e.g., private, contributors, groups, tags)'),
     },
     async (params) => {
       logger.debug('create_key_result tool called', { name: params.name, objective: params.objective });
@@ -304,7 +304,7 @@ export function registerKeyResultTools(
         };
 
         const data = await client.createKeyResult(input);
-        const result = data.upsertKeyResult;
+        const result = data.upsertResult;
 
         // Check for validation errors
         if (result.errors && result.errors.length > 0) {
@@ -353,7 +353,7 @@ export function registerKeyResultTools(
   // ===========================================================================
   server.tool(
     'update_key_result',
-    'Update an existing Perdoo key result by UUID. Uses the upsertKeyResult mutation with the ID included.',
+    'Update an existing Perdoo key result by UUID. Uses the upsertResult mutation with the ID included.',
     {
       id: z
         .string()
@@ -405,7 +405,7 @@ export function registerKeyResultTools(
       additional_fields: z
         .record(z.unknown())
         .optional()
-        .describe('Additional UpsertKeyResultMutationInput fields (e.g., private, contributors, groups, tags, objective)'),
+        .describe('Additional UpsertResultMutationInput fields (e.g., private, contributors, groups, tags, objective)'),
     },
     async (params) => {
       logger.debug('update_key_result tool called', { id: params.id });
@@ -427,7 +427,7 @@ export function registerKeyResultTools(
         };
 
         const data = await client.updateKeyResult(params.id, input);
-        const result = data.upsertKeyResult;
+        const result = data.upsertResult;
 
         // Check for validation errors
         if (result.errors && result.errors.length > 0) {
