@@ -9,6 +9,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { logger } from '../../lib/logger.js';
 import { createPerdooClient } from '../../services/perdoo/index.js';
 import { registerObjectiveTools } from './objectives.js';
+import { registerKeyResultTools } from './key-results.js';
 
 /**
  * Brief server description shown during initialization.
@@ -151,6 +152,7 @@ export function createMcpServer(): McpServer {
 
   // Register Perdoo tools
   registerObjectiveTools(server, client);
+  registerKeyResultTools(server, client);
 
   logger.info('MCP server created with all tools registered');
   return server;

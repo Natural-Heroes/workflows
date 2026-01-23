@@ -31,12 +31,21 @@ import {
   OBJECTIVE_QUERY,
   UPSERT_OBJECTIVE_MUTATION,
 } from './operations/objectives.js';
+import {
+  KEY_RESULTS_QUERY,
+  KEY_RESULT_QUERY,
+  UPSERT_KEY_RESULT_MUTATION,
+} from './operations/key-results.js';
 import { INTROSPECTION_QUERY } from './operations/introspection.js';
 import type {
   ObjectivesData,
   ObjectiveData,
   UpsertObjectiveData,
   UpsertObjectiveInput,
+  KeyResultsData,
+  KeyResultData,
+  UpsertKeyResultData,
+  UpsertKeyResultInput,
   IntrospectionData,
 } from './types.js';
 
@@ -239,6 +248,98 @@ export class PerdooClient {
       { isMutation: true }
     );
   }
+
+  // ===========================================================================
+  // Key Result Operations
+  // ===========================================================================
+
+  /**
+   * Lists key results with pagination and optional filters.
+   *
+   * Returns a relay-style connection with pageInfo and edges.
+   * Supports Django-style filter arguments.
+   *
+   * @param params - Pagination and filter parameters
+   * @returns Key results connection data
+   */
+  async listKeyResults(params?: {
+    first?: number;
+    after?: string;
+    name_Icontains?: string;
+    objective?: string;
+    lead_Id?: string;
+    type?: string;
+    archived?: boolean;
+    status_In?: string;
+    objectiveStage?: string;
+    timeframe?: string;
+    orderBy?: string;
+  }): Promise<KeyResultsData> {
+    return this.execute<KeyResultsData>(KEY_RESULTS_QUERY, {
+      first: params?.first ?? 20,
+      after: params?.after,
+      name_Icontains: params?.name_Icontains,
+      objective: params?.objective,
+      lead_Id: params?.lead_Id,
+      type: params?.type,
+      archived: params?.archived,
+      status_In: params?.status_In,
+      objectiveStage: params?.objectiveStage,
+      timeframe: params?.timeframe,
+      orderBy: params?.orderBy,
+    });
+  }
+
+  /**
+   * Gets a single key result by UUID with full details.
+   *
+   * Uses the `result(id: UUID!)` root query.
+   *
+   * @param id - Key result UUID
+   * @returns Key result data with all fields and relationships
+   */
+  async getKeyResult(id: string): Promise<KeyResultData> {
+    return this.execute<KeyResultData>(KEY_RESULT_QUERY, { id });
+  }
+
+  /**
+   * Creates a new key result (upsert without id).
+   *
+   * Mutations are never retried to prevent duplicate side effects.
+   * Uses the upsertKeyResult mutation with id omitted.
+   *
+   * @param input - Key result creation input (must include name and objective)
+   * @returns Upsert result with key result and errors
+   */
+  async createKeyResult(input: Omit<UpsertKeyResultInput, 'id'>): Promise<UpsertKeyResultData> {
+    return this.execute<UpsertKeyResultData>(
+      UPSERT_KEY_RESULT_MUTATION,
+      { input },
+      { isMutation: true }
+    );
+  }
+
+  /**
+   * Updates an existing key result (upsert with id).
+   *
+   * Mutations are never retried to prevent duplicate side effects.
+   * Uses the upsertKeyResult mutation with id included.
+   *
+   * @param id - Key result UUID to update
+   * @param input - Fields to update
+   * @returns Upsert result with key result and errors
+   */
+  async updateKeyResult(id: string, input: Omit<UpsertKeyResultInput, 'id'>): Promise<UpsertKeyResultData> {
+    return this.execute<UpsertKeyResultData>(
+      UPSERT_KEY_RESULT_MUTATION,
+      { input: { ...input, id } },
+      { isMutation: true }
+    );
+  }
+
+  // ===========================================================================
+  // Introspection
+  // ===========================================================================
 
   /**
    * Runs a schema introspection query.
