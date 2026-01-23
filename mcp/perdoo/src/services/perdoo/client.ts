@@ -36,6 +36,11 @@ import {
   KEY_RESULT_QUERY,
   UPSERT_KEY_RESULT_MUTATION,
 } from './operations/key-results.js';
+import {
+  KPIS_QUERY,
+  KPI_QUERY,
+  UPSERT_KPI_MUTATION,
+} from './operations/kpis.js';
 import { INTROSPECTION_QUERY } from './operations/introspection.js';
 import type {
   ObjectivesData,
@@ -46,6 +51,10 @@ import type {
   KeyResultData,
   UpsertKeyResultData,
   UpsertKeyResultInput,
+  KpisData,
+  KpiData,
+  UpsertKpiData,
+  UpsertKpiInput,
   IntrospectionData,
 } from './types.js';
 
@@ -332,6 +341,96 @@ export class PerdooClient {
   async updateKeyResult(id: string, input: Omit<UpsertKeyResultInput, 'id'>): Promise<UpsertKeyResultData> {
     return this.execute<UpsertKeyResultData>(
       UPSERT_KEY_RESULT_MUTATION,
+      { input: { ...input, id } },
+      { isMutation: true }
+    );
+  }
+
+  // ===========================================================================
+  // KPI Operations
+  // ===========================================================================
+
+  /**
+   * Lists KPIs with pagination and optional filters.
+   *
+   * Returns a relay-style connection with pageInfo and edges.
+   * Supports Django-style filter arguments.
+   *
+   * @param params - Pagination and filter parameters
+   * @returns KPIs connection data
+   */
+  async listKpis(params?: {
+    first?: number;
+    after?: string;
+    name_Icontains?: string;
+    lead_Id?: string;
+    group?: string;
+    archived?: boolean;
+    status_In?: string;
+    isCompanyGoal?: boolean;
+    goal_Id?: string;
+    parent?: string;
+    tags_Id?: string;
+    orderBy?: string;
+  }): Promise<KpisData> {
+    return this.execute<KpisData>(KPIS_QUERY, {
+      first: params?.first ?? 20,
+      after: params?.after,
+      name_Icontains: params?.name_Icontains,
+      lead_Id: params?.lead_Id,
+      group: params?.group,
+      archived: params?.archived,
+      status_In: params?.status_In,
+      isCompanyGoal: params?.isCompanyGoal,
+      goal_Id: params?.goal_Id,
+      parent: params?.parent,
+      tags_Id: params?.tags_Id,
+      orderBy: params?.orderBy,
+    });
+  }
+
+  /**
+   * Gets a single KPI by UUID with full details.
+   *
+   * Uses the `kpi(id: UUID!)` root query.
+   *
+   * @param id - KPI UUID
+   * @returns KPI data with all fields and relationships
+   */
+  async getKpi(id: string): Promise<KpiData> {
+    return this.execute<KpiData>(KPI_QUERY, { id });
+  }
+
+  /**
+   * Creates a new KPI (upsert without id).
+   *
+   * Mutations are never retried to prevent duplicate side effects.
+   * Uses the upsertKpi mutation with id omitted.
+   *
+   * @param input - KPI creation input (must include name)
+   * @returns Upsert result with KPI and errors
+   */
+  async createKpi(input: Omit<UpsertKpiInput, 'id'>): Promise<UpsertKpiData> {
+    return this.execute<UpsertKpiData>(
+      UPSERT_KPI_MUTATION,
+      { input },
+      { isMutation: true }
+    );
+  }
+
+  /**
+   * Updates an existing KPI (upsert with id).
+   *
+   * Mutations are never retried to prevent duplicate side effects.
+   * Uses the upsertKpi mutation with id included.
+   *
+   * @param id - KPI UUID to update
+   * @param input - Fields to update
+   * @returns Upsert result with KPI and errors
+   */
+  async updateKpi(id: string, input: Omit<UpsertKpiInput, 'id'>): Promise<UpsertKpiData> {
+    return this.execute<UpsertKpiData>(
+      UPSERT_KPI_MUTATION,
       { input: { ...input, id } },
       { isMutation: true }
     );
