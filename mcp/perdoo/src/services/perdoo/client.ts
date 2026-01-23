@@ -48,6 +48,11 @@ import {
   UPSERT_KPI_MUTATION,
 } from './operations/kpis.js';
 import { INTROSPECTION_QUERY } from './operations/introspection.js';
+import {
+  TIMEFRAMES_QUERY,
+  USERS_QUERY,
+  GROUPS_QUERY,
+} from './operations/helpers.js';
 import type {
   ObjectivesData,
   ObjectiveData,
@@ -67,6 +72,9 @@ import type {
   UpsertGoalData,
   UpsertGoalInput,
   IntrospectionData,
+  TimeframesData,
+  UsersData,
+  GroupsData,
 } from './types.js';
 
 /**
@@ -636,6 +644,63 @@ export class PerdooClient {
    */
   async introspect(): Promise<IntrospectionData> {
     return this.execute<IntrospectionData>(INTROSPECTION_QUERY);
+  }
+
+  // ===========================================================================
+  // Helper Operations (timeframes, users, groups)
+  // ===========================================================================
+
+  /**
+   * Lists timeframes with pagination and optional filters.
+   */
+  async listTimeframes(params: {
+    first?: number;
+    after?: string;
+    active?: boolean;
+    status?: string;
+    excludeArchived?: boolean;
+  } = {}): Promise<TimeframesData> {
+    return this.execute<TimeframesData>(TIMEFRAMES_QUERY, {
+      first: params.first ?? 20,
+      after: params.after,
+      active: params.active,
+      status: params.status,
+      excludeArchived: params.excludeArchived,
+    });
+  }
+
+  /**
+   * Lists users with pagination and optional filters.
+   */
+  async listUsers(params: {
+    first?: number;
+    after?: string;
+    isActive?: boolean;
+    name?: string;
+  } = {}): Promise<UsersData> {
+    return this.execute<UsersData>(USERS_QUERY, {
+      first: params.first ?? 50,
+      after: params.after,
+      isActive: params.isActive,
+      name: params.name,
+    });
+  }
+
+  /**
+   * Lists groups with pagination and optional filters.
+   */
+  async listGroups(params: {
+    first?: number;
+    after?: string;
+    name?: string;
+    excludeArchived?: boolean;
+  } = {}): Promise<GroupsData> {
+    return this.execute<GroupsData>(GROUPS_QUERY, {
+      first: params.first ?? 50,
+      after: params.after,
+      name: params.name,
+      archivedDate_Isnull: params.excludeArchived ? true : undefined,
+    });
   }
 
   // ===========================================================================

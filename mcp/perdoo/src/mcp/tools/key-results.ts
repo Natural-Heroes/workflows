@@ -40,7 +40,25 @@ export function registerKeyResultTools(
   // ===========================================================================
   server.tool(
     'list_key_results',
-    'List Perdoo key results with pagination and filters. Can filter by parent objective, lead, type, status, timeframe. Returns flattened list.',
+    `List Perdoo key results with pagination and filters.
+
+Filter examples:
+- KRs for an objective: objective_id="uuid"
+- Top-level KRs only: parent_id=null
+- Children of specific KR: parent_id="uuid"
+- Your KRs: lead_id="your-uuid" (use list_users to find IDs)
+- Only key results (no initiatives): type="KEY_RESULT"
+
+Status values: NO_STATUS, OFF_TRACK, NEEDS_ATTENTION, ON_TRACK, ACCOMPLISHED
+
+Hierarchy support:
+- Response includes "parent" (id, name) if item has a parent
+- Response includes "children_count" showing number of direct children
+- parent_id=null returns only top-level items
+- parent_id="uuid" returns only direct children of that item
+- Omit parent_id to get all items regardless of hierarchy
+
+Returns flattened list with pagination info. Use cursor for subsequent pages.`,
     {
       limit: z
         .number()
@@ -236,7 +254,27 @@ export function registerKeyResultTools(
   // ===========================================================================
   server.tool(
     'create_key_result',
-    'Create a new key result under a Perdoo objective. Name and objective are required.',
+    `Create a new key result under a Perdoo objective.
+
+Required fields:
+- name (string): The key result title
+- objective (UUID): Parent objective ID
+- start_value (number): Starting metric value (default: 0)
+- end_value (number): Target metric value
+
+Optional fields:
+- description (string): HTML supported
+- lead (UUID): User ID for the KR owner - use list_users to find IDs
+- current_value (number): Current progress value
+- metric_unit (enum): NUMERICAL (default), PERCENTAGE, USD, EUR, GBP, etc.
+- target_type (enum): INCREASE_TO, DECREASE_TO, STAY_AT_OR_ABOVE, STAY_AT_OR_BELOW
+
+Fields via additional_fields parameter:
+- parent (UUID): Parent key result ID for hierarchy
+- startDate (string): Format "YYYY-MM-DD"
+- dueDate (string): Format "YYYY-MM-DD"
+- tags (array of UUIDs)
+- contributors (array of UUIDs) - use list_users to find IDs`,
     {
       name: z
         .string()

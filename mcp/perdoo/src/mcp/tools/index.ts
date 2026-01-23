@@ -13,6 +13,7 @@ import { registerKeyResultTools } from './key-results.js';
 import { registerKpiTools } from './kpis.js';
 import { registerInitiativeTools } from './initiatives.js';
 import { registerStrategicPillarTools } from './strategic-pillars.js';
+import { registerHelperTools } from './helpers.js';
 
 /**
  * Brief server description shown during initialization.
@@ -109,6 +110,11 @@ This server provides access to Perdoo OKR data including objectives, key results
 - Objectives and KPIs can align to a strategic pillar via their \`goal\` field
 - In the Perdoo API, strategic pillars are Goal entities with type=STRATEGIC_PILLAR
 - Use \`create_strategic_pillar\` and \`update_strategic_pillar\` to manage them via the API
+
+### Helper / Lookup Tools
+- **list_timeframes**: List available timeframes (quarters, years). Returns IDs needed for \`create_objective\`.
+- **list_users**: List workspace users. Returns IDs needed for lead/contributor assignments.
+- **list_groups**: List workspace groups/teams. Returns IDs needed for group assignments on objectives.
 
 ## Pagination
 
@@ -266,6 +272,7 @@ export function createMcpServer(): McpServer {
   registerKpiTools(server, client);
   registerInitiativeTools(server, client);
   registerStrategicPillarTools(server, client);
+  registerHelperTools(server, client);
 
   logger.info('MCP server created with all tools registered');
   return server;

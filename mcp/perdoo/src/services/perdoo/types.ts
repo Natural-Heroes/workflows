@@ -741,3 +741,59 @@ export interface IntrospectionTypeRef {
   name?: string;
   ofType?: IntrospectionTypeRef;
 }
+
+// ============================================================================
+// Helper Types (timeframes, users, groups)
+// ============================================================================
+
+/**
+ * Perdoo timeframe entity.
+ */
+export interface Timeframe {
+  id: string;
+  name: string;
+  startDate: string;
+  endDate: string;
+  status?: string;
+  active?: boolean;
+}
+
+/**
+ * Response type for timeframes query.
+ */
+export interface TimeframesData {
+  timeframes: Connection<Timeframe>;
+}
+
+/**
+ * Perdoo user entity.
+ */
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  role?: string;
+  isActive?: boolean;
+}
+
+/**
+ * Response type for allUsers query.
+ */
+export interface UsersData {
+  allUsers: Connection<User>;
+}
+
+/**
+ * Perdoo group entity.
+ */
+export interface Group {
+  id: string;
+  name: string;
+}
+
+/**
+ * Response type for allGroups query.
+ */
+export interface GroupsData {
+  allGroups: Connection<Group>;
+}

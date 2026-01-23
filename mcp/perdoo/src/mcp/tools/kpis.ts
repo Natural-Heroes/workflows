@@ -229,7 +229,24 @@ export function registerKpiTools(
   // ===========================================================================
   server.tool(
     'create_kpi',
-    'Create a new KPI in Perdoo. Name is required.',
+    `Create a new KPI in Perdoo.
+
+Required fields:
+- name (string): The KPI title
+
+Optional fields:
+- description (string)
+- lead (UUID): User ID - use list_users to find IDs
+- current_value (number)
+- metric_unit (enum): NUMERICAL (default), PERCENTAGE, USD, EUR, GBP, etc.
+- goal (UUID): Strategic pillar ID to align to - use list_strategic_pillars to find IDs
+- goal_operator (enum): GREATER_THAN_OR_EQUAL, LESS_THAN_OR_EQUAL
+- target_type (enum): STAY_AT_OR_ABOVE, STAY_AT_OR_BELOW, INCREASE_TO, DECREASE_TO
+- is_company_goal (boolean)
+
+Fields via additional_fields parameter:
+- parent (UUID): Parent KPI ID for hierarchy
+- tags (array of UUIDs)`,
     {
       name: z
         .string()

@@ -39,7 +39,26 @@ export function registerObjectiveTools(
   // ===========================================================================
   server.tool(
     'list_objectives',
-    'List Perdoo objectives with pagination and optional filters. Returns flattened list with pagination info. Use cursor for subsequent pages.',
+    `List Perdoo objectives with pagination and optional filters.
+
+Filter examples:
+- Top-level objectives only: parent_id=null
+- Children of specific objective: parent_id="uuid"
+- Your objectives: lead_id="your-uuid" (use list_users to find IDs)
+- Active objectives: stage="ACTIVE"
+- Objectives needing attention: status="NEEDS_ATTENTION"
+
+Status values: NO_STATUS, OFF_TRACK, NEEDS_ATTENTION, ON_TRACK, ACCOMPLISHED
+Stage values: DRAFT, ACTIVE, CLOSED
+
+Hierarchy support:
+- Response includes "parent" (id, name) if item has a parent
+- Response includes "children_count" showing number of direct children
+- parent_id=null returns only top-level items
+- parent_id="uuid" returns only direct children of that item
+- Omit parent_id to get all items regardless of hierarchy
+
+Returns flattened list with pagination info. Use cursor for subsequent pages.`,
     {
       limit: z
         .number()
@@ -221,7 +240,21 @@ export function registerObjectiveTools(
   // ===========================================================================
   server.tool(
     'create_objective',
-    'Create a new Perdoo objective. Name and timeframe are required. Uses the upsertObjective mutation without an ID.',
+    `Create a new Perdoo objective.
+
+Required fields:
+- name (string): The objective title
+- timeframe (UUID): Must be a valid timeframe ID - use list_timeframes to find available timeframes
+
+Optional fields:
+- description (string): HTML supported
+- lead (UUID): User ID for the objective owner - use list_users to find IDs
+- stage (enum): DRAFT, ACTIVE, CLOSED (default: DRAFT)
+- parent (UUID): Parent objective ID for hierarchy
+- groups (array of UUIDs): Team/group IDs - use list_groups to find IDs
+- is_company_goal (boolean): Mark as company-level objective
+
+Uses the upsertObjective mutation without an ID.`,
     {
       name: z
         .string()
