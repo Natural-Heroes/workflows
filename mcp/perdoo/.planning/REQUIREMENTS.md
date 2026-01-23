@@ -47,8 +47,8 @@
 
 - [x] **PILLAR-01**: User can list strategic pillars with pagination and filtering
 - [x] **PILLAR-02**: User can get a single strategic pillar by ID
-- [N/A] **PILLAR-03**: User can create a strategic pillar *(No Goal mutation in API — read-only)*
-- [N/A] **PILLAR-04**: User can update an existing strategic pillar *(No Goal mutation in API — read-only)*
+- [x] **PILLAR-03**: User can create a strategic pillar
+- [x] **PILLAR-04**: User can update an existing strategic pillar
 
 ## v2 Requirements
 
@@ -98,8 +98,8 @@
 | INIT-04 | Phase 3 | Complete |
 | PILLAR-01 | Phase 3 | Complete |
 | PILLAR-02 | Phase 3 | Complete |
-| PILLAR-03 | Phase 3 | N/A (no API mutation) |
-| PILLAR-04 | Phase 3 | N/A (no API mutation) |
+| PILLAR-03 | Phase 3 | Complete |
+| PILLAR-04 | Phase 3 | Complete |
 
 **Coverage:**
 - v1 requirements: 27 total

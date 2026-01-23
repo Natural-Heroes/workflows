@@ -113,18 +113,16 @@ export function registerKeyResultTools(
           id: edge.node.id,
           name: edge.node.name,
           description: edge.node.description ?? null,
-          progress: edge.node.progress ?? null,
           status: edge.node.status,
           type: edge.node.type,
           weight: edge.node.weight,
           startValue: edge.node.startValue ?? null,
-          targetValue: edge.node.targetValue ?? null,
+          endValue: edge.node.endValue ?? null,
           currentValue: edge.node.currentValue ?? null,
-          unit: edge.node.unit ?? null,
+          metricUnit: edge.node.metricUnit ?? null,
           archived: edge.node.archived ?? false,
           lead: edge.node.lead ? { id: edge.node.lead.id, name: edge.node.lead.name } : null,
           objective: edge.node.objective ? { id: edge.node.objective.id, name: edge.node.objective.name } : null,
-          timeframe: edge.node.timeframe ? { id: edge.node.timeframe.id, name: edge.node.timeframe.name } : null,
         }));
 
         const response = {
@@ -172,27 +170,21 @@ export function registerKeyResultTools(
           id: kr.id,
           name: kr.name,
           description: kr.description ?? null,
-          progress: kr.progress ?? null,
           status: kr.status,
           type: kr.type,
           weight: kr.weight,
           startValue: kr.startValue ?? null,
-          targetValue: kr.targetValue ?? null,
+          endValue: kr.endValue ?? null,
           currentValue: kr.currentValue ?? null,
-          unit: kr.unit ?? null,
-          private: kr.private ?? false,
+          metricUnit: kr.metricUnit ?? null,
+          targetType: kr.targetType ?? null,
           archived: kr.archived ?? false,
           startDate: kr.startDate ?? null,
           dueDate: kr.dueDate ?? null,
           createdDate: kr.createdDate ?? null,
           lastEditedDate: kr.lastEditedDate ?? null,
-          lead: kr.lead ? { id: kr.lead.id, name: kr.lead.name, email: kr.lead.email ?? null } : null,
+          lead: kr.lead ? { id: kr.lead.id, name: kr.lead.name } : null,
           objective: kr.objective ? { id: kr.objective.id, name: kr.objective.name } : null,
-          timeframe: kr.timeframe ? { id: kr.timeframe.id, name: kr.timeframe.name } : null,
-          groups: kr.groups?.edges?.map((edge) => ({
-            id: edge.node.id,
-            name: edge.node.name,
-          })) ?? [],
           contributors: kr.contributors?.edges?.map((edge) => ({
             id: edge.node.id,
             name: edge.node.name,
@@ -247,26 +239,26 @@ export function registerKeyResultTools(
         .number()
         .optional()
         .describe('Starting value for metric tracking'),
-      target_value: z
+      end_value: z
         .number()
         .optional()
-        .describe('Target value for metric tracking'),
+        .describe('Target/end value for metric tracking'),
       current_value: z
         .number()
         .optional()
         .describe('Current value for metric tracking'),
-      unit: z
+      metric_unit: z
         .string()
         .optional()
-        .describe('Unit label for metric values (e.g., "%", "USD", "users")'),
+        .describe('Metric unit (NUMERICAL, PERCENTAGE, or currency code like USD, EUR)'),
+      target_type: z
+        .enum(['INCREASE_TO', 'DECREASE_TO', 'STAY_AT_OR_ABOVE', 'STAY_AT_OR_BELOW'])
+        .optional()
+        .describe('Direction of progress toward target'),
       weight: z
         .number()
         .optional()
         .describe('Weight for progress contribution to parent objective'),
-      timeframe: z
-        .string()
-        .optional()
-        .describe('Timeframe UUID'),
       additional_fields: z
         .record(z.unknown())
         .optional()
@@ -283,11 +275,11 @@ export function registerKeyResultTools(
           ...(params.lead && { lead: params.lead }),
           ...(params.type && { type: params.type }),
           ...(params.start_value !== undefined && { startValue: params.start_value }),
-          ...(params.target_value !== undefined && { targetValue: params.target_value }),
+          ...(params.end_value !== undefined && { endValue: params.end_value }),
           ...(params.current_value !== undefined && { currentValue: params.current_value }),
-          ...(params.unit && { unit: params.unit }),
+          ...(params.metric_unit && { metricUnit: params.metric_unit }),
+          ...(params.target_type && { targetType: params.target_type }),
           ...(params.weight !== undefined && { weight: params.weight }),
-          ...(params.timeframe && { timeframe: params.timeframe }),
           ...(params.additional_fields ?? {}),
         };
 
@@ -366,26 +358,26 @@ export function registerKeyResultTools(
         .number()
         .optional()
         .describe('New starting value'),
-      target_value: z
+      end_value: z
         .number()
         .optional()
-        .describe('New target value'),
+        .describe('New target/end value'),
       current_value: z
         .number()
         .optional()
         .describe('New current value'),
-      unit: z
+      metric_unit: z
         .string()
         .optional()
-        .describe('New unit label'),
+        .describe('New metric unit (NUMERICAL, PERCENTAGE, or currency code)'),
+      target_type: z
+        .enum(['INCREASE_TO', 'DECREASE_TO', 'STAY_AT_OR_ABOVE', 'STAY_AT_OR_BELOW'])
+        .optional()
+        .describe('New direction of progress toward target'),
       weight: z
         .number()
         .optional()
         .describe('New weight'),
-      timeframe: z
-        .string()
-        .optional()
-        .describe('New timeframe UUID'),
       archived: z
         .boolean()
         .optional()
@@ -405,11 +397,11 @@ export function registerKeyResultTools(
           ...(params.lead && { lead: params.lead }),
           ...(params.type && { type: params.type }),
           ...(params.start_value !== undefined && { startValue: params.start_value }),
-          ...(params.target_value !== undefined && { targetValue: params.target_value }),
+          ...(params.end_value !== undefined && { endValue: params.end_value }),
           ...(params.current_value !== undefined && { currentValue: params.current_value }),
-          ...(params.unit !== undefined && { unit: params.unit }),
+          ...(params.metric_unit !== undefined && { metricUnit: params.metric_unit }),
+          ...(params.target_type && { targetType: params.target_type }),
           ...(params.weight !== undefined && { weight: params.weight }),
-          ...(params.timeframe && { timeframe: params.timeframe }),
           ...(params.archived !== undefined && { archived: params.archived }),
           ...(params.additional_fields ?? {}),
         };
@@ -441,9 +433,8 @@ export function registerKeyResultTools(
             name: updated.name,
             type: updated.type,
             status: updated.status,
-            progress: updated.progress ?? null,
             currentValue: updated.currentValue ?? null,
-            targetValue: updated.targetValue ?? null,
+            endValue: updated.endValue ?? null,
           } : null,
         };
 

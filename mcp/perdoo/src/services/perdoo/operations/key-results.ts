@@ -69,14 +69,13 @@ export const KEY_RESULTS_QUERY = `
           id
           name
           description
-          progress
           status
           type
           weight
           startValue
-          targetValue
+          endValue
           currentValue
-          unit
+          metricUnit
           archived
           startDate
           dueDate
@@ -85,10 +84,6 @@ export const KEY_RESULTS_QUERY = `
             name
           }
           objective {
-            id
-            name
-          }
-          timeframe {
             id
             name
           }
@@ -110,15 +105,14 @@ export const KEY_RESULT_QUERY = `
       id
       name
       description
-      progress
       status
       type
       weight
       startValue
-      targetValue
+      endValue
       currentValue
-      unit
-      private
+      metricUnit
+      targetType
       archived
       startDate
       dueDate
@@ -127,23 +121,10 @@ export const KEY_RESULT_QUERY = `
       lead {
         id
         name
-        email
       }
       objective {
         id
         name
-      }
-      timeframe {
-        id
-        name
-      }
-      groups {
-        edges {
-          node {
-            id
-            name
-          }
-        }
       }
       contributors {
         edges {
@@ -181,23 +162,19 @@ export const UPSERT_KEY_RESULT_MUTATION = `
         id
         name
         description
-        progress
         status
         type
         weight
         startValue
-        targetValue
+        endValue
         currentValue
-        unit
+        metricUnit
+        targetType
         lead {
           id
           name
         }
         objective {
-          id
-          name
-        }
-        timeframe {
           id
           name
         }

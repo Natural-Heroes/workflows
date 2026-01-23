@@ -40,6 +40,7 @@ import { INITIATIVES_QUERY } from './operations/initiatives.js';
 import {
   STRATEGIC_PILLARS_QUERY,
   STRATEGIC_PILLAR_QUERY,
+  UPSERT_STRATEGIC_PILLAR_MUTATION,
 } from './operations/strategic-pillars.js';
 import {
   KPIS_QUERY,
@@ -63,6 +64,8 @@ import type {
   UpsertKpiInput,
   StrategicPillarsData,
   StrategicPillarData,
+  UpsertGoalData,
+  UpsertGoalInput,
   IntrospectionData,
 } from './types.js';
 
@@ -545,8 +548,6 @@ export class PerdooClient {
    * Returns a relay-style connection with pageInfo and edges.
    * Supports Django-style filter arguments.
    *
-   * Note: Strategic pillars are read-only (no mutation exists in the API).
-   *
    * @param params - Pagination and filter parameters
    * @returns Strategic pillars connection data
    */
@@ -581,6 +582,39 @@ export class PerdooClient {
    */
   async getStrategicPillar(id: string): Promise<StrategicPillarData> {
     return this.execute<StrategicPillarData>(STRATEGIC_PILLAR_QUERY, { id });
+  }
+
+  /**
+   * Creates a new strategic pillar (upsert without id).
+   *
+   * Forces type to STRATEGIC_PILLAR. Mutations are never retried.
+   *
+   * @param input - Strategic pillar creation input (must include name)
+   * @returns Upsert result with goal and errors
+   */
+  async createStrategicPillar(input: Omit<UpsertGoalInput, 'id'>): Promise<UpsertGoalData> {
+    return this.execute<UpsertGoalData>(
+      UPSERT_STRATEGIC_PILLAR_MUTATION,
+      { input: { ...input, type: 'STRATEGIC_PILLAR' } },
+      { isMutation: true }
+    );
+  }
+
+  /**
+   * Updates an existing strategic pillar (upsert with id).
+   *
+   * Mutations are never retried.
+   *
+   * @param id - Strategic pillar UUID to update
+   * @param input - Fields to update
+   * @returns Upsert result with goal and errors
+   */
+  async updateStrategicPillar(id: string, input: Omit<UpsertGoalInput, 'id'>): Promise<UpsertGoalData> {
+    return this.execute<UpsertGoalData>(
+      UPSERT_STRATEGIC_PILLAR_MUTATION,
+      { input: { ...input, id } },
+      { isMutation: true }
+    );
   }
 
   // ===========================================================================

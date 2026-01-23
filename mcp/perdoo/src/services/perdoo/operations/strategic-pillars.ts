@@ -13,7 +13,7 @@
  * Key findings from introspection:
  * - Plural query is `goals(...)` with type, status, stage, lead_Id, parent_Id, archived, orderBy filters
  * - Singular query is `goal(id: UUID!)`
- * - No Goal mutation found in Perdoo API -- strategic pillars are read-only
+ * - upsertGoal mutation handles both create (no id) and update (with id)
  */
 
 /**
@@ -150,4 +150,43 @@ export const STRATEGIC_PILLAR_QUERY = `
   }
 `;
 
-// No goal mutation found in API. Strategic pillars are read-only.
+/**
+ * Upsert (create or update) a strategic pillar.
+ *
+ * Uses the `upsertGoal` mutation with type forced to STRATEGIC_PILLAR.
+ * - To create: omit `id` from input (must include `name`)
+ * - To update: include `id` in input
+ *
+ * Returns the goal and any validation errors.
+ */
+export const UPSERT_STRATEGIC_PILLAR_MUTATION = `
+  mutation UpsertGoal($input: UpsertGoalMutationInput!) {
+    upsertGoal(input: $input) {
+      goal {
+        id
+        name
+        description
+        status
+        type
+        archived
+        lead {
+          id
+          name
+        }
+        timeframe {
+          id
+          name
+        }
+        parent {
+          id
+          name
+        }
+      }
+      errors {
+        field
+        messages
+      }
+      clientMutationId
+    }
+  }
+`;

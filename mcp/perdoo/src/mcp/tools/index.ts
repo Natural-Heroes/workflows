@@ -37,15 +37,15 @@ This server provides access to Perdoo OKR data including objectives, key results
 
 ### Key Results
 - **list_key_results**: List key results with pagination and filters. Supports \`limit\`, \`cursor\`, \`name_contains\`, \`objective_id\`, \`lead_id\`, \`type\`, \`archived\`, \`status\`, \`objective_stage\`, \`timeframe_id\`, \`order_by\`.
-- **get_key_result**: Get a single key result by UUID with full details including progress, metric values, and objective reference.
-- **create_key_result**: Create a new key result. \`name\` and \`objective\` (parent objective UUID) are required. Provide \`type\`, \`start_value\`, \`target_value\`, \`current_value\`, \`unit\`, \`lead\`, or \`additional_fields\`.
-- **update_key_result**: Update an existing key result by UUID. Provide any fields to change (\`name\`, \`current_value\`, \`target_value\`, \`lead\`, \`archived\`, etc.).
+- **get_key_result**: Get a single key result by UUID with full details including metric values, target type, and objective reference.
+- **create_key_result**: Create a new key result. \`name\` and \`objective\` (parent objective UUID) are required. Provide \`type\`, \`start_value\`, \`end_value\`, \`current_value\`, \`metric_unit\`, \`target_type\`, \`lead\`, or \`additional_fields\`.
+- **update_key_result**: Update an existing key result by UUID. Provide any fields to change (\`name\`, \`current_value\`, \`end_value\`, \`metric_unit\`, \`lead\`, \`archived\`, etc.).
 
 ### Initiatives
 - **list_initiatives**: List initiatives with pagination and filters. Supports \`limit\`, \`cursor\`, \`name_contains\`, \`objective_id\`, \`lead_id\`, \`archived\`, \`status\`, \`timeframe_id\`, \`order_by\`.
-- **get_initiative**: Get a single initiative by UUID with full details including objective reference and progress.
-- **create_initiative**: Create a new initiative. \`name\` and \`objective\` (parent objective UUID) are required. Provide \`start_value\`, \`target_value\`, \`current_value\`, \`unit\`, \`lead\`, or \`additional_fields\`.
-- **update_initiative**: Update an existing initiative by UUID. Provide any fields to change (\`name\`, \`current_value\`, \`target_value\`, \`lead\`, \`archived\`, etc.).
+- **get_initiative**: Get a single initiative by UUID with full details including objective reference and status.
+- **create_initiative**: Create a new initiative. \`name\` and \`objective\` (parent objective UUID) are required. Provide \`start_value\`, \`end_value\`, \`current_value\`, \`metric_unit\`, \`lead\`, or \`additional_fields\`.
+- **update_initiative**: Update an existing initiative by UUID. Provide any fields to change (\`name\`, \`current_value\`, \`end_value\`, \`metric_unit\`, \`lead\`, \`archived\`, etc.).
 
 ### KPIs
 - **list_kpis**: List KPIs with pagination and filters. Supports \`limit\`, \`cursor\`, \`name_contains\`, \`lead_id\`, \`group_id\`, \`archived\`, \`status\`, \`is_company_goal\`, \`goal_id\`, \`parent_id\`, \`order_by\`.
@@ -56,6 +56,8 @@ This server provides access to Perdoo OKR data including objectives, key results
 ### Strategic Pillars
 - **list_strategic_pillars**: List strategic pillars with pagination and filters. Supports \`limit\`, \`cursor\`, \`status\`, \`lead_id\`, \`archived\`, \`order_by\`, \`parent_id\`.
 - **get_strategic_pillar**: Get a single strategic pillar by UUID with full details.
+- **create_strategic_pillar**: Create a new strategic pillar. \`name\` is required. Provide \`description\`, \`lead\`, \`is_company_goal\`, \`timeframe\`, \`groups\`, or \`additional_fields\`.
+- **update_strategic_pillar**: Update an existing strategic pillar by UUID. Provide any fields to change (\`name\`, \`description\`, \`lead\`, \`archived\`, etc.).
 
 ## Key Concepts
 
@@ -105,9 +107,8 @@ This server provides access to Perdoo OKR data including objectives, key results
 ### Strategic Pillars
 - Strategic pillars are long-term focus areas that define organizational direction
 - Objectives and KPIs can align to a strategic pillar via their \`goal\` field
-- Creating/modifying strategic pillars requires Superadmin permissions in Perdoo
-- Strategic pillars are read-only via the API (use Perdoo web interface to manage)
 - In the Perdoo API, strategic pillars are Goal entities with type=STRATEGIC_PILLAR
+- Use \`create_strategic_pillar\` and \`update_strategic_pillar\` to manage them via the API
 
 ## Pagination
 
@@ -200,6 +201,7 @@ All create and update operations use Perdoo's upsert mutations:
 - **create_key_result** / **update_key_result**: Uses \`upsertKeyResult\` mutation
 - **create_initiative** / **update_initiative**: Uses \`upsertKeyResult\` mutation with type set to INITIATIVE
 - **create_kpi** / **update_kpi**: Uses \`upsertKpi\` mutation
+- **create_strategic_pillar** / **update_strategic_pillar**: Uses \`upsertGoal\` mutation with type set to STRATEGIC_PILLAR
 
 Mutation behavior:
 - **Create**: Omits the ID, resulting in a new entity
@@ -214,10 +216,6 @@ Errors are returned with actionable suggestions:
 - **Rate limits**: Wait before retrying (automatic backoff is applied)
 - **Service unavailable**: The circuit breaker is open; wait 30 seconds
 - **Validation errors**: Returned in response.errors array with field and messages
-
-## Limitations
-
-- **Strategic Pillars are read-only**: The Perdoo API does not expose a public mutation for creating or modifying strategic pillars. Use the Perdoo web interface for pillar management.
 `;
 
 /**

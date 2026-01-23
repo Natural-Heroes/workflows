@@ -105,18 +105,16 @@ export function registerInitiativeTools(
           id: edge.node.id,
           name: edge.node.name,
           description: edge.node.description ?? null,
-          progress: edge.node.progress ?? null,
           status: edge.node.status,
           type: edge.node.type,
           weight: edge.node.weight,
           startValue: edge.node.startValue ?? null,
-          targetValue: edge.node.targetValue ?? null,
+          endValue: edge.node.endValue ?? null,
           currentValue: edge.node.currentValue ?? null,
-          unit: edge.node.unit ?? null,
+          metricUnit: edge.node.metricUnit ?? null,
           archived: edge.node.archived ?? false,
           lead: edge.node.lead ? { id: edge.node.lead.id, name: edge.node.lead.name } : null,
           objective: edge.node.objective ? { id: edge.node.objective.id, name: edge.node.objective.name } : null,
-          timeframe: edge.node.timeframe ? { id: edge.node.timeframe.id, name: edge.node.timeframe.name } : null,
         }));
 
         const response = {
@@ -164,27 +162,21 @@ export function registerInitiativeTools(
           id: initiative.id,
           name: initiative.name,
           description: initiative.description ?? null,
-          progress: initiative.progress ?? null,
           status: initiative.status,
           type: initiative.type,
           weight: initiative.weight,
           startValue: initiative.startValue ?? null,
-          targetValue: initiative.targetValue ?? null,
+          endValue: initiative.endValue ?? null,
           currentValue: initiative.currentValue ?? null,
-          unit: initiative.unit ?? null,
-          private: initiative.private ?? false,
+          metricUnit: initiative.metricUnit ?? null,
+          targetType: initiative.targetType ?? null,
           archived: initiative.archived ?? false,
           startDate: initiative.startDate ?? null,
           dueDate: initiative.dueDate ?? null,
           createdDate: initiative.createdDate ?? null,
           lastEditedDate: initiative.lastEditedDate ?? null,
-          lead: initiative.lead ? { id: initiative.lead.id, name: initiative.lead.name, email: initiative.lead.email ?? null } : null,
+          lead: initiative.lead ? { id: initiative.lead.id, name: initiative.lead.name } : null,
           objective: initiative.objective ? { id: initiative.objective.id, name: initiative.objective.name } : null,
-          timeframe: initiative.timeframe ? { id: initiative.timeframe.id, name: initiative.timeframe.name } : null,
-          groups: initiative.groups?.edges?.map((edge) => ({
-            id: edge.node.id,
-            name: edge.node.name,
-          })) ?? [],
           contributors: initiative.contributors?.edges?.map((edge) => ({
             id: edge.node.id,
             name: edge.node.name,
@@ -235,30 +227,26 @@ export function registerInitiativeTools(
         .number()
         .optional()
         .describe('Starting value for metric tracking'),
-      target_value: z
+      end_value: z
         .number()
         .optional()
-        .describe('Target value for metric tracking'),
+        .describe('Target/end value for metric tracking'),
       current_value: z
         .number()
         .optional()
         .describe('Current value for metric tracking'),
-      unit: z
+      metric_unit: z
         .string()
         .optional()
-        .describe('Unit label for metric values (e.g., "%", "tasks")'),
+        .describe('Metric unit (NUMERICAL, PERCENTAGE, or currency code like USD, EUR)'),
       weight: z
         .number()
         .optional()
         .describe('Weight for progress contribution'),
-      timeframe: z
-        .string()
-        .optional()
-        .describe('Timeframe UUID'),
       additional_fields: z
         .record(z.unknown())
         .optional()
-        .describe('Additional UpsertKeyResultMutationInput fields (e.g., private, contributors, groups, tags)'),
+        .describe('Additional UpsertKeyResultMutationInput fields'),
     },
     async (params) => {
       logger.debug('create_initiative tool called', { name: params.name, objective: params.objective });
@@ -270,11 +258,10 @@ export function registerInitiativeTools(
           ...(params.description && { description: params.description }),
           ...(params.lead && { lead: params.lead }),
           ...(params.start_value !== undefined && { startValue: params.start_value }),
-          ...(params.target_value !== undefined && { targetValue: params.target_value }),
+          ...(params.end_value !== undefined && { endValue: params.end_value }),
           ...(params.current_value !== undefined && { currentValue: params.current_value }),
-          ...(params.unit && { unit: params.unit }),
+          ...(params.metric_unit && { metricUnit: params.metric_unit }),
           ...(params.weight !== undefined && { weight: params.weight }),
-          ...(params.timeframe && { timeframe: params.timeframe }),
           ...(params.additional_fields ?? {}),
         };
 
@@ -349,26 +336,22 @@ export function registerInitiativeTools(
         .number()
         .optional()
         .describe('New starting value'),
-      target_value: z
+      end_value: z
         .number()
         .optional()
-        .describe('New target value'),
+        .describe('New target/end value'),
       current_value: z
         .number()
         .optional()
         .describe('New current value'),
-      unit: z
+      metric_unit: z
         .string()
         .optional()
-        .describe('New unit label'),
+        .describe('New metric unit (NUMERICAL, PERCENTAGE, or currency code)'),
       weight: z
         .number()
         .optional()
         .describe('New weight'),
-      timeframe: z
-        .string()
-        .optional()
-        .describe('New timeframe UUID'),
       archived: z
         .boolean()
         .optional()
@@ -387,11 +370,10 @@ export function registerInitiativeTools(
           ...(params.description !== undefined && { description: params.description }),
           ...(params.lead && { lead: params.lead }),
           ...(params.start_value !== undefined && { startValue: params.start_value }),
-          ...(params.target_value !== undefined && { targetValue: params.target_value }),
+          ...(params.end_value !== undefined && { endValue: params.end_value }),
           ...(params.current_value !== undefined && { currentValue: params.current_value }),
-          ...(params.unit !== undefined && { unit: params.unit }),
+          ...(params.metric_unit !== undefined && { metricUnit: params.metric_unit }),
           ...(params.weight !== undefined && { weight: params.weight }),
-          ...(params.timeframe && { timeframe: params.timeframe }),
           ...(params.archived !== undefined && { archived: params.archived }),
           ...(params.additional_fields ?? {}),
         };
@@ -423,9 +405,8 @@ export function registerInitiativeTools(
             name: updated.name,
             type: updated.type,
             status: updated.status,
-            progress: updated.progress ?? null,
             currentValue: updated.currentValue ?? null,
-            targetValue: updated.targetValue ?? null,
+            endValue: updated.endValue ?? null,
           } : null,
         };
 

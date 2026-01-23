@@ -68,14 +68,13 @@ export const INITIATIVES_QUERY = `
           id
           name
           description
-          progress
           status
           type
           weight
           startValue
-          targetValue
+          endValue
           currentValue
-          unit
+          metricUnit
           archived
           startDate
           dueDate
@@ -84,10 +83,6 @@ export const INITIATIVES_QUERY = `
             name
           }
           objective {
-            id
-            name
-          }
-          timeframe {
             id
             name
           }

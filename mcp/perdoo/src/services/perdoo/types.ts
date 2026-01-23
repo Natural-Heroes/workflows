@@ -260,20 +260,17 @@ export interface KeyResult {
   id: string;
   name: string;
   description?: string | null;
-  progress?: number | null;
   status: CommitStatus;
   type: KeyResultType;
   weight: number;
   startValue?: number | null;
-  targetValue?: number | null;
+  endValue?: number | null;
   currentValue?: number | null;
-  unit?: string | null;
-  private?: boolean;
+  metricUnit?: string | null;
+  targetType?: string | null;
   archived?: boolean;
   lead?: PerdooUser | null;
   objective?: { id: string; name: string } | null;
-  timeframe?: PerdooTimeframe | null;
-  groups?: Connection<PerdooGroup> | null;
   contributors?: Connection<PerdooUser> | null;
   tags?: Connection<PerdooTag> | null;
   startDate?: string | null;
@@ -478,26 +475,18 @@ export interface UpsertKeyResultInput {
   type?: string;
   /** Starting value for metric tracking */
   startValue?: number;
-  /** Target value for metric tracking */
-  targetValue?: number;
+  /** End/target value for metric tracking */
+  endValue?: number;
   /** Current value for metric tracking */
   currentValue?: number;
-  /** Unit label for metric values */
-  unit?: string;
+  /** Metric unit (NUMERICAL, PERCENTAGE, or currency code) */
+  metricUnit?: string;
+  /** Target type direction (INCREASE_TO, DECREASE_TO, etc.) */
+  targetType?: string;
   /** Weight for progress contribution */
   weight?: number;
-  /** Timeframe ID */
-  timeframe?: string;
-  /** Whether key result is private */
-  private?: boolean;
   /** Whether key result is archived */
   archived?: boolean;
-  /** Contributor user IDs */
-  contributors?: string[];
-  /** Group IDs */
-  groups?: string[];
-  /** Tag IDs */
-  tags?: string[];
   /** Client mutation ID for request tracking */
   clientMutationId?: string;
 }
@@ -613,7 +602,7 @@ export type GoalStatusChoice =
  * Singular query: `goal(id: UUID!)`
  * Plural query: `goals(type: STRATEGIC_PILLAR, ...)`
  *
- * Note: Strategic pillars are read-only via the API (no mutation exists).
+ * Mutation: `upsertGoal` with type set to STRATEGIC_PILLAR.
  */
 export interface StrategicPillar {
   id: string;
@@ -649,6 +638,51 @@ export interface StrategicPillarsData {
  */
 export interface StrategicPillarData {
   goal: StrategicPillar;
+}
+
+/**
+ * Response type for upsertGoal mutation.
+ */
+export interface UpsertGoalData {
+  upsertGoal: {
+    goal: StrategicPillar | null;
+    errors: Array<{ field: string; messages: string[] }> | null;
+    clientMutationId?: string | null;
+  };
+}
+
+/**
+ * Input type for upsertGoal mutation.
+ *
+ * Maps to UpsertGoalMutationInput in the Perdoo GraphQL schema.
+ * When `id` is omitted, a new goal is created.
+ * When `id` is provided, the existing goal is updated.
+ */
+export interface UpsertGoalInput {
+  /** Goal ID (omit for create, provide for update) */
+  id?: string;
+  /** Goal name/title */
+  name?: string;
+  /** Goal description */
+  description?: string;
+  /** Goal type (always STRATEGIC_PILLAR for strategic pillars) */
+  type?: string;
+  /** Whether this is a company-wide goal */
+  isCompanyGoal?: boolean;
+  /** Lead user ID */
+  lead?: string;
+  /** Group IDs */
+  groups?: string[];
+  /** Goal stage */
+  stage?: string;
+  /** Timeframe ID */
+  timeframe?: string;
+  /** Whether goal is archived */
+  archived?: boolean;
+  /** Data source identifier */
+  source?: string;
+  /** Client mutation ID for request tracking */
+  clientMutationId?: string;
 }
 
 // ============================================================================

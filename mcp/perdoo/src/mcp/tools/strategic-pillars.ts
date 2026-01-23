@@ -1,16 +1,15 @@
 /**
  * MCP Tools: Strategic Pillars
  *
- * Registers strategic pillar read-only tools for the Perdoo MCP server.
- * Provides list and get operations with relay pagination flattening
- * for LLM consumption.
+ * Registers strategic pillar CRUD tools for the Perdoo MCP server.
+ * Provides list, get, create, and update operations with
+ * relay pagination flattening for LLM consumption.
  *
  * Strategic pillars are Goal entities in the Perdoo API, filtered by
  * type=STRATEGIC_PILLAR. They define long-term organizational focus areas
  * that objectives and KPIs can align to.
  *
- * Note: Strategic pillars are read-only via the API (no mutation exists).
- * Creating or modifying strategic pillars requires the Perdoo web interface.
+ * Uses the upsertGoal mutation with type forced to STRATEGIC_PILLAR.
  */
 
 import { z } from 'zod';
@@ -25,6 +24,8 @@ import { handleToolError } from './error-handler.js';
  * Tools registered:
  * - list_strategic_pillars: List strategic pillars with pagination and filters
  * - get_strategic_pillar: Get a single strategic pillar by UUID
+ * - create_strategic_pillar: Create a new strategic pillar (upsert without id)
+ * - update_strategic_pillar: Update an existing strategic pillar (upsert with id)
  *
  * @param server - The MCP server instance
  * @param client - The Perdoo API client
@@ -188,7 +189,199 @@ export function registerStrategicPillarTools(
     }
   );
 
-  // Note: No Goal mutation found in Perdoo API. Strategic pillars are read-only via this MCP server.
+  // ===========================================================================
+  // create_strategic_pillar
+  // ===========================================================================
+  server.tool(
+    'create_strategic_pillar',
+    'Create a new strategic pillar in Perdoo. Name is required. Strategic pillars define long-term organizational focus areas.',
+    {
+      name: z
+        .string()
+        .min(1)
+        .describe('Name/title of the strategic pillar'),
+      description: z
+        .string()
+        .optional()
+        .describe('Description of the strategic pillar'),
+      lead: z
+        .string()
+        .optional()
+        .describe('Lead user UUID'),
+      is_company_goal: z
+        .boolean()
+        .optional()
+        .describe('Whether this is a company-wide strategic pillar'),
+      timeframe: z
+        .string()
+        .optional()
+        .describe('Timeframe UUID'),
+      groups: z
+        .array(z.string())
+        .optional()
+        .describe('Group UUIDs to assign'),
+      additional_fields: z
+        .record(z.unknown())
+        .optional()
+        .describe('Additional UpsertGoalMutationInput fields'),
+    },
+    async (params) => {
+      logger.debug('create_strategic_pillar tool called', { name: params.name });
+
+      try {
+        const input = {
+          name: params.name,
+          ...(params.description && { description: params.description }),
+          ...(params.lead && { lead: params.lead }),
+          ...(params.is_company_goal !== undefined && { isCompanyGoal: params.is_company_goal }),
+          ...(params.timeframe && { timeframe: params.timeframe }),
+          ...(params.groups && { groups: params.groups }),
+          ...(params.additional_fields ?? {}),
+        };
+
+        const data = await client.createStrategicPillar(input);
+        const result = data.upsertGoal;
+
+        if (result.errors && result.errors.length > 0) {
+          return {
+            content: [
+              {
+                type: 'text' as const,
+                text: JSON.stringify({
+                  success: false,
+                  errors: result.errors,
+                }),
+              },
+            ],
+            isError: true,
+          };
+        }
+
+        const created = result.goal;
+        const response = {
+          success: true,
+          strategicPillar: created ? {
+            id: created.id,
+            name: created.name,
+            type: created.type,
+            status: created.status,
+          } : null,
+        };
+
+        return {
+          content: [
+            {
+              type: 'text' as const,
+              text: JSON.stringify(response),
+            },
+          ],
+        };
+      } catch (error) {
+        return handleToolError(error, 'create_strategic_pillar');
+      }
+    }
+  );
+
+  // ===========================================================================
+  // update_strategic_pillar
+  // ===========================================================================
+  server.tool(
+    'update_strategic_pillar',
+    'Update an existing Perdoo strategic pillar by UUID.',
+    {
+      id: z
+        .string()
+        .describe('The strategic pillar UUID to update'),
+      name: z
+        .string()
+        .optional()
+        .describe('New name/title'),
+      description: z
+        .string()
+        .optional()
+        .describe('New description'),
+      lead: z
+        .string()
+        .optional()
+        .describe('New lead user UUID'),
+      is_company_goal: z
+        .boolean()
+        .optional()
+        .describe('Whether this is a company-wide strategic pillar'),
+      timeframe: z
+        .string()
+        .optional()
+        .describe('New timeframe UUID'),
+      groups: z
+        .array(z.string())
+        .optional()
+        .describe('New group UUIDs'),
+      archived: z
+        .boolean()
+        .optional()
+        .describe('Archive or unarchive the strategic pillar'),
+      additional_fields: z
+        .record(z.unknown())
+        .optional()
+        .describe('Additional UpsertGoalMutationInput fields'),
+    },
+    async (params) => {
+      logger.debug('update_strategic_pillar tool called', { id: params.id });
+
+      try {
+        const input = {
+          ...(params.name && { name: params.name }),
+          ...(params.description !== undefined && { description: params.description }),
+          ...(params.lead && { lead: params.lead }),
+          ...(params.is_company_goal !== undefined && { isCompanyGoal: params.is_company_goal }),
+          ...(params.timeframe && { timeframe: params.timeframe }),
+          ...(params.groups && { groups: params.groups }),
+          ...(params.archived !== undefined && { archived: params.archived }),
+          ...(params.additional_fields ?? {}),
+        };
+
+        const data = await client.updateStrategicPillar(params.id, input);
+        const result = data.upsertGoal;
+
+        if (result.errors && result.errors.length > 0) {
+          return {
+            content: [
+              {
+                type: 'text' as const,
+                text: JSON.stringify({
+                  success: false,
+                  errors: result.errors,
+                }),
+              },
+            ],
+            isError: true,
+          };
+        }
+
+        const updated = result.goal;
+        const response = {
+          success: true,
+          strategicPillar: updated ? {
+            id: updated.id,
+            name: updated.name,
+            type: updated.type,
+            status: updated.status,
+          } : null,
+        };
+
+        return {
+          content: [
+            {
+              type: 'text' as const,
+              text: JSON.stringify(response),
+            },
+          ],
+        };
+      } catch (error) {
+        return handleToolError(error, 'update_strategic_pillar');
+      }
+    }
+  );
 
   logger.info('Strategic pillar tools registered');
 }
