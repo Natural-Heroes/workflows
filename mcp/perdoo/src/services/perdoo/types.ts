@@ -80,6 +80,64 @@ export type GoalUpdateCycle =
  */
 export type KeyResultType = 'KEY_RESULT' | 'INITIATIVE';
 
+/**
+ * KPI metric unit (currency or numerical type).
+ *
+ * Discovered via MetricUnit enum introspection.
+ * Includes NUMERICAL, PERCENTAGE, and ISO 4217 currency codes.
+ */
+export type MetricUnit =
+  | 'NUMERICAL'
+  | 'PERCENTAGE'
+  | 'AED' | 'EUR' | 'USD' | 'GBP' | 'AUD' | 'BRL' | 'CAD' | 'CHF'
+  | 'CLP' | 'CNY' | 'CZK' | 'DKK' | 'HKD' | 'HUF' | 'IDR' | 'ILS'
+  | 'INR' | 'IQD' | 'JOD' | 'JPY' | 'KES' | 'KRW' | 'KWD' | 'KZT'
+  | 'MXN' | 'MYR' | 'NGN' | 'NOK' | 'NZD' | 'PHP' | 'PKR' | 'PLN'
+  | 'RON' | 'RUB' | 'SAR' | 'SEK' | 'SGD' | 'THB' | 'TRY' | 'TWD'
+  | 'ZAR';
+
+/**
+ * KPI target type (direction of progress).
+ *
+ * Discovered via TargetType enum introspection.
+ */
+export type KpiTargetType =
+  | 'STAY_AT_OR_ABOVE'
+  | 'STAY_AT_OR_BELOW'
+  | 'INCREASE_TO'
+  | 'DECREASE_TO';
+
+/**
+ * KPI goal operator (comparison direction for targets).
+ *
+ * Discovered via PerdooApiKpiGoalOperatorChoices enum introspection.
+ */
+export type KpiGoalOperator =
+  | 'GREATER_THAN_OR_EQUAL'
+  | 'LESS_THAN_OR_EQUAL';
+
+/**
+ * KPI aggregation method (how child KPIs roll up).
+ *
+ * Discovered via AggregationMethod enum introspection.
+ */
+export type KpiAggregationMethod = 'WEIGHTED_AVERAGE' | 'SUM';
+
+/**
+ * KPI target frequency (how often targets are set).
+ *
+ * Discovered via GoalTargetFrequency enum introspection.
+ */
+export type KpiTargetFrequency = 'WEEKLY' | 'MONTHLY' | 'QUARTERLY' | 'YEARLY';
+
+/**
+ * KPI progress driver choices (how progress is calculated).
+ *
+ * Discovered via ProgressDriverChoices enum introspection.
+ * Different from objective ProgressDriver -- KPIs support MANUAL, INTEGRATION, ALIGNED_GOALS.
+ */
+export type KpiProgressDriver = 'MANUAL' | 'INTEGRATION' | 'ALIGNED_GOALS';
+
 // ============================================================================
 // Domain Types (validated against real Perdoo API)
 // ============================================================================
@@ -256,6 +314,81 @@ export interface UpsertKeyResultData {
 }
 
 // ============================================================================
+// KPI Types (validated via __type queries + Query/Mutation introspection)
+// ============================================================================
+
+/**
+ * Perdoo KPI entity.
+ *
+ * Type name in API is lowercase `kpi`. Uses UUID scalars for IDs.
+ * Status is CommitStatus enum (field: lastCommitStatus), metricUnit is MetricUnit enum.
+ * Singular query: `kpi(id: UUID!)`
+ * Plural query: `allKpis(...)`
+ */
+export interface Kpi {
+  id: string;
+  name: string;
+  description?: string | null;
+  lastCommitStatus: CommitStatus;
+  metricUnit: MetricUnit;
+  startValue?: number | null;
+  currentValue?: number | null;
+  targetType: KpiTargetType;
+  goalOperator?: KpiGoalOperator | null;
+  weight: number;
+  isCompanyGoal: boolean;
+  archived: boolean;
+  private: boolean;
+  progressDriver: KpiProgressDriver;
+  goalUpdateCycle: GoalUpdateCycle;
+  targetFrequency: KpiTargetFrequency;
+  resetTargetEveryCycle: boolean;
+  aggregationMethod: KpiAggregationMethod;
+  goalThreshold?: number | null;
+  isOutdated: boolean;
+  progress?: number | null;
+  createdDate: string;
+  archivedDate?: string | null;
+  lead?: PerdooUser | null;
+  parent?: { id: string; name: string } | null;
+  goal?: { id: string; name: string } | null;
+  groups?: Connection<PerdooGroup> | null;
+  tags?: Connection<PerdooTag> | null;
+  children?: Connection<{ id: string; name: string }> | null;
+}
+
+/**
+ * Response type for allKpis list query.
+ */
+export interface KpisData {
+  allKpis: Connection<Kpi>;
+}
+
+/**
+ * Response type for single KPI query.
+ */
+export interface KpiData {
+  kpi: Kpi;
+}
+
+/**
+ * Response type for upsertKpi mutation.
+ *
+ * Uses same upsert pattern as objectives and key results:
+ * - When input.id is omitted, creates a new KPI
+ * - When input.id is provided, updates the existing KPI
+ *
+ * Input type name is UpsertKPIMutationInput (uppercase KPI).
+ */
+export interface UpsertKpiData {
+  upsertKpi: {
+    kpi: Kpi | null;
+    errors: Array<{ field: string; messages: string[] }>;
+    clientMutationId?: string | null;
+  };
+}
+
+// ============================================================================
 // Input Types (validated via __type on UpsertObjectiveMutationInput)
 // ============================================================================
 
@@ -354,6 +487,84 @@ export interface UpsertKeyResultInput {
   groups?: string[];
   /** Tag IDs */
   tags?: string[];
+  /** Client mutation ID for request tracking */
+  clientMutationId?: string;
+}
+
+// ============================================================================
+// KPI Input Types (validated via __type on UpsertKPIMutationInput)
+// ============================================================================
+
+/**
+ * Input for upserting a KPI (create or update).
+ *
+ * Maps to UpsertKPIMutationInput in the Perdoo GraphQL schema.
+ * Follows same upsert pattern as objectives and key results.
+ * When `id` is omitted, a new KPI is created.
+ * When `id` is provided, the existing KPI is updated.
+ *
+ * Note: The input type name uses uppercase KPI (UpsertKPIMutationInput)
+ * while the entity type uses lowercase (kpi).
+ */
+export interface UpsertKpiInput {
+  /** KPI ID (omit for create, provide for update) */
+  id?: string;
+  /** KPI name/title */
+  name?: string;
+  /** KPI description */
+  description?: string;
+  /** Lead user ID */
+  lead?: string;
+  /** Group IDs */
+  groups?: string[];
+  /** Metric unit (NUMERICAL, PERCENTAGE, or currency code) */
+  metricUnit?: string;
+  /** Current metric value */
+  currentValue?: number;
+  /** Starting metric value */
+  startValue?: number;
+  /** Target type direction (STAY_AT_OR_ABOVE, STAY_AT_OR_BELOW, INCREASE_TO, DECREASE_TO) */
+  targetType?: string;
+  /** Goal operator (GREATER_THAN_OR_EQUAL, LESS_THAN_OR_EQUAL) */
+  goalOperator?: string;
+  /** Weight for aggregation contribution */
+  weight?: number;
+  /** Whether this is a company-level KPI */
+  isCompanyGoal?: boolean;
+  /** Strategic goal ID */
+  goal?: string;
+  /** Parent KPI ID */
+  parent?: string;
+  /** Whether KPI is private */
+  private?: boolean;
+  /** Progress driver (MANUAL, INTEGRATION, ALIGNED_GOALS) */
+  progressDriver?: string;
+  /** Update cadence (WEEKLY, BIWEEKLY, MONTHLY, QUARTERLY, EVERY_4_MONTHS) */
+  goalUpdateCycle?: string;
+  /** Target frequency (WEEKLY, MONTHLY, QUARTERLY, YEARLY) */
+  targetFrequency?: string;
+  /** Whether to reset target every cycle */
+  resetTargetEveryCycle?: boolean;
+  /** Aggregation method (WEIGHTED_AVERAGE, SUM) */
+  aggregationMethod?: string;
+  /** Goal threshold value */
+  goalThreshold?: number;
+  /** Whether KPI is archived */
+  archived?: boolean;
+  /** Tag IDs */
+  tags?: string[];
+  /** Users visible to (for private KPIs) */
+  visibleTo?: string[];
+  /** Integration ID */
+  integration?: string;
+  /** Integration field name */
+  integrationField?: string;
+  /** Progress integration ID */
+  progressIntegration?: string;
+  /** Progress integration config JSON */
+  progressIntegrationConfig?: string;
+  /** Data source identifier */
+  source?: string;
   /** Client mutation ID for request tracking */
   clientMutationId?: string;
 }
