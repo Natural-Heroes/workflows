@@ -38,17 +38,17 @@
 
 ### Initiatives
 
-- [ ] **INIT-01**: User can list initiatives with pagination and filtering
-- [ ] **INIT-02**: User can get a single initiative by ID
-- [ ] **INIT-03**: User can create an initiative under an objective
-- [ ] **INIT-04**: User can update an existing initiative
+- [x] **INIT-01**: User can list initiatives with pagination and filtering
+- [x] **INIT-02**: User can get a single initiative by ID
+- [x] **INIT-03**: User can create an initiative under an objective
+- [x] **INIT-04**: User can update an existing initiative
 
 ### Strategic Pillars
 
-- [ ] **PILLAR-01**: User can list strategic pillars with pagination and filtering
-- [ ] **PILLAR-02**: User can get a single strategic pillar by ID
-- [ ] **PILLAR-03**: User can create a strategic pillar
-- [ ] **PILLAR-04**: User can update an existing strategic pillar
+- [x] **PILLAR-01**: User can list strategic pillars with pagination and filtering
+- [x] **PILLAR-02**: User can get a single strategic pillar by ID
+- [N/A] **PILLAR-03**: User can create a strategic pillar *(No Goal mutation in API — read-only)*
+- [N/A] **PILLAR-04**: User can update an existing strategic pillar *(No Goal mutation in API — read-only)*
 
 ## v2 Requirements
 
@@ -92,14 +92,14 @@
 | KPI-02 | Phase 2 | Complete |
 | KPI-03 | Phase 2 | Complete |
 | KPI-04 | Phase 2 | Complete |
-| INIT-01 | Phase 3 | Pending |
-| INIT-02 | Phase 3 | Pending |
-| INIT-03 | Phase 3 | Pending |
-| INIT-04 | Phase 3 | Pending |
-| PILLAR-01 | Phase 3 | Pending |
-| PILLAR-02 | Phase 3 | Pending |
-| PILLAR-03 | Phase 3 | Pending |
-| PILLAR-04 | Phase 3 | Pending |
+| INIT-01 | Phase 3 | Complete |
+| INIT-02 | Phase 3 | Complete |
+| INIT-03 | Phase 3 | Complete |
+| INIT-04 | Phase 3 | Complete |
+| PILLAR-01 | Phase 3 | Complete |
+| PILLAR-02 | Phase 3 | Complete |
+| PILLAR-03 | Phase 3 | N/A (no API mutation) |
+| PILLAR-04 | Phase 3 | N/A (no API mutation) |
 
 **Coverage:**
 - v1 requirements: 27 total
@@ -108,4 +108,4 @@
 
 ---
 *Requirements defined: 2026-01-23*
-*Last updated: 2026-01-23 after Phase 2 completion*
+*Last updated: 2026-01-23 after Phase 3 completion*

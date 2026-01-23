@@ -12,7 +12,7 @@ Build a GraphQL-to-MCP bridge server that exposes Perdoo's OKR management API as
 
 - [x] **Phase 1: Foundation + Objectives** - Infrastructure, GraphQL client, resilience stack, and first entity proving the integration pattern
 - [x] **Phase 2: Key Results + KPIs** - High/medium-confidence entities replicating the proven pattern
-- [ ] **Phase 3: Initiatives + Strategic Pillars** - Medium/low-confidence entities completing full API coverage
+- [x] **Phase 3: Initiatives + Strategic Pillars** - Medium/low-confidence entities completing full API coverage
 
 ## Phase Details
 
@@ -60,8 +60,8 @@ Plans:
 **Plans:** 2 plans
 
 Plans:
-- [ ] 03-01-PLAN.md -- Initiative operations, types, client methods, MCP tools, and instructions update
-- [ ] 03-02-PLAN.md -- Introspect Goal schema, strategic pillar operations/types/client/tools, instructions update
+- [x] 03-01-PLAN.md -- Initiative operations, types, client methods, MCP tools, and instructions update
+- [x] 03-02-PLAN.md -- Introspect Goal schema, strategic pillar operations/types/client/tools, instructions update
 
 ## Progress
 
@@ -72,4 +72,4 @@ Phases execute in numeric order: 1 -> 2 -> 3
 |-------|----------------|--------|-----------|
 | 1. Foundation + Objectives | 3/3 | Complete | 2026-01-23 |
 | 2. Key Results + KPIs | 2/2 | Complete | 2026-01-23 |
-| 3. Initiatives + Strategic Pillars | 0/2 | Not started | - |
+| 3. Initiatives + Strategic Pillars | 2/2 | Complete | 2026-01-23 |
