@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-01-22)
 
 **Core value:** LLMs can fully manage OKR structures in Perdoo through a single MCP interface
-**Current focus:** Phase 2 COMPLETE -- Key Results and KPIs both done. Phase 3 next.
+**Current focus:** Phase 3 in progress -- Initiatives done, Strategic Pillars next.
 
 ## Current Position
 
-Phase: 2 of 3 (Key Results + KPIs) -- COMPLETE
-Plan: 2 of 2 in current phase -- COMPLETE
-Status: Phase complete
-Last activity: 2026-01-23 -- Completed 02-02-PLAN.md (KPI tools + instructions)
+Phase: 3 of 3 (Initiatives + Strategic Pillars)
+Plan: 1 of 2 in current phase
+Status: In progress
+Last activity: 2026-01-23 -- Completed 03-01-PLAN.md (Initiative MCP tools)
 
-Progress: [███████░░░] 71% (5/7 plans)
+Progress: [████████░░] 86% (6/7 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 5
-- Average duration: ~4.8m
-- Total execution time: ~0.4 hours
+- Total plans completed: 6
+- Average duration: ~4.3m
+- Total execution time: ~0.43 hours
 
 **By Phase:**
 
@@ -29,10 +29,11 @@ Progress: [███████░░░] 71% (5/7 plans)
 |-------|-------|-------|----------|
 | 01 | 3/3 | ~12m | ~4m |
 | 02 | 2/2 | ~12m | ~6m |
+| 03 | 1/2 | ~2m 45s | ~2m 45s |
 
 **Recent Trend:**
-- Last 5 plans: 01-02 (3m 32s), 01-03 (~5m), 02-01 (~6m 15s), 02-02 (~6m)
-- Trend: consistent velocity
+- Last 5 plans: 01-03 (~5m), 02-01 (~6m 15s), 02-02 (~6m), 03-01 (~2m 45s)
+- Trend: faster on well-patterned work
 
 *Updated after each plan completion*
 
@@ -68,6 +69,9 @@ Recent decisions affecting current work:
 - [02-02]: KPI uses MetricUnit enum (NUMERICAL, PERCENTAGE, currencies)
 - [02-02]: KPI progressDriver: MANUAL | INTEGRATION | ALIGNED_GOALS
 - [02-02]: KPIs have no timeframe -- they are ongoing metrics
+- [03-01]: Dedicated `initiatives(...)` root query is pre-filtered (no type arg needed)
+- [03-01]: createInitiative forces type=INITIATIVE; updateInitiative does not
+- [03-01]: Initiative tools use 'initiative'/'initiatives' response keys (not keyResult)
 
 ### Pending Todos
 
@@ -81,6 +85,6 @@ None.
 ## Session Continuity
 
 Last session: 2026-01-23
-Stopped at: Completed 02-02-PLAN.md -- KPI tools + instructions update (Phase 2 COMPLETE)
+Stopped at: Completed 03-01-PLAN.md -- Initiative MCP tools (Phase 3 in progress)
 Resume file: None
-Next: Phase 3 (Strategic Pillars)
+Next: 03-02-PLAN.md (Strategic Pillars)
