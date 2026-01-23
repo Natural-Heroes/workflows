@@ -135,6 +135,11 @@ export const KEY_RESULT_QUERY = `
         id
         name
       }
+      parent {
+        id
+        name
+      }
+      childrenCount
       contributors {
         edges {
           node {

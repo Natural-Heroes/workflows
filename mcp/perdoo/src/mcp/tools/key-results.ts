@@ -205,6 +205,8 @@ export function registerKeyResultTools(
           lastEditedDate: kr.lastEditedDate ?? null,
           lead: kr.lead ? { id: kr.lead.id, name: kr.lead.name } : null,
           objective: kr.objective ? { id: kr.objective.id, name: kr.objective.name } : null,
+          parent: kr.parent ? { id: kr.parent.id, name: kr.parent.name } : null,
+          children_count: kr.childrenCount ?? 0,
           contributors: kr.contributors?.edges?.map((edge) => ({
             id: edge.node.id,
             name: edge.node.name,
