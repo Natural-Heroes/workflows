@@ -57,11 +57,11 @@ Plans:
   2. LLM can create an initiative under a specific objective and update its properties
   3. LLM can list and get strategic pillars with filtering
   4. LLM can create and update strategic pillars (subject to API permission constraints)
-**Plans**: TBD
+**Plans:** 2 plans
 
 Plans:
-- [ ] 03-01: Initiatives operations and tools
-- [ ] 03-02: Strategic Pillars operations and tools
+- [ ] 03-01-PLAN.md -- Initiative operations, types, client methods, MCP tools, and instructions update
+- [ ] 03-02-PLAN.md -- Introspect Goal schema, strategic pillar operations/types/client/tools, instructions update
 
 ## Progress
 
