@@ -5,33 +5,34 @@
 See: .planning/PROJECT.md (updated 2026-01-22)
 
 **Core value:** LLMs can fully manage OKR structures in Perdoo through a single MCP interface
-**Current focus:** Phase 1 complete -- ready for Phase 2 (Key Results + KPIs)
+**Current focus:** Phase 2 in progress -- Key Results complete, KPIs next
 
 ## Current Position
 
-Phase: 1 of 3 (Foundation + Objectives) -- COMPLETE
-Plan: 3 of 3 in current phase -- COMPLETE
-Status: Phase 1 complete
-Last activity: 2026-01-23 -- Completed 01-03-PLAN.md (schema introspection + validation)
+Phase: 2 of 3 (Key Results + KPIs)
+Plan: 1 of 2 in current phase -- COMPLETE
+Status: In progress
+Last activity: 2026-01-23 -- Completed 02-01-PLAN.md (Key Result tools)
 
-Progress: [████░░░░░░] 43% (3/7 plans)
+Progress: [█████░░░░░] 57% (4/7 plans)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 3
-- Average duration: ~4m
-- Total execution time: ~0.2 hours
+- Total plans completed: 4
+- Average duration: ~4.5m
+- Total execution time: ~0.3 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01 | 3/3 | ~12m | ~4m |
+| 02 | 1/2 | ~6m | ~6m |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (3m 45s), 01-02 (3m 32s), 01-03 (~5m)
-- Trend: consistent velocity, slight increase due to human checkpoint
+- Last 5 plans: 01-01 (3m 45s), 01-02 (3m 32s), 01-03 (~5m), 02-01 (~6m 15s)
+- Trend: consistent velocity
 
 *Updated after each plan completion*
 
@@ -56,6 +57,10 @@ Recent decisions affecting current work:
 - [01-03]: Django-style filter naming (name_Icontains, lead_Id, groups_Id)
 - [01-03]: Stage (DRAFT/ACTIVE/CLOSED) separate from status (CommitStatus enum)
 - [01-03]: Full introspection disabled; __type queries used as workaround
+- [02-01]: Singular key result query is `result(id: UUID!)` not `keyResult(id: ...)`
+- [02-01]: KeyResultType enum: KEY_RESULT | INITIATIVE
+- [02-01]: Upsert pattern confirmed for key results (upsertKeyResult)
+- [02-01]: keyResults query has 10+ Django-style filter args
 
 ### Pending Todos
 
@@ -63,13 +68,13 @@ None.
 
 ### Blockers/Concerns
 
-- Phase 2: Key Results and KPIs may also use upsert pattern (verify during introspection)
-- Phase 2: Django-style filter names need discovery per entity type
+- Phase 2 Plan 2: KPI tools -- check for `kpi(id: UUID!)` singular query and upsertKpi mutation
+- Phase 2 Plan 2: Instructions resource needs update with KR + KPI documentation
 - Phase 3: Strategic Pillars have LOW-MEDIUM confidence; may need Superadmin permissions
 
 ## Session Continuity
 
 Last session: 2026-01-23
-Stopped at: Completed 01-03-PLAN.md -- Phase 1 complete
+Stopped at: Completed 02-01-PLAN.md -- Key Result tools
 Resume file: None
-Next: Phase 2 planning (Key Results + KPIs)
+Next: Phase 2 Plan 2 (KPI tools + instructions resource update)
