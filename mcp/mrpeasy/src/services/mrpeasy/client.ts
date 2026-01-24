@@ -35,7 +35,32 @@ import type {
   ItemsParams,
   Shipment,
   ShipmentsParams,
+  CreateCustomerOrderPayload,
+  UpdateCustomerOrderPayload,
+  CreateManufacturingOrderPayload,
+  UpdateManufacturingOrderPayload,
+  CreateItemPayload,
+  UpdateItemPayload,
+  CreateBomPayload,
+  UpdateBomPayload,
+  CreateRoutingPayload,
+  UpdateRoutingPayload,
+  Bom,
+  BomListParams,
+  Routing,
+  RoutingListParams,
+  StockLot,
+  StockLotsParams,
+  PurchaseOrder,
+  PurchaseOrdersParams,
+  ReportType,
+  ReportParams,
 } from './types.js';
+
+/**
+ * HTTP methods supported by the MRPeasy API.
+ */
+type HttpMethod = 'GET' | 'POST' | 'PUT';
 
 /**
  * MRPeasy API client configuration.
@@ -119,7 +144,7 @@ export class MrpEasyClient {
   }
 
   /**
-   * Makes an authenticated GET request to the MRPeasy API.
+   * Makes an authenticated request to the MRPeasy API.
    *
    * All requests go through the resilience stack:
    * 1. Queue - ensures max 1 concurrent request
@@ -128,8 +153,10 @@ export class MrpEasyClient {
    * 4. Rate limiter - ensures max 100 requests per 10 seconds
    *
    * @param endpoint - API endpoint (without base URL)
-   * @param params - Query parameters
+   * @param params - Query parameters (for GET) or ignored (for POST/PUT)
    * @param rangeHeader - Optional Range header for pagination (e.g., "items=0-99")
+   * @param method - HTTP method (defaults to GET)
+   * @param body - Request body for POST/PUT
    * @returns Parsed JSON response
    * @throws MrpEasyApiError on non-2xx responses
    * @throws CircuitBreakerOpenError if circuit breaker is open
@@ -137,9 +164,11 @@ export class MrpEasyClient {
   private async request<T, P extends object = object>(
     endpoint: string,
     params?: P,
-    rangeHeader?: string
+    rangeHeader?: string,
+    method: HttpMethod = 'GET',
+    body?: unknown
   ): Promise<T> {
-    logger.debug('Request queued', { endpoint });
+    logger.debug('Request queued', { endpoint, method });
 
     // Queue ensures single concurrent request
     return this.queue.enqueue(async () => {
@@ -160,9 +189,9 @@ export class MrpEasyClient {
             // Rate limiter ensures we don't exceed 100/10s
             logger.debug('Waiting for rate limit token', { endpoint });
             await this.rateLimiter.waitForToken();
-            logger.debug('Token acquired, sending request', { endpoint });
+            logger.debug('Token acquired, sending request', { endpoint, method });
 
-            return this.executeRequest<T, P>(endpoint, params, rangeHeader);
+            return this.executeRequest<T, P>(endpoint, params, rangeHeader, method, body);
           },
           { maxAttempts: this.maxRetries }
         );
@@ -174,19 +203,23 @@ export class MrpEasyClient {
    * Executes the actual HTTP request.
    *
    * @param endpoint - API endpoint (without base URL)
-   * @param params - Query parameters
+   * @param params - Query parameters (used for GET requests)
    * @param rangeHeader - Optional Range header for pagination (e.g., "items=0-99")
+   * @param method - HTTP method (GET, POST, PUT)
+   * @param body - Request body for POST/PUT
    * @returns Parsed JSON response
    */
   private async executeRequest<T, P extends object = object>(
     endpoint: string,
     params?: P,
-    rangeHeader?: string
+    rangeHeader?: string,
+    method: HttpMethod = 'GET',
+    body?: unknown
   ): Promise<T> {
-    // Build URL with query parameters
+    // Build URL with query parameters (only for GET)
     const url = new URL(`${this.baseUrl}${endpoint}`);
 
-    if (params) {
+    if (method === 'GET' && params) {
       for (const [key, value] of Object.entries(params) as [string, unknown][]) {
         if (value !== undefined && value !== null) {
           // Handle array parameters (e.g., status[] for MRPeasy PHP-style arrays)
@@ -202,9 +235,10 @@ export class MrpEasyClient {
     }
 
     logger.debug('MRPeasy API request', {
-      method: 'GET',
+      method,
       endpoint,
-      params: params ?? {},
+      params: method === 'GET' ? (params ?? {}) : undefined,
+      body: method !== 'GET' ? body : undefined,
       rangeHeader,
     });
 
@@ -222,15 +256,25 @@ export class MrpEasyClient {
         headers['Range'] = rangeHeader;
       }
 
-      const response = await fetch(url.toString(), {
-        method: 'GET',
+      const fetchOptions: RequestInit = {
+        method,
         headers,
-      });
+      };
+
+      // Add body for POST/PUT requests
+      if (method !== 'GET' && body !== undefined) {
+        fetchOptions.body = JSON.stringify(body);
+      }
+
+      const response = await fetch(url.toString(), fetchOptions);
 
       const duration = Date.now() - startTime;
 
-      // Handle 206 Partial Content (paginated responses) as success
-      if (!response.ok && response.status !== 206) {
+      // Success statuses: 200/206 (GET), 201 (POST), 202 (PUT)
+      const isSuccess = response.ok || response.status === 206 ||
+        response.status === 201 || response.status === 202;
+
+      if (!isSuccess) {
         // Try to parse error response
         let errorData: Partial<MrpEasyError> = {};
         try {
@@ -241,6 +285,7 @@ export class MrpEasyClient {
 
         logger.error('MRPeasy API error', {
           endpoint,
+          method,
           status: response.status,
           message: errorData.message ?? response.statusText,
           duration,
@@ -299,6 +344,7 @@ export class MrpEasyClient {
 
       logger.debug('MRPeasy API response', {
         endpoint,
+        method,
         status: response.status,
         duration,
         contentRange,
@@ -530,6 +576,294 @@ export class MrpEasyClient {
    */
   async getShipment(id: number): Promise<Shipment> {
     return this.request<Shipment>(`/shipments/${id}`);
+  }
+
+  // ===========================================================================
+  // Customer Order Mutations
+  // ===========================================================================
+
+  /**
+   * Create a new customer order.
+   *
+   * @param payload - Customer order creation data
+   * @returns Created customer order
+   */
+  async createCustomerOrder(payload: CreateCustomerOrderPayload): Promise<CustomerOrder> {
+    return this.request<CustomerOrder>(
+      '/customer-orders',
+      undefined,
+      undefined,
+      'POST',
+      payload
+    );
+  }
+
+  /**
+   * Update an existing customer order.
+   *
+   * @param id - Customer order ID
+   * @param payload - Fields to update
+   * @returns Updated customer order
+   */
+  async updateCustomerOrder(id: number, payload: UpdateCustomerOrderPayload): Promise<CustomerOrder> {
+    return this.request<CustomerOrder>(
+      `/customer-orders/${id}`,
+      undefined,
+      undefined,
+      'PUT',
+      payload
+    );
+  }
+
+  // ===========================================================================
+  // Manufacturing Order Mutations
+  // ===========================================================================
+
+  /**
+   * Create a new manufacturing order.
+   *
+   * @param payload - Manufacturing order creation data
+   * @returns Created manufacturing order
+   */
+  async createManufacturingOrder(payload: CreateManufacturingOrderPayload): Promise<ManufacturingOrder> {
+    return this.request<ManufacturingOrder>(
+      '/manufacturing-orders',
+      undefined,
+      undefined,
+      'POST',
+      payload
+    );
+  }
+
+  /**
+   * Update an existing manufacturing order.
+   *
+   * @param id - Manufacturing order ID
+   * @param payload - Fields to update
+   * @returns Updated manufacturing order
+   */
+  async updateManufacturingOrder(id: number, payload: UpdateManufacturingOrderPayload): Promise<ManufacturingOrder> {
+    return this.request<ManufacturingOrder>(
+      `/manufacturing-orders/${id}`,
+      undefined,
+      undefined,
+      'PUT',
+      payload
+    );
+  }
+
+  // ===========================================================================
+  // Item Mutations
+  // ===========================================================================
+
+  /**
+   * Create a new item.
+   *
+   * @param payload - Item creation data
+   * @returns Created item
+   */
+  async createItem(payload: CreateItemPayload): Promise<StockItem> {
+    return this.request<StockItem>(
+      '/items',
+      undefined,
+      undefined,
+      'POST',
+      payload
+    );
+  }
+
+  /**
+   * Update an existing item.
+   *
+   * @param id - Item article_id
+   * @param payload - Fields to update
+   * @returns Updated item
+   */
+  async updateItem(id: number, payload: UpdateItemPayload): Promise<StockItem> {
+    return this.request<StockItem>(
+      `/items/${id}`,
+      undefined,
+      undefined,
+      'PUT',
+      payload
+    );
+  }
+
+  // ===========================================================================
+  // BOMs (Bills of Materials)
+  // ===========================================================================
+
+  /**
+   * Get BOMs list.
+   *
+   * @param params - Query parameters for filtering
+   * @returns Array of BOMs with _contentRange metadata
+   */
+  async getBoms(params?: BomListParams): Promise<Bom[] & { _contentRange?: string }> {
+    return this.request<Bom[] & { _contentRange?: string }>('/boms', params);
+  }
+
+  /**
+   * Get a single BOM by ID.
+   *
+   * @param id - BOM ID
+   * @returns BOM details with components and routings
+   */
+  async getBom(id: number): Promise<Bom> {
+    return this.request<Bom>(`/boms/${id}`);
+  }
+
+  /**
+   * Create a new BOM.
+   *
+   * @param payload - BOM creation data
+   * @returns Created BOM
+   */
+  async createBom(payload: CreateBomPayload): Promise<Bom> {
+    return this.request<Bom>(
+      '/boms',
+      undefined,
+      undefined,
+      'POST',
+      payload
+    );
+  }
+
+  /**
+   * Update an existing BOM.
+   *
+   * @param id - BOM ID
+   * @param payload - Fields to update
+   * @returns Updated BOM
+   */
+  async updateBom(id: number, payload: UpdateBomPayload): Promise<Bom> {
+    return this.request<Bom>(
+      `/boms/${id}`,
+      undefined,
+      undefined,
+      'PUT',
+      payload
+    );
+  }
+
+  // ===========================================================================
+  // Routings
+  // ===========================================================================
+
+  /**
+   * Get routings list.
+   *
+   * @param params - Query parameters for filtering
+   * @returns Array of routings with _contentRange metadata
+   */
+  async getRoutings(params?: RoutingListParams): Promise<Routing[] & { _contentRange?: string }> {
+    return this.request<Routing[] & { _contentRange?: string }>('/routings', params);
+  }
+
+  /**
+   * Get a single routing by ID.
+   *
+   * @param id - Routing ID
+   * @returns Routing details with operations
+   */
+  async getRouting(id: number): Promise<Routing> {
+    return this.request<Routing>(`/routings/${id}`);
+  }
+
+  /**
+   * Create a new routing.
+   *
+   * @param payload - Routing creation data
+   * @returns Created routing
+   */
+  async createRouting(payload: CreateRoutingPayload): Promise<Routing> {
+    return this.request<Routing>(
+      '/routings',
+      undefined,
+      undefined,
+      'POST',
+      payload
+    );
+  }
+
+  /**
+   * Update an existing routing.
+   *
+   * @param id - Routing ID
+   * @param payload - Fields to update
+   * @returns Updated routing
+   */
+  async updateRouting(id: number, payload: UpdateRoutingPayload): Promise<Routing> {
+    return this.request<Routing>(
+      `/routings/${id}`,
+      undefined,
+      undefined,
+      'PUT',
+      payload
+    );
+  }
+
+  // ===========================================================================
+  // Stock Lots
+  // ===========================================================================
+
+  /**
+   * Get stock lots.
+   *
+   * @param params - Query parameters for filtering
+   * @returns Array of stock lots with _contentRange metadata
+   */
+  async getStockLots(params?: StockLotsParams): Promise<StockLot[] & { _contentRange?: string }> {
+    return this.request<StockLot[] & { _contentRange?: string }>('/lots', params);
+  }
+
+  /**
+   * Get a single stock lot by ID.
+   *
+   * @param id - Stock lot ID
+   * @returns Stock lot details with locations
+   */
+  async getStockLot(id: number): Promise<StockLot> {
+    return this.request<StockLot>(`/lots/${id}`);
+  }
+
+  // ===========================================================================
+  // Purchase Orders
+  // ===========================================================================
+
+  /**
+   * Get purchase orders.
+   *
+   * @param params - Query parameters for filtering
+   * @returns Array of purchase orders with _contentRange metadata
+   */
+  async getPurchaseOrders(params?: PurchaseOrdersParams): Promise<PurchaseOrder[] & { _contentRange?: string }> {
+    return this.request<PurchaseOrder[] & { _contentRange?: string }>('/purchase-orders', params);
+  }
+
+  /**
+   * Get a single purchase order by ID.
+   *
+   * @param id - Purchase order ID
+   * @returns Purchase order details
+   */
+  async getPurchaseOrder(id: number): Promise<PurchaseOrder> {
+    return this.request<PurchaseOrder>(`/purchase-orders/${id}`);
+  }
+
+  // ===========================================================================
+  // Reports
+  // ===========================================================================
+
+  /**
+   * Get a report by type.
+   *
+   * @param type - Report type (inventory_summary, inventory_movements, procurement, production)
+   * @param params - Report parameters (from/to dates required)
+   * @returns Report data
+   */
+  async getReport(type: ReportType, params: ReportParams): Promise<unknown> {
+    return this.request<unknown>(`/report/${type}`, params);
   }
 }
 

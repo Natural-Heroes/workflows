@@ -442,3 +442,508 @@ export interface ShipmentsParams extends PaginationParams {
   /** Filter by delivery date maximum (Unix timestamp) */
   delivery_date_max?: number;
 }
+
+// ============================================================================
+// Mutation Payloads
+// ============================================================================
+
+/**
+ * Product line item for creating a customer order.
+ */
+export interface CustomerOrderProductPayload {
+  /** Article/item ID */
+  article_id: number;
+  /** Quantity ordered */
+  quantity: number;
+  /** Total price in currency */
+  total_price_cur: number;
+}
+
+/**
+ * Payload for creating a customer order.
+ */
+export interface CreateCustomerOrderPayload {
+  /** Customer ID */
+  customer_id: number;
+  /** Products to order */
+  products: CustomerOrderProductPayload[];
+  /** Delivery date (ISO string) */
+  delivery_date?: string;
+  /** Order reference */
+  reference?: string;
+  /** Notes */
+  notes?: string;
+}
+
+/**
+ * Payload for updating a customer order.
+ */
+export interface UpdateCustomerOrderPayload {
+  /** New status code */
+  status?: number;
+  /** New delivery date (ISO string) */
+  delivery_date?: string;
+  /** New reference */
+  reference?: string;
+  /** Notes */
+  notes?: string;
+}
+
+/**
+ * Payload for creating a manufacturing order.
+ */
+export interface CreateManufacturingOrderPayload {
+  /** Article/product ID to manufacture */
+  article_id: number;
+  /** Quantity to produce */
+  quantity: number;
+  /** Assigned user ID */
+  assigned_id: number;
+  /** Due date (ISO string) */
+  due_date?: string;
+  /** Start date (ISO string) */
+  start_date?: string;
+  /** Notes */
+  notes?: string;
+}
+
+/**
+ * Payload for updating a manufacturing order.
+ */
+export interface UpdateManufacturingOrderPayload {
+  /** MO code override */
+  code?: string;
+  /** New quantity */
+  quantity?: number;
+  /** New due date (ISO string) */
+  due_date?: string;
+  /** New start date (ISO string) */
+  start_date?: string;
+  /** Assigned user ID */
+  assigned_id?: number;
+  /** Notes */
+  notes?: string;
+}
+
+/**
+ * Payload for creating an item.
+ */
+export interface CreateItemPayload {
+  /** Item title/name */
+  title: string;
+  /** Unit ID */
+  unit_id: number;
+  /** Group ID */
+  group_id: number;
+  /** Is raw material */
+  is_raw: boolean;
+  /** Item code/SKU (auto-generated if not provided) */
+  code?: string;
+  /** Selling price */
+  selling_price?: number;
+  /** Minimum quantity threshold */
+  min_quantity?: number;
+  /** Description */
+  description?: string;
+}
+
+/**
+ * Payload for updating an item.
+ */
+export interface UpdateItemPayload {
+  /** New title */
+  title?: string;
+  /** New code/SKU */
+  code?: string;
+  /** New selling price */
+  selling_price?: number;
+  /** New minimum quantity */
+  min_quantity?: number;
+  /** New group ID */
+  group_id?: number;
+  /** New unit ID */
+  unit_id?: number;
+  /** Description */
+  description?: string;
+}
+
+// ============================================================================
+// BOM Types
+// ============================================================================
+
+/**
+ * BOM component for create/update.
+ */
+export interface BomComponentPayload {
+  /** Article/item ID */
+  article_id: number;
+  /** Quantity required per unit */
+  quantity: number;
+}
+
+/**
+ * BOM component in response.
+ */
+export interface BomComponent {
+  /** Component ID */
+  id?: number;
+  /** Article/item ID */
+  article_id: number;
+  /** Item code */
+  item_code?: string;
+  /** Item title */
+  item_title?: string;
+  /** Quantity per unit */
+  quantity: number;
+  /** Unit of measure */
+  unit?: string;
+}
+
+/**
+ * BOM routing in response.
+ */
+export interface BomRouting {
+  /** Routing ID */
+  id?: number;
+  /** Title */
+  title?: string;
+  /** Code */
+  code?: string;
+}
+
+/**
+ * Bill of Materials from /boms endpoint.
+ */
+export interface Bom {
+  /** BOM ID */
+  id: number;
+  /** BOM code */
+  code?: string;
+  /** BOM title */
+  title?: string;
+  /** Product ID this BOM belongs to */
+  product_id: number;
+  /** Item code of the product */
+  item_code?: string;
+  /** Item title of the product */
+  item_title?: string;
+  /** Components list */
+  components?: BomComponent[];
+  /** Linked routings */
+  routings?: BomRouting[];
+  /** Creation timestamp */
+  created?: number;
+}
+
+/**
+ * BOM list query parameters.
+ */
+export interface BomListParams extends PaginationParams {
+  /** Filter by product ID */
+  product_id?: number;
+  /** Filter by item code */
+  item_code?: string;
+}
+
+/**
+ * Payload for creating a BOM.
+ */
+export interface CreateBomPayload {
+  /** Product ID */
+  product_id: number;
+  /** Components list */
+  components: BomComponentPayload[];
+  /** BOM title */
+  title?: string;
+  /** BOM code */
+  code?: string;
+}
+
+/**
+ * Payload for updating a BOM.
+ */
+export interface UpdateBomPayload {
+  /** New title */
+  title?: string;
+  /** New code */
+  code?: string;
+  /** Updated components list */
+  components?: BomComponentPayload[];
+}
+
+// ============================================================================
+// Routing Types
+// ============================================================================
+
+/**
+ * Routing operation for create/update.
+ */
+export interface RoutingOperationPayload {
+  /** Operation type ID */
+  type_id: number;
+  /** Order/sequence number */
+  ord: number;
+  /** Variable time per unit (minutes) */
+  variable_time: number;
+  /** Setup time (minutes) */
+  setup_time?: number;
+  /** Workstation ID */
+  workstation_id?: number;
+}
+
+/**
+ * Routing operation in response.
+ */
+export interface RoutingOperation {
+  /** Operation ID */
+  id?: number;
+  /** Operation type ID */
+  type_id?: number;
+  /** Operation name/title */
+  name?: string;
+  /** Order/sequence number */
+  ord?: number;
+  /** Variable time per unit (minutes) */
+  variable_time?: number;
+  /** Setup time (minutes) */
+  setup_time?: number;
+  /** Workstation ID */
+  workstation_id?: number;
+  /** Workstation name */
+  workstation_name?: string;
+}
+
+/**
+ * Routing from /routings endpoint.
+ */
+export interface Routing {
+  /** Routing ID */
+  id: number;
+  /** Routing code */
+  code?: string;
+  /** Routing title */
+  title?: string;
+  /** Product ID this routing belongs to */
+  product_id: number;
+  /** Item code of the product */
+  item_code?: string;
+  /** Item title of the product */
+  item_title?: string;
+  /** Operations list */
+  operations?: RoutingOperation[];
+  /** Creation timestamp */
+  created?: number;
+}
+
+/**
+ * Routing list query parameters.
+ */
+export interface RoutingListParams extends PaginationParams {
+  /** Filter by product ID */
+  product_id?: number;
+  /** Filter by item code */
+  item_code?: string;
+}
+
+/**
+ * Payload for creating a routing.
+ */
+export interface CreateRoutingPayload {
+  /** Product ID */
+  product_id: number;
+  /** Operations list */
+  operations: RoutingOperationPayload[];
+  /** Routing title */
+  title?: string;
+  /** Routing code */
+  code?: string;
+}
+
+/**
+ * Payload for updating a routing.
+ */
+export interface UpdateRoutingPayload {
+  /** New title */
+  title?: string;
+  /** New code */
+  code?: string;
+  /** Updated operations list */
+  operations?: RoutingOperationPayload[];
+}
+
+// ============================================================================
+// Stock Lot Types
+// ============================================================================
+
+/**
+ * Stock lot location.
+ */
+export interface StockLotLocation {
+  /** Location ID */
+  id?: number;
+  /** Location name */
+  name?: string;
+  /** Warehouse ID */
+  warehouse_id?: number;
+  /** Warehouse name */
+  warehouse_name?: string;
+  /** Quantity at this location */
+  quantity?: number;
+}
+
+/**
+ * Stock lot from /lots endpoint.
+ */
+export interface StockLot {
+  /** Lot ID */
+  id: number;
+  /** Lot number/code */
+  lot_number?: string;
+  /** Article/item ID */
+  article_id?: number;
+  /** Item code */
+  item_code?: string;
+  /** Item title */
+  item_title?: string;
+  /** Total quantity */
+  quantity?: number;
+  /** Available quantity */
+  available?: number;
+  /** Expiry date (Unix timestamp) */
+  expiry_date?: number;
+  /** Locations/warehouses */
+  locations?: StockLotLocation[];
+  /** Creation timestamp */
+  created?: number;
+}
+
+/**
+ * Stock lots query parameters.
+ */
+export interface StockLotsParams extends PaginationParams {
+  /** Filter by article/item ID */
+  article_id?: number;
+  /** Filter by item code */
+  item_code?: string;
+  /** Filter by lot number */
+  lot_number?: string;
+  /** Filter by warehouse ID */
+  warehouse_id?: number;
+}
+
+// ============================================================================
+// Purchase Order Types
+// ============================================================================
+
+/**
+ * Purchase order product/line item.
+ */
+export interface PurchaseOrderProduct {
+  /** Article/item ID */
+  article_id?: number;
+  /** Item code */
+  item_code?: string;
+  /** Item title */
+  item_title?: string;
+  /** Quantity ordered */
+  quantity?: number;
+  /** Quantity received */
+  received_quantity?: number;
+  /** Unit price */
+  unit_price?: number;
+  /** Total price */
+  total_price?: number;
+  /** Unit */
+  unit?: string;
+}
+
+/**
+ * Purchase order invoice.
+ */
+export interface PurchaseOrderInvoice {
+  /** Invoice ID */
+  id?: number;
+  /** Invoice number */
+  number?: string;
+  /** Invoice date */
+  date?: number;
+  /** Total amount */
+  total?: number;
+  /** Status */
+  status?: string;
+}
+
+/**
+ * Purchase order from /purchase-orders endpoint.
+ */
+export interface PurchaseOrder {
+  /** PO ID */
+  id: number;
+  /** PO code */
+  code?: string;
+  /** Status code */
+  status?: number;
+  /** Vendor/supplier ID */
+  vendor_id?: number;
+  /** Vendor name */
+  vendor_name?: string;
+  /** Order date (Unix timestamp) */
+  order_date?: number;
+  /** Expected delivery date (Unix timestamp) */
+  expected_date?: number;
+  /** Total price */
+  total_price?: number;
+  /** Currency */
+  currency?: string;
+  /** Products/line items */
+  products?: PurchaseOrderProduct[];
+  /** Invoices */
+  invoices?: PurchaseOrderInvoice[];
+  /** Notes */
+  notes?: string;
+  /** Creation timestamp */
+  created?: number;
+}
+
+/**
+ * Purchase orders query parameters.
+ */
+export interface PurchaseOrdersParams extends PaginationParams {
+  /** Filter by PO code */
+  code?: string;
+  /** Filter by vendor ID */
+  vendor_id?: number;
+  /** Filter by status */
+  status?: number;
+  /** Filter by creation date minimum (Unix timestamp) */
+  created_min?: number;
+  /** Filter by creation date maximum (Unix timestamp) */
+  created_max?: number;
+  /** Filter by expected date minimum */
+  expected_date_min?: number;
+  /** Filter by expected date maximum */
+  expected_date_max?: number;
+}
+
+// ============================================================================
+// Report Types
+// ============================================================================
+
+/**
+ * Report type options.
+ */
+export type ReportType = 'inventory_summary' | 'inventory_movements' | 'procurement' | 'production';
+
+/**
+ * Report query parameters.
+ */
+export interface ReportParams {
+  /** Start date (ISO string YYYY-MM-DD) */
+  from: string;
+  /** End date (ISO string YYYY-MM-DD) */
+  to: string;
+  /** Optional article/item ID filter */
+  article_id?: number;
+  /** Optional warehouse ID filter */
+  warehouse_id?: number;
+}

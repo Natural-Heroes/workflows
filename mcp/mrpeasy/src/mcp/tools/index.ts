@@ -13,19 +13,25 @@ import { registerProductTools } from './product.js';
 import { registerSearchTools } from './search.js';
 import { registerOrderTools } from './orders.js';
 import { registerShipmentTools } from './shipments.js';
+import { registerMutationTools } from './mutations.js';
+import { registerBomTools } from './boms.js';
+import { registerRoutingTools } from './routings.js';
+import { registerPurchaseOrderTools } from './purchase-orders.js';
+import { registerStockLotTools } from './stock-lots.js';
+import { registerReportTools } from './reports.js';
 
 /**
  * Brief server description shown during initialization.
  */
 const SERVER_DESCRIPTION =
-  'MRPeasy ERP integration. Query inventory, customer orders, manufacturing orders, and shipments. Read the mrpeasy://instructions resource for usage guide.';
+  'MRPeasy ERP integration. Read and write inventory, orders, BOMs, routings, purchase orders, stock lots, and reports. Read the mrpeasy://instructions resource for usage guide.';
 
 /**
  * Detailed instructions for LLMs, served as a resource.
  */
 const INSTRUCTIONS_RESOURCE = `# MRPeasy MCP Server Instructions
 
-This server provides access to MRPeasy ERP data including inventory, orders, and shipments.
+This server provides read and write access to MRPeasy ERP data including inventory, orders, BOMs, routings, stock lots, purchase orders, and reports.
 
 ## Available Tools
 
@@ -37,14 +43,45 @@ This server provides access to MRPeasy ERP data including inventory, orders, and
 ### Customer Orders (Sales)
 - **get_customer_orders**: List customer orders. Use \`open_only=true\` to exclude delivered/cancelled.
 - **get_customer_order_details**: Get full CO details by ID or code (e.g., "CO-01263").
+- **create_customer_order**: Create a new sales order. Requires customer_id and products[].
+- **update_customer_order**: Update CO status, delivery_date, reference, or notes.
 
 ### Manufacturing Orders (Production)
-- **get_manufacturing_orders**: List MOs. Use \`open_only=true\` to exclude done/closed/cancelled. Filter by \`item_code\` (SKU) to find MOs for a specific product.
+- **get_manufacturing_orders**: List MOs. Use \`open_only=true\` to exclude done/closed/cancelled.
 - **get_manufacturing_order_details**: Get full MO details by ID or code (e.g., "MO-39509").
+- **create_manufacturing_order**: Create a new MO. Requires article_id, quantity, assigned_id.
+- **update_manufacturing_order**: Update MO code, quantity, dates, or assignment.
+
+### Items
+- **create_item**: Create a new item (product or raw material). Requires title, unit_id, group_id, is_raw.
+- **update_item**: Update item title, code, selling_price, min_quantity, etc.
+
+### Bills of Materials (BOMs)
+- **get_boms**: List BOMs. Filter by product_id or item_code.
+- **get_bom_details**: Get full BOM with components and linked routings.
+- **create_bom**: Create a new BOM. Requires product_id and components[].
+- **update_bom**: Update BOM title, code, or components list.
+
+### Routings
+- **get_routings**: List routings. Filter by product_id or item_code.
+- **get_routing_details**: Get routing with all operations, times, and workstations.
+- **create_routing**: Create a new routing. Requires product_id and operations[].
+- **update_routing**: Update routing title, code, or operations list.
+
+### Stock Lots
+- **get_stock_lots**: List stock lots with location data. Filter by article_id, item_code, lot_number, or warehouse_id.
+- **get_stock_lot_details**: Get lot details with all storage locations and quantities.
+
+### Purchase Orders (Read-Only)
+- **get_purchase_orders**: List POs. Filter by code, vendor_id, status, or date range.
+- **get_purchase_order_details**: Get full PO with products, invoices, and payment info.
 
 ### Shipments
-- **get_shipments**: List shipments. Use \`pending_only=true\` for shipments awaiting dispatch (New + Ready). Filter by \`customer_order_id\` to get shipments for a specific CO.
+- **get_shipments**: List shipments. Use \`pending_only=true\` for awaiting dispatch.
 - **get_shipment_details**: Get shipment details by ID or code (e.g., "SH-00123").
+
+### Reports
+- **get_report**: Fetch reports by type (inventory_summary, inventory_movements, procurement, production). Requires from/to dates.
 
 ## Best Practices
 
@@ -53,6 +90,10 @@ This server provides access to MRPeasy ERP data including inventory, orders, and
 2. **Use open_only/pending_only**: When checking active work, use these filters to exclude completed orders.
 
 3. **Link related data**: Customer orders link to manufacturing orders and shipments. Use the IDs from one query to fetch related records.
+
+4. **Write tools require confirm=true**: All write tools (create_*, update_*) require \`confirm: true\` to execute. With \`confirm: false\` (default), they return a preview of what would be sent.
+
+5. **Purchase orders are read-only**: The MRPeasy API does not support POST/PUT for purchase orders.
 
 ## Status Codes
 
@@ -96,6 +137,7 @@ This server provides access to MRPeasy ERP data including inventory, orders, and
 - All timestamps are Unix format (seconds since epoch).
 - Pagination uses Range headers internally; tools handle this automatically.
 - Rate limited to 100 requests per 10 seconds.
+- Write operations return 201 (POST) or 202 (PUT) on success.
 `;
 
 /**
@@ -163,12 +205,20 @@ export function createMcpServer(): McpServer {
     }
   );
 
-  // Register MRPeasy tools
+  // Register MRPeasy read tools
   registerInventoryTools(server, client);
   registerProductTools(server, client);
   registerSearchTools(server, client);
   registerOrderTools(server, client);
   registerShipmentTools(server, client);
+  registerBomTools(server, client);
+  registerRoutingTools(server, client);
+  registerPurchaseOrderTools(server, client);
+  registerStockLotTools(server, client);
+  registerReportTools(server, client);
+
+  // Register MRPeasy write tools
+  registerMutationTools(server, client);
 
   logger.info('MCP server created with all tools registered');
   return server;
