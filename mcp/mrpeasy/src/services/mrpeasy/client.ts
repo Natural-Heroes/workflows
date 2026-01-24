@@ -278,26 +278,37 @@ export class MrpEasyClient {
       const response = await fetch(url.toString(), fetchOptions);
 
       const duration = Date.now() - startTime;
+      const contentRange = response.headers.get('Content-Range');
+      const rawBody = await response.text();
 
       // Success statuses: 200/206 (GET), 201 (POST), 202 (PUT)
       const isSuccess = response.ok || response.status === 206 ||
         response.status === 201 || response.status === 202;
 
       if (!isSuccess) {
-        // Try to parse error response
-        let errorData: Partial<MrpEasyError> = {};
+        // Parse error response safely
+        let parsedError: unknown;
         try {
-          errorData = (await response.json()) as Partial<MrpEasyError>;
+          parsedError = rawBody ? JSON.parse(rawBody) : undefined;
         } catch {
-          // Response body is not JSON
+          parsedError = undefined;
         }
+
+        const errorData = parsedError as Partial<MrpEasyError> | undefined;
+        const message =
+          (typeof parsedError === 'string' && parsedError) ||
+          errorData?.message ||
+          rawBody ||
+          `HTTP ${response.status}: ${response.statusText}`;
 
         logger.error('MRPeasy API error', {
           endpoint,
           method,
           status: response.status,
-          message: errorData.message ?? response.statusText,
+          message,
           duration,
+          responseBody: rawBody?.slice(0, 2000),
+          parsedError,
         });
 
         // Handle specific status codes with appropriate error messages
@@ -337,17 +348,39 @@ export class MrpEasyClient {
         }
 
         throw new MrpEasyApiError(
-          errorData.message ?? `HTTP ${response.status}: ${response.statusText}`,
+          message,
           response.status,
-          errorData.code
+          errorData?.code
         );
       }
 
-      const data = (await response.json()) as T;
+      // Parse successful response body (may be empty for 202/204)
+      let data: T;
+      if (!rawBody) {
+        logger.debug('MRPeasy API response has empty body', {
+          endpoint,
+          method,
+          status: response.status,
+          duration,
+        });
+        data = {} as T;
+      } else {
+        try {
+          data = JSON.parse(rawBody) as T;
+        } catch {
+          logger.warn('MRPeasy API response is not JSON, returning raw text', {
+            endpoint,
+            method,
+            status: response.status,
+            duration,
+            rawBody: rawBody.slice(0, 500),
+          });
+          data = rawBody as unknown as T;
+        }
+      }
 
       // Store Content-Range header for pagination parsing
-      const contentRange = response.headers.get('Content-Range');
-      if (contentRange) {
+      if (contentRange && data && typeof data === 'object') {
         (data as Record<string, unknown>)._contentRange = contentRange;
       }
 
