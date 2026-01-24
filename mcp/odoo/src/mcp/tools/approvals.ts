@@ -15,6 +15,13 @@ function getApiKey(extra: { authInfo?: { extra?: { odooApiKey?: unknown } } }): 
 
 function handleError(error: unknown) {
   if (error instanceof OdooApiError) {
+    if (error.statusCode === 404) {
+      return formatErrorForMcp(new McpToolError({
+        userMessage: `Model or endpoint not found: ${error.message}. The required Odoo module may not be installed.`,
+        isRetryable: false,
+        errorCode: 'MODULE_NOT_INSTALLED',
+      }));
+    }
     return formatErrorForMcp(new McpToolError({
       userMessage: error.message,
       internalDetails: error.odooDebug,

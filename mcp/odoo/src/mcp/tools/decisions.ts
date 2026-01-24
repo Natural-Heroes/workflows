@@ -53,9 +53,9 @@ export function registerDecisionTools(
         const client = clientManager.getClient(apiKey);
         const vals: Record<string, unknown> = {
           title: params.title,
-          decided_at: new Date().toISOString().split('T')[0],
+          decided_at: new Date().toISOString().replace('Z', '+00:00'),
         };
-        if (params.description) vals.description = params.description;
+        if (params.description) vals.description = `<p>${params.description}</p>`;
         if (params.decision_type) vals.decision_type = params.decision_type;
         if (params.amount) vals.amount = params.amount;
         if (params.subject_type) vals.subject_type = params.subject_type;

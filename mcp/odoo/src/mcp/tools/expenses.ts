@@ -15,6 +15,13 @@ function getApiKey(extra: { authInfo?: { extra?: { odooApiKey?: unknown } } }): 
 
 function handleError(error: unknown) {
   if (error instanceof OdooApiError) {
+    if (error.statusCode === 404) {
+      return formatErrorForMcp(new McpToolError({
+        userMessage: `Model or endpoint not found: ${error.message}. The required Odoo module may not be installed.`,
+        isRetryable: false,
+        errorCode: 'MODULE_NOT_INSTALLED',
+      }));
+    }
     return formatErrorForMcp(new McpToolError({
       userMessage: error.message,
       internalDetails: error.odooDebug,
@@ -112,7 +119,7 @@ export function registerExpenseTools(
           [
             ['date', '>=', params.date_from],
             ['date', '<=', params.date_to],
-            ['sheet_id.state', 'in', ['approved', 'done']],
+            ['state', '=', 'approved'],
           ],
           [params.group_by, 'total_amount:sum'],
           [params.group_by],

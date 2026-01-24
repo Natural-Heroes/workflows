@@ -115,7 +115,7 @@ export function registerProjectTools(
         const vals: Record<string, unknown> = { name: params.name };
         if (params.user_id) vals.user_id = params.user_id;
         if (params.partner_id) vals.partner_id = params.partner_id;
-        if (params.description) vals.description = params.description;
+        if (params.description) vals.description = `<p>${params.description}</p>`;
 
         const projectId = await client.create('project.project', vals);
         return { content: [{ type: 'text' as const, text: JSON.stringify({ id: projectId, message: 'Project created.' }, null, 2) }] };
@@ -147,7 +147,7 @@ export function registerProjectTools(
         };
         if (params.user_ids) vals.user_ids = [[6, 0, params.user_ids]]; // Replace command
         if (params.date_deadline) vals.date_deadline = params.date_deadline;
-        if (params.description) vals.description = params.description;
+        if (params.description) vals.description = `<p>${params.description}</p>`;
         if (params.priority) vals.priority = params.priority;
 
         const taskId = await client.create('project.task', vals);

@@ -61,12 +61,6 @@ export class OdooClient {
 
   /**
    * Search and read records matching a domain filter.
-   *
-   * @param model - Odoo model name
-   * @param domain - Odoo domain filter (e.g. [["active", "=", true]])
-   * @param fields - List of field names to return
-   * @param options - Pagination, ordering, and context options
-   * @returns Array of matching records
    */
   async searchRead<T>(
     model: string,
@@ -86,11 +80,6 @@ export class OdooClient {
 
   /**
    * Read specific records by their IDs.
-   *
-   * @param model - Odoo model name
-   * @param ids - Array of record IDs to read
-   * @param fields - List of field names to return
-   * @returns Array of records
    */
   async read<T>(model: string, ids: number[], fields: string[]): Promise<T[]> {
     return this.call<T[]>(model, 'read', {
@@ -102,10 +91,6 @@ export class OdooClient {
 
   /**
    * Count records matching a domain filter.
-   *
-   * @param model - Odoo model name
-   * @param domain - Odoo domain filter
-   * @returns Number of matching records
    */
   async searchCount(model: string, domain: unknown[]): Promise<number> {
     return this.call<number>(model, 'search_count', { domain });
@@ -114,32 +99,32 @@ export class OdooClient {
   /**
    * Create a new record.
    *
-   * @param model - Odoo model name
-   * @param vals - Field values for the new record
-   * @returns ID of the created record
+   * Wraps values in vals_list parameter as required by the JSON-2 API.
+   * Returns the ID of the created record.
    */
   async create(model: string, vals: Record<string, unknown>): Promise<number> {
-    return this.call<number>(model, 'create', vals);
+    const result = await this.call<number[]>(model, 'create', {
+      vals_list: [vals],
+      context: { lang: 'en_US' },
+    });
+    // create returns an array of IDs; return the first
+    return Array.isArray(result) ? result[0] : result;
   }
 
   /**
    * Update existing records.
    *
-   * @param model - Odoo model name
-   * @param ids - Array of record IDs to update
-   * @param vals - Field values to update
-   * @returns true on success
+   * Passes vals as explicit keyword argument as required by the JSON-2 API.
    */
   async write(model: string, ids: number[], vals: Record<string, unknown>): Promise<boolean> {
-    return this.call<boolean>(model, 'write', { ids, ...vals });
+    return this.call<boolean>(model, 'write', {
+      ids,
+      vals,
+    });
   }
 
   /**
    * Delete records.
-   *
-   * @param model - Odoo model name
-   * @param ids - Array of record IDs to delete
-   * @returns true on success
    */
   async unlink(model: string, ids: number[]): Promise<boolean> {
     return this.call<boolean>(model, 'unlink', { ids });
@@ -147,13 +132,6 @@ export class OdooClient {
 
   /**
    * Aggregate records grouped by specified fields.
-   *
-   * @param model - Odoo model name
-   * @param domain - Odoo domain filter
-   * @param fields - Fields to aggregate (e.g. ["balance:sum", "account_id"])
-   * @param groupby - Fields to group by
-   * @param options - Pagination, ordering, and lazy options
-   * @returns Array of grouped/aggregated records
    */
   async readGroup<T>(
     model: string,

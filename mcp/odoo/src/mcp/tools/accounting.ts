@@ -16,6 +16,13 @@ function getApiKey(extra: { authInfo?: { extra?: { odooApiKey?: unknown } } }): 
 
 function handleError(error: unknown) {
   if (error instanceof OdooApiError) {
+    if (error.statusCode === 404) {
+      return formatErrorForMcp(new McpToolError({
+        userMessage: `Model or endpoint not found: ${error.message}. The required Odoo module may not be installed.`,
+        isRetryable: false,
+        errorCode: 'MODULE_NOT_INSTALLED',
+      }));
+    }
     return formatErrorForMcp(new McpToolError({
       userMessage: error.message,
       internalDetails: error.odooDebug,
@@ -204,7 +211,7 @@ export function registerAccountingTools(
         const data = await client.readGroup(
           'account.move.line',
           [
-            ['move_id.state', '=', 'posted'],
+            ['parent_state', '=', 'posted'],
             ['account_id.account_type', 'in', ['income', 'income_other', 'expense', 'expense_direct_cost', 'expense_depreciation']],
             ['date', '>=', params.date_from],
             ['date', '<=', params.date_to],
@@ -234,7 +241,7 @@ export function registerAccountingTools(
         const data = await client.readGroup(
           'account.move.line',
           [
-            ['move_id.state', '=', 'posted'],
+            ['parent_state', '=', 'posted'],
             ['account_id.account_type', 'in', ['asset_receivable', 'asset_cash', 'asset_current', 'asset_non_current', 'asset_fixed', 'asset_prepayments', 'liability_payable', 'liability_credit_card', 'liability_current', 'liability_non_current', 'equity', 'equity_unaffected']],
             ['date', '<=', params.date_to],
           ],
