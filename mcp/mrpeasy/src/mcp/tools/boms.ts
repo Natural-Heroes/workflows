@@ -11,7 +11,7 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { MrpEasyClient } from '../../services/mrpeasy/client.js';
-import type { Bom } from '../../services/mrpeasy/types.js';
+import type { Bom, UpdateBomPayload } from '../../services/mrpeasy/types.js';
 import { logger } from '../../lib/logger.js';
 import { handleToolError } from './error-handler.js';
 
@@ -33,6 +33,7 @@ const GetBomDetailsSchema = z.object({
 const BomComponentSchema = z.object({
   article_id: z.number().int().positive().describe('Component article/item ID'),
   quantity: z.number().positive().describe('Quantity required per unit of finished product'),
+  ord: z.number().int().min(0).optional().describe('Component sequence/order (defaults to array order)'),
 });
 
 const CreateBomSchema = z.object({
@@ -213,7 +214,10 @@ export function registerBomTools(
       try {
         const payload = {
           product_id: params.product_id,
-          components: params.components,
+          components: params.components.map((component, idx) => ({
+            ...component,
+            ord: component.ord ?? idx + 1,
+          })),
           title: params.title,
           code: params.code,
         };
@@ -269,7 +273,15 @@ export function registerBomTools(
 
         const payload = Object.fromEntries(
           Object.entries(fields).filter(([, v]) => v !== undefined)
-        );
+        ) as UpdateBomPayload;
+
+        if (payload.components && Array.isArray(payload.components)) {
+          // Re-sequence components if ord is not provided
+          payload.components = payload.components.map((component, idx) => ({
+            ...component,
+            ord: component.ord ?? idx + 1,
+          }));
+        }
 
         if (Object.keys(payload).length === 0) {
           return {

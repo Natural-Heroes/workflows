@@ -367,7 +367,8 @@ export function registerMutationTools(
           title: params.title,
           unit_id: params.unit_id,
           group_id: params.group_id,
-          is_raw: params.is_raw,
+          // MRPeasy expects 0/1, convert boolean for safety
+          is_raw: (params.is_raw ? 1 : 0) as 0 | 1,
           code: params.code,
           selling_price: params.selling_price,
           min_quantity: params.min_quantity,

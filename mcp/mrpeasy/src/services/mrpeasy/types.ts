@@ -536,7 +536,7 @@ export interface CreateItemPayload {
   /** Group ID */
   group_id: number;
   /** Is raw material */
-  is_raw: boolean;
+  is_raw: boolean | 0 | 1;
   /** Item code/SKU (auto-generated if not provided) */
   code?: string;
   /** Selling price */
@@ -579,6 +579,8 @@ export interface BomComponentPayload {
   article_id: number;
   /** Quantity required per unit */
   quantity: number;
+  /** Sequence/order number */
+  ord?: number;
 }
 
 /**
@@ -597,6 +599,8 @@ export interface BomComponent {
   quantity: number;
   /** Unit of measure */
   unit?: string;
+  /** Sequence/order number */
+  ord?: number;
 }
 
 /**
