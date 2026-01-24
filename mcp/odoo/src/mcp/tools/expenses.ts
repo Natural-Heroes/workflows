@@ -47,6 +47,7 @@ export function registerExpenseTools(
     {
       state: z.enum(['draft', 'reported', 'approved', 'done', 'refused']).optional().describe('Expense sheet state'),
       employee_id: z.number().optional().describe('Filter by employee ID'),
+      company_id: z.number().optional().describe('Filter by company ID (use list_companies to see available companies)'),
       limit: z.number().min(1).max(100).default(20).describe('Max records'),
       offset: z.number().min(0).default(0).describe('Records to skip'),
     },
@@ -59,11 +60,12 @@ export function registerExpenseTools(
         const domain: unknown[] = [];
         if (params.state) domain.push(['state', '=', params.state]);
         if (params.employee_id) domain.push(['employee_id', '=', params.employee_id]);
+        if (params.company_id) domain.push(['company_id', '=', params.company_id]);
 
         const expenses = await client.searchRead(
           'hr.expense.sheet',
           domain,
-          ['id', 'name', 'employee_id', 'total_amount', 'state', 'expense_line_ids', 'create_date', 'currency_id'],
+          ['id', 'name', 'employee_id', 'total_amount', 'state', 'expense_line_ids', 'create_date', 'currency_id', 'company_id'],
           { limit: params.limit, offset: params.offset, order: 'create_date desc' }
         );
         return { content: [{ type: 'text' as const, text: JSON.stringify(expenses, null, 2) }] };
@@ -107,6 +109,7 @@ export function registerExpenseTools(
       date_from: z.string().describe('Start date (YYYY-MM-DD)'),
       date_to: z.string().describe('End date (YYYY-MM-DD)'),
       group_by: z.enum(['employee_id', 'product_id']).default('employee_id').describe('Grouping dimension'),
+      company_id: z.number().optional().describe('Filter by company ID (use list_companies to see available companies)'),
     },
     async (params, extra) => {
       const apiKey = getApiKey(extra);
@@ -114,13 +117,16 @@ export function registerExpenseTools(
 
       try {
         const client = clientManager.getClient(apiKey);
+        const domain: unknown[] = [
+          ['date', '>=', params.date_from],
+          ['date', '<=', params.date_to],
+          ['state', '=', 'approved'],
+        ];
+        if (params.company_id) domain.push(['company_id', '=', params.company_id]);
+
         const data = await client.readGroup(
           'hr.expense',
-          [
-            ['date', '>=', params.date_from],
-            ['date', '<=', params.date_to],
-            ['state', '=', 'approved'],
-          ],
+          domain,
           [params.group_by, 'total_amount:sum'],
           [params.group_by],
           { orderby: 'total_amount desc' }

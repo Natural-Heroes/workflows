@@ -39,6 +39,7 @@ export function registerProjectTools(
     'List projects with optional name search.',
     {
       query: z.string().optional().describe('Search projects by name'),
+      company_id: z.number().optional().describe('Filter by company ID (use list_companies to see available companies)'),
       limit: z.number().min(1).max(100).default(50).describe('Max records'),
     },
     async (params, extra) => {
@@ -49,11 +50,12 @@ export function registerProjectTools(
         const client = clientManager.getClient(apiKey);
         const domain: unknown[] = [];
         if (params.query) domain.push(['name', 'ilike', params.query]);
+        if (params.company_id) domain.push(['company_id', '=', params.company_id]);
 
         const projects = await client.searchRead(
           'project.project',
           domain,
-          ['id', 'name', 'user_id', 'partner_id', 'task_count', 'date_start', 'date'],
+          ['id', 'name', 'user_id', 'partner_id', 'task_count', 'date_start', 'date', 'company_id'],
           { limit: params.limit, order: 'name asc' }
         );
         return { content: [{ type: 'text' as const, text: JSON.stringify(projects, null, 2) }] };
@@ -70,6 +72,7 @@ export function registerProjectTools(
       stage_id: z.number().optional().describe('Filter by stage ID'),
       user_ids: z.array(z.number()).optional().describe('Filter by assigned user IDs'),
       is_template: z.boolean().optional().describe('Filter template tasks only'),
+      company_id: z.number().optional().describe('Filter by company ID (use list_companies to see available companies)'),
       limit: z.number().min(1).max(100).default(50).describe('Max records'),
       offset: z.number().min(0).default(0).describe('Records to skip'),
     },
@@ -84,11 +87,12 @@ export function registerProjectTools(
         if (params.stage_id) domain.push(['stage_id', '=', params.stage_id]);
         if (params.user_ids?.length) domain.push(['user_ids', 'in', params.user_ids]);
         if (params.is_template !== undefined) domain.push(['is_template', '=', params.is_template]);
+        if (params.company_id) domain.push(['company_id', '=', params.company_id]);
 
         const tasks = await client.searchRead(
           'project.task',
           domain,
-          ['id', 'name', 'project_id', 'stage_id', 'user_ids', 'date_deadline', 'priority', 'is_template'],
+          ['id', 'name', 'project_id', 'stage_id', 'user_ids', 'date_deadline', 'priority', 'is_template', 'company_id'],
           { limit: params.limit, offset: params.offset, order: 'priority desc, date_deadline asc' }
         );
         return { content: [{ type: 'text' as const, text: JSON.stringify(tasks, null, 2) }] };
@@ -105,6 +109,7 @@ export function registerProjectTools(
       user_id: z.number().optional().describe('Project manager user ID'),
       partner_id: z.number().optional().describe('Customer partner ID'),
       description: z.string().optional().describe('Project description'),
+      company_id: z.number().optional().describe('Company ID for the project (use list_companies to see available companies)'),
     },
     async (params, extra) => {
       const apiKey = getApiKey(extra);
@@ -116,6 +121,7 @@ export function registerProjectTools(
         if (params.user_id) vals.user_id = params.user_id;
         if (params.partner_id) vals.partner_id = params.partner_id;
         if (params.description) vals.description = `<p>${params.description}</p>`;
+        if (params.company_id) vals.company_id = params.company_id;
 
         const projectId = await client.create('project.project', vals);
         return { content: [{ type: 'text' as const, text: JSON.stringify({ id: projectId, message: 'Project created.' }, null, 2) }] };
@@ -134,6 +140,7 @@ export function registerProjectTools(
       date_deadline: z.string().optional().describe('Deadline (YYYY-MM-DD)'),
       description: z.string().optional().describe('Task description'),
       priority: z.enum(['0', '1']).optional().describe('Priority (0=normal, 1=high)'),
+      company_id: z.number().optional().describe('Company ID for the task (use list_companies to see available companies)'),
     },
     async (params, extra) => {
       const apiKey = getApiKey(extra);
@@ -149,6 +156,7 @@ export function registerProjectTools(
         if (params.date_deadline) vals.date_deadline = params.date_deadline;
         if (params.description) vals.description = `<p>${params.description}</p>`;
         if (params.priority) vals.priority = params.priority;
+        if (params.company_id) vals.company_id = params.company_id;
 
         const taskId = await client.create('project.task', vals);
         return { content: [{ type: 'text' as const, text: JSON.stringify({ id: taskId, message: 'Task created.' }, null, 2) }] };

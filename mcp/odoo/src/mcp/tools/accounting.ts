@@ -71,6 +71,7 @@ export function registerAccountingTools(
       offset: z.number().min(0).default(0).describe('Records to skip'),
       state: z.enum(['draft', 'posted', 'cancel']).optional().describe('Invoice state filter'),
       move_type: z.enum(['out_invoice', 'out_refund', 'in_invoice', 'in_refund']).optional().describe('Invoice type'),
+      company_id: z.number().optional().describe('Filter by company ID (use list_companies to see available companies)'),
     },
     async (params, extra) => {
       const apiKey = getApiKey(extra);
@@ -81,11 +82,12 @@ export function registerAccountingTools(
         const domain: unknown[] = [];
         if (params.state) domain.push(['state', '=', params.state]);
         if (params.move_type) domain.push(['move_type', '=', params.move_type]);
+        if (params.company_id) domain.push(['company_id', '=', params.company_id]);
 
         const invoices = await client.searchRead(
           'account.move',
           domain,
-          ['id', 'name', 'partner_id', 'invoice_date', 'amount_total', 'amount_residual', 'state', 'move_type', 'currency_id'],
+          ['id', 'name', 'partner_id', 'invoice_date', 'amount_total', 'amount_residual', 'state', 'move_type', 'currency_id', 'company_id'],
           { limit: params.limit, offset: params.offset, order: 'invoice_date desc' }
         );
         const enriched = (invoices as Record<string, unknown>[]).map(inv => ({ ...inv, url: getInvoiceUrl(inv.id as number, inv.move_type as string) }));
@@ -110,7 +112,7 @@ export function registerAccountingTools(
         const result = await client.read(
           'account.move',
           [params.invoice_id],
-          ['id', 'name', 'partner_id', 'invoice_date', 'invoice_date_due', 'amount_total', 'amount_residual', 'amount_tax', 'state', 'move_type', 'currency_id', 'invoice_line_ids', 'narration', 'ref', 'payment_state']
+          ['id', 'name', 'partner_id', 'invoice_date', 'invoice_date_due', 'amount_total', 'amount_residual', 'amount_tax', 'state', 'move_type', 'currency_id', 'company_id', 'invoice_line_ids', 'narration', 'ref', 'payment_state']
         );
         if (!result.length) {
           return formatErrorForMcp(new McpToolError({ userMessage: 'Invoice not found.', isRetryable: false, errorCode: 'NOT_FOUND' }));
@@ -144,6 +146,7 @@ export function registerAccountingTools(
       date_from: z.string().optional().describe('Start date (YYYY-MM-DD)'),
       date_to: z.string().optional().describe('End date (YYYY-MM-DD)'),
       journal_id: z.number().optional().describe('Bank journal ID filter'),
+      company_id: z.number().optional().describe('Filter by company ID (use list_companies to see available companies)'),
     },
     async (params, extra) => {
       const apiKey = getApiKey(extra);
@@ -155,11 +158,12 @@ export function registerAccountingTools(
         if (params.date_from) domain.push(['date', '>=', params.date_from]);
         if (params.date_to) domain.push(['date', '<=', params.date_to]);
         if (params.journal_id) domain.push(['journal_id', '=', params.journal_id]);
+        if (params.company_id) domain.push(['company_id', '=', params.company_id]);
 
         const transactions = await client.searchRead(
           'account.bank.statement.line',
           domain,
-          ['id', 'date', 'payment_ref', 'partner_id', 'amount', 'journal_id', 'is_reconciled'],
+          ['id', 'date', 'payment_ref', 'partner_id', 'amount', 'journal_id', 'is_reconciled', 'company_id'],
           { limit: params.limit, offset: params.offset, order: 'date desc' }
         );
         return { content: [{ type: 'text' as const, text: JSON.stringify(transactions, null, 2) }] };
@@ -199,17 +203,22 @@ export function registerAccountingTools(
   server.tool(
     'bank_sync_status',
     'Check bank synchronization provider connection status.',
-    {},
-    async (_params, extra) => {
+    {
+      company_id: z.number().optional().describe('Filter by company ID (use list_companies to see available companies)'),
+    },
+    async (params, extra) => {
       const apiKey = getApiKey(extra);
       if (!apiKey) return formatErrorForMcp(new McpToolError({ userMessage: 'Not authenticated.', isRetryable: false, errorCode: 'AUTH_REQUIRED' }));
 
       try {
         const client = clientManager.getClient(apiKey);
+        const domain: unknown[] = [];
+        if (params.company_id) domain.push(['company_id', '=', params.company_id]);
+
         const providers = await client.searchRead(
           'account.online.provider',
-          [],
-          ['id', 'name', 'status', 'last_refresh', 'provider_type'],
+          domain,
+          ['id', 'name', 'status', 'last_refresh', 'provider_type', 'company_id'],
           { limit: 50 }
         );
         return { content: [{ type: 'text' as const, text: JSON.stringify(providers, null, 2) }] };
@@ -224,6 +233,7 @@ export function registerAccountingTools(
     {
       date_from: z.string().describe('Start date (YYYY-MM-DD)'),
       date_to: z.string().describe('End date (YYYY-MM-DD)'),
+      company_id: z.number().optional().describe('Filter by company ID (use list_companies to see available companies)'),
     },
     async (params, extra) => {
       const apiKey = getApiKey(extra);
@@ -231,14 +241,17 @@ export function registerAccountingTools(
 
       try {
         const client = clientManager.getClient(apiKey);
+        const domain: unknown[] = [
+          ['parent_state', '=', 'posted'],
+          ['account_id.account_type', 'in', ['income', 'income_other', 'expense', 'expense_direct_cost', 'expense_depreciation']],
+          ['date', '>=', params.date_from],
+          ['date', '<=', params.date_to],
+        ];
+        if (params.company_id) domain.push(['company_id', '=', params.company_id]);
+
         const data = await client.readGroup(
           'account.move.line',
-          [
-            ['parent_state', '=', 'posted'],
-            ['account_id.account_type', 'in', ['income', 'income_other', 'expense', 'expense_direct_cost', 'expense_depreciation']],
-            ['date', '>=', params.date_from],
-            ['date', '<=', params.date_to],
-          ],
+          domain,
           ['account_id', 'balance:sum'],
           ['account_id'],
           { orderby: 'account_id' }
@@ -254,6 +267,7 @@ export function registerAccountingTools(
     'Get balance sheet summary grouped by account type as of a given date.',
     {
       date_to: z.string().describe('As-of date (YYYY-MM-DD)'),
+      company_id: z.number().optional().describe('Filter by company ID (use list_companies to see available companies)'),
     },
     async (params, extra) => {
       const apiKey = getApiKey(extra);
@@ -261,13 +275,16 @@ export function registerAccountingTools(
 
       try {
         const client = clientManager.getClient(apiKey);
+        const domain: unknown[] = [
+          ['parent_state', '=', 'posted'],
+          ['account_id.account_type', 'in', ['asset_receivable', 'asset_cash', 'asset_current', 'asset_non_current', 'asset_fixed', 'asset_prepayments', 'liability_payable', 'liability_credit_card', 'liability_current', 'liability_non_current', 'equity', 'equity_unaffected']],
+          ['date', '<=', params.date_to],
+        ];
+        if (params.company_id) domain.push(['company_id', '=', params.company_id]);
+
         const data = await client.readGroup(
           'account.move.line',
-          [
-            ['parent_state', '=', 'posted'],
-            ['account_id.account_type', 'in', ['asset_receivable', 'asset_cash', 'asset_current', 'asset_non_current', 'asset_fixed', 'asset_prepayments', 'liability_payable', 'liability_credit_card', 'liability_current', 'liability_non_current', 'equity', 'equity_unaffected']],
-            ['date', '<=', params.date_to],
-          ],
+          domain,
           ['account_id', 'balance:sum'],
           ['account_id'],
           { orderby: 'account_id' }

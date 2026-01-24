@@ -10,6 +10,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { OdooClientManager } from '../services/odoo/client-manager.js';
 import { registerPingTool } from './tools/ping.js';
 import { registerTestOdooTool } from './tools/test-odoo.js';
+import { registerCompanyTools } from './tools/companies.js';
 import { registerAccountingTools } from './tools/accounting.js';
 import { registerHrTools } from './tools/hr.js';
 import { registerExpenseTools } from './tools/expenses.js';
@@ -24,7 +25,20 @@ You are connected to the Natural Heroes Odoo 19 instance via MCP.
 All tools use the authenticated user's permissions — results are filtered
 by Odoo's access control rules.
 
+## Multi-Company Support
+
+This Odoo instance has multiple companies. Use **list_companies** to see which
+companies you have access to. Most listing tools accept an optional \`company_id\`
+parameter to filter results to a specific company. When no company filter is set,
+results may include records from all companies you have access to.
+
+The \`company_id\` field is included in tool outputs as a [id, name] tuple so you
+can always see which company a record belongs to.
+
 ## Available Domains
+
+### Companies
+- **list_companies**: List all companies you have access to (use returned IDs for filtering)
 
 ### Accounting
 - **list_invoices** / **read_invoice**: Browse and inspect invoices/bills
@@ -64,11 +78,13 @@ by Odoo's access control rules.
 - **validate_payment**: Post a draft payment
 
 ## Tips
-- Many2one fields (like partner_id) return [id, display_name] tuples
+- Use **list_companies** first to discover company IDs, then pass \`company_id\` to filter
+- Many2one fields (like partner_id, company_id) return [id, display_name] tuples
 - Dates use YYYY-MM-DD format
 - Use limit/offset for pagination on list endpoints
 - Approval tools check state before acting — they'll tell you if the record isn't in the right state
 - Knowledge article bodies are converted HTML↔Markdown automatically
+- Knowledge articles and decisions are shared across companies (no company filter)
 `;
 
 /**
@@ -99,6 +115,9 @@ export function createMcpServer(clientManager: OdooClientManager): McpServer {
   // Utility tools
   registerPingTool(server);
   registerTestOdooTool(server, clientManager);
+
+  // Company tools
+  registerCompanyTools(server, clientManager);
 
   // Domain tools
   registerAccountingTools(server, clientManager);
