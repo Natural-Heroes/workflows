@@ -13,7 +13,7 @@
  * @param error - Optional error message to display
  * @returns Complete HTML page string
  */
-export function renderLoginPage(pendingId: string, error?: string): string {
+export function renderLoginPage(pendingId: string, error?: string, basePath = ''): string {
   const errorHtml = error
     ? '<div class="error">' + escapeHtml(error) + '</div>'
     : '';
@@ -35,7 +35,7 @@ export function renderLoginPage(pendingId: string, error?: string): string {
     '<h1>Odoo MCP - Sign In</h1>',
     '<p class="subtitle">Enter your Odoo credentials to connect</p>',
     errorHtml,
-    '<form action="/login" method="POST">',
+    '<form action="' + escapeHtml(basePath) + '/login" method="POST">',
     '<input type="hidden" name="pending" value="' + escapeHtml(pendingId) + '">',
     '<div class="field">',
     '<label for="email">Odoo Login Email</label>',

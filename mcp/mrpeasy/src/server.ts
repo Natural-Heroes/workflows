@@ -5,7 +5,7 @@
  * Implements session-based architecture with in-memory session store.
  */
 
-import express, { Request, Response } from 'express';
+import express, { Request, Response, Router } from 'express';
 import { randomUUID } from 'crypto';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
@@ -30,10 +30,13 @@ app.use(express.json());
 // Session store: Map<sessionId, transport>
 const transports: Map<string, StreamableHTTPServerTransport> = new Map();
 
+// Router for all endpoints (mounted on BASE_PATH)
+const router = Router();
+
 /**
  * Health check endpoint
  */
-app.get('/health', (_req: Request, res: Response) => {
+router.get('/health', (_req: Request, res: Response) => {
   res.status(200).json({
     status: 'healthy',
     version: '0.1.1',
@@ -44,7 +47,7 @@ app.get('/health', (_req: Request, res: Response) => {
 /**
  * MCP POST endpoint - handles requests and initializes new sessions
  */
-app.post('/mcp', async (req: Request, res: Response) => {
+router.post('/mcp', async (req: Request, res: Response) => {
   const sessionId = req.headers['mcp-session-id'] as string | undefined;
 
   logger.debug('Received MCP POST request', { sessionId: sessionId || 'none' });
@@ -123,7 +126,7 @@ app.post('/mcp', async (req: Request, res: Response) => {
 /**
  * MCP GET endpoint - Server-Sent Events for server-to-client notifications
  */
-app.get('/mcp', async (req: Request, res: Response) => {
+router.get('/mcp', async (req: Request, res: Response) => {
   const sessionId = req.headers['mcp-session-id'] as string | undefined;
 
   if (!sessionId || !transports.has(sessionId)) {
@@ -147,7 +150,7 @@ app.get('/mcp', async (req: Request, res: Response) => {
 /**
  * MCP DELETE endpoint - explicit session termination
  */
-app.delete('/mcp', async (req: Request, res: Response) => {
+router.delete('/mcp', async (req: Request, res: Response) => {
   const sessionId = req.headers['mcp-session-id'] as string | undefined;
 
   if (!sessionId || !transports.has(sessionId)) {
@@ -169,10 +172,14 @@ app.delete('/mcp', async (req: Request, res: Response) => {
   transports.delete(sessionId);
 });
 
+// Mount router on BASE_PATH (defaults to '/' if not set)
+app.use(env.BASE_PATH || '/', router);
+
 // Start server
 app.listen(env.PORT, () => {
   logger.info('MRPeasy MCP server started', {
     port: env.PORT,
+    basePath: env.BASE_PATH || '/',
     env: env.NODE_ENV,
   });
 });

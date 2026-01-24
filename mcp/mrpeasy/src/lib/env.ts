@@ -38,6 +38,16 @@ const envSchema = z.object({
     }),
 
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+
+  BASE_PATH: z
+    .string()
+    .default('')
+    .transform((val) => {
+      if (!val) return '';
+      let p = val.startsWith('/') ? val : '/' + val;
+      if (p.endsWith('/')) p = p.slice(0, -1);
+      return p;
+    }),
 });
 
 export type Env = z.infer<typeof envSchema>;

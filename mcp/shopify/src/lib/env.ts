@@ -20,6 +20,7 @@ export interface StoreConfig {
 export interface Env {
   PORT: number;
   NODE_ENV: 'development' | 'production' | 'test';
+  BASE_PATH: string;
   stores: StoreConfig[];
   defaultStore: string;
 }
@@ -48,6 +49,16 @@ export function validateEnv(): Env {
   const nodeEnv = (process.env.NODE_ENV ?? 'development') as 'development' | 'production' | 'test';
   if (!['development', 'production', 'test'].includes(nodeEnv)) {
     errors.push('NODE_ENV must be development, production, or test');
+  }
+
+  // Parse BASE_PATH (optional, e.g., '/shopify')
+  let basePath = process.env.BASE_PATH ?? '';
+  if (basePath && !basePath.startsWith('/')) {
+    basePath = '/' + basePath;
+  }
+  // Remove trailing slash
+  if (basePath.endsWith('/')) {
+    basePath = basePath.slice(0, -1);
   }
 
   // Parse store identifiers
@@ -99,7 +110,7 @@ export function validateEnv(): Env {
     defaultStore,
   });
 
-  return { PORT: port, NODE_ENV: nodeEnv, stores, defaultStore };
+  return { PORT: port, NODE_ENV: nodeEnv, BASE_PATH: basePath, stores, defaultStore };
 }
 
 let _env: Env | null = null;
