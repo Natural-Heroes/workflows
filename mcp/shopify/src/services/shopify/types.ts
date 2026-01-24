@@ -156,8 +156,8 @@ export interface Customer {
   firstName: string | null;
   lastName: string | null;
   phone: string | null;
-  ordersCount: string;
-  totalSpentV2: MoneyV2;
+  numberOfOrders: string;
+  amountSpent: MoneyV2;
   tags: string[];
   state: string;
   createdAt: string;

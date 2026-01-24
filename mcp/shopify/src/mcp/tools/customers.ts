@@ -22,8 +22,8 @@ query GetCustomers($first: Int!, $after: String, $query: String) {
         firstName
         lastName
         phone
-        ordersCount
-        totalSpentV2 {
+        numberOfOrders
+        amountSpent {
           amount
           currencyCode
         }
@@ -113,8 +113,8 @@ export function registerCustomerTools(
             firstName: c.firstName,
             lastName: c.lastName,
             phone: c.phone,
-            ordersCount: c.ordersCount,
-            totalSpent: c.totalSpentV2,
+            ordersCount: c.numberOfOrders,
+            totalSpent: c.amountSpent,
             tags: c.tags,
             state: c.state,
             createdAt: c.createdAt,
