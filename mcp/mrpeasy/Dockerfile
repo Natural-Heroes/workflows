@@ -1,5 +1,5 @@
 FROM node:20-alpine AS builder
-# Build version: 2026-01-20-v2
+# Build version: 2026-01-24-v1
 WORKDIR /app
 
 COPY package*.json ./

@@ -64,11 +64,14 @@ export class CircuitBreaker {
    * Executes a function through the circuit breaker.
    *
    * @param fn - Async function to execute
+   * @param shouldTrip - Optional predicate to determine if an error should count as a failure.
+   *                     Defaults to counting all errors. Return false for client errors (4xx)
+   *                     that should not trip the breaker.
    * @returns Promise with function result
    * @throws CircuitBreakerOpenError if circuit is open
    * @throws Original error if function fails
    */
-  async execute<T>(fn: () => Promise<T>): Promise<T> {
+  async execute<T>(fn: () => Promise<T>, shouldTrip?: (error: unknown) => boolean): Promise<T> {
     // Check if we should transition from OPEN to HALF_OPEN
     if (this.state === 'OPEN') {
       if (Date.now() - this.lastFailure >= this.config.timeout) {
@@ -87,7 +90,9 @@ export class CircuitBreaker {
       this.onSuccess();
       return result;
     } catch (error) {
-      this.onFailure();
+      if (!shouldTrip || shouldTrip(error)) {
+        this.onFailure();
+      }
       throw error;
     }
   }

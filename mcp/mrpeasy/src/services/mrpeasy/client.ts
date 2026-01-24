@@ -172,12 +172,21 @@ export class MrpEasyClient {
 
     // Queue ensures single concurrent request
     return this.queue.enqueue(async () => {
+      // Only count server-side errors (5xx, network) as circuit breaker failures.
+      // Client errors (4xx) indicate bad requests, not service degradation.
+      const shouldTrip = (error: unknown): boolean => {
+        if (error instanceof MrpEasyApiError) {
+          return error.status === 0 || error.status >= 500;
+        }
+        return true; // Network errors, unknown errors → trip
+      };
+
       // Wrapper for circuit breaker (optional)
       const executeWithOptionalCircuitBreaker = async (
         fn: () => Promise<T>
       ): Promise<T> => {
         if (this.circuitBreakerEnabled) {
-          return this.circuitBreaker.execute(fn);
+          return this.circuitBreaker.execute(fn, shouldTrip);
         }
         return fn();
       };

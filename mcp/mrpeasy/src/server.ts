@@ -36,7 +36,7 @@ const transports: Map<string, StreamableHTTPServerTransport> = new Map();
 app.get('/health', (_req: Request, res: Response) => {
   res.status(200).json({
     status: 'healthy',
-    version: '0.1.1',
+    version: '0.1.2',
     sessions: transports.size,
   });
 });

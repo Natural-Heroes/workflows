@@ -9,6 +9,7 @@ import {
   createServiceUnavailableError,
   createAuthenticationError,
   createNotFoundError,
+  createApiValidationError,
   createUnexpectedError,
   formatErrorForMcp,
 } from '../../lib/errors.js';
@@ -32,6 +33,8 @@ export function handleToolError(
   // Handle MRPeasy API errors
   if (error instanceof MrpEasyApiError) {
     switch (error.status) {
+      case 400:
+        return formatErrorForMcp(createApiValidationError(error.message));
       case 429:
         return formatErrorForMcp(createRateLimitError(error.retryAfterSeconds));
       case 503:

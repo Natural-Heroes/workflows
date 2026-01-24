@@ -125,6 +125,23 @@ export function createValidationError(field: string, issue: string): McpToolErro
 }
 
 /**
+ * Creates an API validation error that passes through the upstream error message.
+ *
+ * Used when the MRPeasy API rejects a request with HTTP 400.
+ *
+ * @param apiMessage - Error message from the MRPeasy API response
+ * @returns McpToolError with the API's error message
+ */
+export function createApiValidationError(apiMessage: string): McpToolError {
+  return new McpToolError({
+    userMessage: `MRPeasy API rejected the request: ${apiMessage}`,
+    isRetryable: false,
+    suggestedAction: 'Check the request parameters and try again.',
+    errorCode: 'API_VALIDATION_ERROR',
+  });
+}
+
+/**
  * Creates an error for unexpected/unknown errors.
  *
  * Logs internal details but returns a generic user message.
