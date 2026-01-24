@@ -40,6 +40,12 @@ const envSchema = z.object({
     .url('MCP_SERVER_URL must be a valid URL'),
 
   DB_PATH: z.string().default('./data/credentials.db'),
+
+  ODOO_WEB_URL: z
+    .string()
+    .url()
+    .optional()
+    .describe('Base URL for Odoo web UI links (e.g. https://odoo.naturalheroes.nl)'),
 });
 
 export type Env = z.infer<typeof envSchema>;

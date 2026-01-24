@@ -9,6 +9,7 @@ import { z } from 'zod';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { OdooClientManager } from '../../services/odoo/client-manager.js';
 import { OdooApiError, McpToolError, formatErrorForMcp } from '../../lib/errors.js';
+import { getEnv } from '../../lib/env.js';
 
 function getApiKey(extra: { authInfo?: { extra?: { odooApiKey?: unknown } } }): string | null {
   return (extra.authInfo?.extra?.odooApiKey as string) || null;
@@ -34,6 +35,26 @@ function handleError(error: unknown) {
     userMessage: 'Unexpected error: ' + (error instanceof Error ? error.message : String(error)),
     isRetryable: false,
   }));
+}
+
+/**
+ * Generate Odoo web UI URL for an invoice based on its move_type.
+ */
+function getInvoiceUrl(id: number, moveType: string): string | undefined {
+  const env = getEnv();
+  const baseUrl = env.ODOO_WEB_URL;
+  if (!baseUrl) return undefined;
+
+  const base = baseUrl.replace(/\/+$/, '');
+  const pathMap: Record<string, string> = {
+    in_invoice: 'vendor-bills',
+    in_refund: 'vendor-bills',
+    out_invoice: 'invoices',
+    out_refund: 'invoices',
+    entry: 'journal-entries',
+  };
+  const path = pathMap[moveType] || 'accounting';
+  return `${base}/odoo/${path}/${id}`;
 }
 
 export function registerAccountingTools(
@@ -67,7 +88,8 @@ export function registerAccountingTools(
           ['id', 'name', 'partner_id', 'invoice_date', 'amount_total', 'amount_residual', 'state', 'move_type', 'currency_id'],
           { limit: params.limit, offset: params.offset, order: 'invoice_date desc' }
         );
-        return { content: [{ type: 'text' as const, text: JSON.stringify(invoices, null, 2) }] };
+        const enriched = (invoices as Record<string, unknown>[]).map(inv => ({ ...inv, url: getInvoiceUrl(inv.id as number, inv.move_type as string) }));
+        return { content: [{ type: 'text' as const, text: JSON.stringify(enriched, null, 2) }] };
       } catch (error) { return handleError(error); }
     }
   );
@@ -106,6 +128,7 @@ export function registerAccountingTools(
           (invoice as Record<string, unknown>).lines = lines;
         }
 
+        (invoice as Record<string, unknown>).url = getInvoiceUrl(invoice.id as number, (invoice as Record<string, unknown>).move_type as string);
         return { content: [{ type: 'text' as const, text: JSON.stringify(invoice, null, 2) }] };
       } catch (error) { return handleError(error); }
     }
