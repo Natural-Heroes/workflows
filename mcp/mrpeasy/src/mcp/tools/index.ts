@@ -19,6 +19,7 @@ import { registerRoutingTools } from './routings.js';
 import { registerPurchaseOrderTools } from './purchase-orders.js';
 import { registerStockLotTools } from './stock-lots.js';
 import { registerReportTools } from './reports.js';
+import { registerLookupTools } from './lookups.js';
 
 /**
  * Brief server description shown during initialization.
@@ -35,6 +36,15 @@ This server provides read and write access to MRPeasy ERP data including invento
 
 ## Available Tools
 
+### Lookup/Reference Data (Use these first for write operations!)
+- **get_units**: List all units of measurement. Use for create_item \`unit_id\`.
+- **get_product_groups**: List all product groups. Use for create_item \`group_id\`.
+- **get_operation_types**: List all operation types. Use for create_routing \`type_id\`.
+- **get_workstations**: List all workstations. Use for create_routing \`workstation_id\`.
+- **get_customers**: List all customers. Use for create_customer_order \`customer_id\`.
+- **get_sites**: List all manufacturing sites. Use for create_manufacturing_order \`site_id\`.
+- **get_users**: List all users. Use for create_manufacturing_order \`assigned_id\`.
+
 ### Inventory & Products
 - **get_inventory**: Get stock levels. Use \`code\` for SKU lookup (e.g., "ZPEO-NH-1").
 - **get_product**: Get product details by ID or code.
@@ -43,17 +53,17 @@ This server provides read and write access to MRPeasy ERP data including invento
 ### Customer Orders (Sales)
 - **get_customer_orders**: List customer orders. Use \`open_only=true\` to exclude delivered/cancelled.
 - **get_customer_order_details**: Get full CO details by ID or code (e.g., "CO-01263").
-- **create_customer_order**: Create a new sales order. Requires customer_id and products[].
+- **create_customer_order**: Create a new sales order. Use get_customers first. Requires customer_id and products[].
 - **update_customer_order**: Update CO status, delivery_date, reference, or notes.
 
 ### Manufacturing Orders (Production)
 - **get_manufacturing_orders**: List MOs. Use \`open_only=true\` to exclude done/closed/cancelled.
 - **get_manufacturing_order_details**: Get full MO details by ID or code (e.g., "MO-39509").
-- **create_manufacturing_order**: Create a new MO. Requires article_id, quantity, assigned_id.
+- **create_manufacturing_order**: Create a new MO. Use get_users and get_sites first. Requires article_id, quantity, assigned_id, site_id.
 - **update_manufacturing_order**: Update MO code, quantity, dates, or assignment.
 
 ### Items
-- **create_item**: Create a new item (product or raw material). Requires title, unit_id, group_id, is_raw.
+- **create_item**: Create a new item. Use get_units and get_product_groups first. Requires title, unit_id, group_id, is_raw.
 - **update_item**: Update item title, code, selling_price, min_quantity, etc.
 
 ### Bills of Materials (BOMs)
@@ -65,7 +75,7 @@ This server provides read and write access to MRPeasy ERP data including invento
 ### Routings
 - **get_routings**: List routings. Filter by product_id or item_code.
 - **get_routing_details**: Get routing with all operations, times, and workstations.
-- **create_routing**: Create a new routing. Requires product_id and operations[].
+- **create_routing**: Create a new routing. Use get_operation_types and get_workstations first. Requires product_id and operations[].
 - **update_routing**: Update routing title, code, or operations list.
 
 ### Stock Lots
@@ -85,15 +95,17 @@ This server provides read and write access to MRPeasy ERP data including invento
 
 ## Best Practices
 
-1. **Use code filters for lookups**: When you have an order code like "MO-39509" or "CO-01263", use the \`code\` parameter for efficient single-result queries.
+1. **Use lookup tools before creating**: Before creating items, orders, or routings, use the lookup tools (get_units, get_product_groups, get_customers, get_sites, get_users, get_operation_types, get_workstations) to find valid IDs.
 
-2. **Use open_only/pending_only**: When checking active work, use these filters to exclude completed orders.
+2. **Use code filters for lookups**: When you have an order code like "MO-39509" or "CO-01263", use the \`code\` parameter for efficient single-result queries.
 
-3. **Link related data**: Customer orders link to manufacturing orders and shipments. Use the IDs from one query to fetch related records.
+3. **Use open_only/pending_only**: When checking active work, use these filters to exclude completed orders.
 
-4. **Write tools require confirm=true**: All write tools (create_*, update_*) require \`confirm: true\` to execute. With \`confirm: false\` (default), they return a preview of what would be sent.
+4. **Link related data**: Customer orders link to manufacturing orders and shipments. Use the IDs from one query to fetch related records.
 
-5. **Purchase orders are read-only**: The MRPeasy API does not support POST/PUT for purchase orders.
+5. **Write tools require confirm=true**: All write tools (create_*, update_*) require \`confirm: true\` to execute. With \`confirm: false\` (default), they return a preview of what would be sent.
+
+6. **Purchase orders are read-only**: The MRPeasy API does not support POST/PUT for purchase orders.
 
 ## Status Codes
 
@@ -216,6 +228,9 @@ export function createMcpServer(): McpServer {
   registerPurchaseOrderTools(server, client);
   registerStockLotTools(server, client);
   registerReportTools(server, client);
+
+  // Register lookup/reference data tools
+  registerLookupTools(server, client);
 
   // Register MRPeasy write tools
   registerMutationTools(server, client);

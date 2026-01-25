@@ -42,7 +42,8 @@ const UpdateCustomerOrderSchema = z.object({
 const CreateManufacturingOrderSchema = z.object({
   article_id: z.number().int().positive().describe('Article/product ID to manufacture'),
   quantity: z.number().positive().describe('Quantity to produce'),
-  assigned_id: z.number().int().positive().describe('Assigned user ID (responsible person)'),
+  assigned_id: z.number().int().positive().describe('Assigned user ID (responsible person). Use get_users to find valid IDs.'),
+  site_id: z.number().int().positive().describe('Manufacturing site ID. Use get_sites to find valid IDs.'),
   due_date: z.string().optional().describe('Due date (ISO format: YYYY-MM-DD)'),
   start_date: z.string().optional().describe('Start date (ISO format: YYYY-MM-DD)'),
   notes: z.string().optional().describe('Production notes'),
@@ -102,7 +103,7 @@ export function registerMutationTools(
   // -------------------------------------------------------------------------
   server.tool(
     'create_customer_order',
-    'Create a new customer order (sales order). Requires customer_id and at least one product with article_id, quantity, and total_price_cur. Set confirm=true to execute.',
+    'Create a new customer order (sales order). Use get_customers first to find valid customer_id. Requires customer_id and at least one product with article_id, quantity, and total_price_cur. Set confirm=true to execute.',
     {
       customer_id: CreateCustomerOrderSchema.shape.customer_id,
       products: CreateCustomerOrderSchema.shape.products,
@@ -223,11 +224,12 @@ export function registerMutationTools(
   // -------------------------------------------------------------------------
   server.tool(
     'create_manufacturing_order',
-    'Create a new manufacturing order (production order). Requires article_id, quantity, and assigned_id. Set confirm=true to execute.',
+    'Create a new manufacturing order (production order). Requires article_id, quantity, assigned_id, and site_id. Use get_users to find valid assigned_id and get_sites for valid site_id. Set confirm=true to execute.',
     {
       article_id: CreateManufacturingOrderSchema.shape.article_id,
       quantity: CreateManufacturingOrderSchema.shape.quantity,
       assigned_id: CreateManufacturingOrderSchema.shape.assigned_id,
+      site_id: CreateManufacturingOrderSchema.shape.site_id,
       due_date: CreateManufacturingOrderSchema.shape.due_date,
       start_date: CreateManufacturingOrderSchema.shape.start_date,
       notes: CreateManufacturingOrderSchema.shape.notes,
@@ -241,6 +243,7 @@ export function registerMutationTools(
           article_id: params.article_id,
           quantity: params.quantity,
           assigned_id: params.assigned_id,
+          site_id: params.site_id,
           due_date: params.due_date,
           start_date: params.start_date,
           notes: params.notes,
@@ -347,7 +350,7 @@ export function registerMutationTools(
   // -------------------------------------------------------------------------
   server.tool(
     'create_item',
-    'Create a new item (product or raw material). Requires title, unit_id, group_id, and is_raw. Set confirm=true to execute.',
+    'Create a new item (product or raw material). Use get_units to find valid unit_id and get_product_groups to find valid group_id. Requires title, unit_id, group_id, and is_raw. Set confirm=true to execute.',
     {
       title: CreateItemSchema.shape.title,
       unit_id: CreateItemSchema.shape.unit_id,

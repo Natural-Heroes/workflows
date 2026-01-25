@@ -31,11 +31,11 @@ const GetRoutingDetailsSchema = z.object({
 });
 
 const RoutingOperationSchema = z.object({
-  type_id: z.number().int().positive().describe('Operation type ID'),
+  type_id: z.number().int().positive().describe('Operation type ID (use get_operation_types to find valid IDs)'),
   ord: z.number().int().min(0).describe('Order/sequence number'),
   variable_time: z.number().min(0).describe('Variable time per unit in minutes'),
   setup_time: z.number().min(0).optional().describe('Setup time in minutes'),
-  workstation_id: z.number().int().positive().optional().describe('Workstation ID'),
+  workstation_id: z.number().int().positive().optional().describe('Workstation ID (use get_workstations to find valid IDs)'),
 });
 
 const CreateRoutingSchema = z.object({
@@ -204,7 +204,7 @@ export function registerRoutingTools(
   // -------------------------------------------------------------------------
   server.tool(
     'create_routing',
-    'Create a new routing (manufacturing process). Requires product_id and at least one operation with type_id, ord, and variable_time. Set confirm=true to execute.',
+    'Create a new routing (manufacturing process). Use get_operation_types to find valid type_id and get_workstations for workstation_id. Requires product_id and at least one operation with type_id, ord, and variable_time. Set confirm=true to execute.',
     {
       product_id: CreateRoutingSchema.shape.product_id,
       operations: CreateRoutingSchema.shape.operations,
