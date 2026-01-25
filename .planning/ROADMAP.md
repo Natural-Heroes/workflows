@@ -57,10 +57,11 @@ Plans:
   3. User can create purchase orders with preview-before-execute confirmation flow
   4. User can update purchase order status, dates, and notes
   5. User can update variant planning parameters (lead time, review period, safety stock)
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 03-01: Complete purchase order and variant mutation tools
+- [ ] 03-01-PLAN.md — Validate purchase order tools with integration tests (PO-01 to PO-05)
+- [ ] 03-02-PLAN.md — Validate mutation tools with integration tests (VAR-01)
 
 ## Progress
 
@@ -71,4 +72,4 @@ Phases execute in numeric order: 1 -> 2 -> 3
 |-------|----------------|--------|-----------|
 | 1. Foundation Validation | 2/2 | Complete | 2026-01-25 |
 | 2. Stock Analytics Completion | 2/2 | Complete | 2026-01-25 |
-| 3. Purchase Order & Mutations | 0/1 | Not started | - |
+| 3. Purchase Order & Mutations | 0/2 | Not started | - |
