@@ -309,6 +309,16 @@ router.delete('/mcp', bearerAuth, async (req: Request, res: Response) => {
   sessions.delete(sessionId);
 });
 
+// --- Root-level health check for Docker (before router mount) ---
+
+app.get('/health', (_req: Request, res: Response) => {
+  res.status(200).json({
+    status: 'healthy',
+    version: '0.1.0',
+    sessions: sessions.size,
+  });
+});
+
 // --- Mount router on BASE_PATH ---
 
 app.use(env.BASE_PATH || '/', router);
