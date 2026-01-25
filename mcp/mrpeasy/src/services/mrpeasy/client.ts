@@ -55,6 +55,15 @@ import type {
   PurchaseOrdersParams,
   ReportType,
   ReportParams,
+  Unit,
+  ProductGroup,
+  ProductGroupsParams,
+  WorkCenterType,
+  WorkCenter,
+  Customer,
+  CustomersParams,
+  Site,
+  User,
 } from './types.js';
 
 /**
@@ -906,6 +915,85 @@ export class MrpEasyClient {
    */
   async getReport(type: ReportType, params: ReportParams): Promise<unknown> {
     return this.request<unknown>(`/report/${type}`, params);
+  }
+
+  // ===========================================================================
+  // Lookup/Reference Data
+  // ===========================================================================
+
+  /**
+   * Get units of measurement.
+   *
+   * @returns Array of units with _contentRange metadata
+   */
+  async getUnits(): Promise<Unit[] & { _contentRange?: string }> {
+    return this.request<Unit[] & { _contentRange?: string }>('/units');
+  }
+
+  /**
+   * Get product groups.
+   *
+   * @param params - Query parameters for filtering
+   * @returns Array of product groups with _contentRange metadata
+   */
+  async getProductGroups(params?: ProductGroupsParams): Promise<ProductGroup[] & { _contentRange?: string }> {
+    return this.request<ProductGroup[] & { _contentRange?: string }>('/product-groups', params);
+  }
+
+  /**
+   * Get work center types (operation types).
+   *
+   * @returns Array of work center types with _contentRange metadata
+   */
+  async getWorkCenterTypes(): Promise<WorkCenterType[] & { _contentRange?: string }> {
+    return this.request<WorkCenterType[] & { _contentRange?: string }>('/work-center-types');
+  }
+
+  /**
+   * Get work centers (workstations).
+   *
+   * @returns Array of work centers with _contentRange metadata
+   */
+  async getWorkCenters(): Promise<WorkCenter[] & { _contentRange?: string }> {
+    return this.request<WorkCenter[] & { _contentRange?: string }>('/work-centers');
+  }
+
+  /**
+   * Get customers.
+   *
+   * @param params - Query parameters for filtering
+   * @returns Array of customers with _contentRange metadata
+   */
+  async getCustomers(params?: CustomersParams): Promise<Customer[] & { _contentRange?: string }> {
+    return this.request<Customer[] & { _contentRange?: string }>('/customers', params);
+  }
+
+  /**
+   * Get a single customer by ID.
+   *
+   * @param id - Customer ID
+   * @returns Customer details
+   */
+  async getCustomer(id: number): Promise<Customer> {
+    return this.request<Customer>(`/customers/${id}`);
+  }
+
+  /**
+   * Get sites (manufacturing locations).
+   *
+   * @returns Array of sites with _contentRange metadata
+   */
+  async getSites(): Promise<Site[] & { _contentRange?: string }> {
+    return this.request<Site[] & { _contentRange?: string }>('/sites');
+  }
+
+  /**
+   * Get users.
+   *
+   * @returns Array of users with _contentRange metadata
+   */
+  async getUsers(): Promise<User[] & { _contentRange?: string }> {
+    return this.request<User[] & { _contentRange?: string }>('/users');
   }
 }
 

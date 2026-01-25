@@ -497,8 +497,10 @@ export interface CreateManufacturingOrderPayload {
   article_id: number;
   /** Quantity to produce */
   quantity: number;
-  /** Assigned user ID */
+  /** Assigned user ID (use get_users to find valid IDs) */
   assigned_id: number;
+  /** Site ID (use get_sites to find valid IDs) */
+  site_id: number;
   /** Due date (ISO string) */
   due_date?: string;
   /** Start date (ISO string) */
@@ -950,4 +952,162 @@ export interface ReportParams {
   article_id?: number;
   /** Optional warehouse ID filter */
   warehouse_id?: number;
+}
+
+// ============================================================================
+// Lookup/Reference Data Types
+// ============================================================================
+
+/**
+ * Unit of measurement from /units endpoint.
+ */
+export interface Unit {
+  /** Unit ID */
+  id: number;
+  /** Unit code (e.g., "pcs", "kg", "m") */
+  code?: string;
+  /** Unit name/title */
+  title?: string;
+  /** Unit name (alternative field) */
+  name?: string;
+}
+
+/**
+ * Product group from /product-groups endpoint.
+ */
+export interface ProductGroup {
+  /** Group ID */
+  group_id: number;
+  /** Group code */
+  code?: string;
+  /** Group title/name */
+  title?: string;
+}
+
+/**
+ * Product groups query parameters.
+ */
+export interface ProductGroupsParams {
+  /** Filter by group ID */
+  group_id?: number;
+  /** Filter by code */
+  code?: string;
+  /** Filter by title */
+  title?: string;
+}
+
+/**
+ * Work center type (operation type) from /work-center-types endpoint.
+ */
+export interface WorkCenterType {
+  /** Type ID */
+  id: number;
+  /** Type code */
+  code?: string;
+  /** Type name/title */
+  title?: string;
+  /** Type name (alternative field) */
+  name?: string;
+}
+
+/**
+ * Work center (workstation) from /work-centers endpoint.
+ */
+export interface WorkCenter {
+  /** Workstation ID */
+  id: number;
+  /** Workstation code */
+  code?: string;
+  /** Workstation name/title */
+  title?: string;
+  /** Workstation name (alternative field) */
+  name?: string;
+  /** Work center type ID */
+  type_id?: number;
+  /** Site ID */
+  site_id?: number;
+}
+
+/**
+ * Customer from /customers endpoint.
+ */
+export interface Customer {
+  /** Customer ID */
+  customer_id: number;
+  /** Customer code */
+  code?: string;
+  /** Customer name/title */
+  title?: string;
+  /** Customer name (alternative field) */
+  name?: string;
+  /** Registration number */
+  reg_nr?: string;
+  /** Tax number */
+  tax_nr?: string;
+  /** Status */
+  status?: number;
+  /** Email */
+  email?: string;
+  /** Phone */
+  phone?: string;
+  /** Address */
+  address?: string;
+}
+
+/**
+ * Customers query parameters.
+ */
+export interface CustomersParams extends PaginationParams {
+  /** Filter by code */
+  code?: string;
+  /** Filter by title */
+  title?: string;
+  /** Filter by registration number */
+  reg_nr?: string;
+  /** Filter by tax number */
+  tax_nr?: string;
+  /** Filter by status (supports arrays) */
+  status?: number | number[];
+  /** Filter by creation date minimum */
+  created_min?: number;
+  /** Filter by creation date maximum */
+  created_max?: number;
+}
+
+/**
+ * Site from /sites endpoint.
+ */
+export interface Site {
+  /** Site ID */
+  id: number;
+  /** Site code */
+  code?: string;
+  /** Site name/title */
+  title?: string;
+  /** Site name (alternative field) */
+  name?: string;
+  /** Address */
+  address?: string;
+}
+
+/**
+ * User from /users endpoint.
+ */
+export interface User {
+  /** User ID */
+  id: number;
+  /** Username */
+  username?: string;
+  /** User's full name */
+  name?: string;
+  /** First name */
+  first_name?: string;
+  /** Last name */
+  last_name?: string;
+  /** Email */
+  email?: string;
+  /** Role/position */
+  role?: string;
+  /** Active status */
+  active?: boolean;
 }
