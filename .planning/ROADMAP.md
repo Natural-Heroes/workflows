@@ -25,10 +25,11 @@ This roadmap delivers a production-ready MCP server exposing Inventory Planner d
   2. API requests flow through resilience stack (rate limiter, circuit breaker, retry, queue) and handle failures gracefully
   3. API errors return LLM-friendly messages with actionable suggestions (not raw HTTP errors)
   4. MCP client can establish session, invoke tools, and maintain connection across multiple requests
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 01-01: Validate infrastructure and close gaps
+- [ ] 01-01-PLAN.md — Setup test infrastructure and validate resilience components (INFRA-01, INFRA-02)
+- [ ] 01-02-PLAN.md — Validate error handling and MCP session protocol (INFRA-03, INFRA-04)
 
 ### Phase 2: Stock Analytics Completion
 **Goal**: User can query all stock-related data through natural language
@@ -67,6 +68,6 @@ Phases execute in numeric order: 1 -> 2 -> 3
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation Validation | 0/1 | Not started | - |
+| 1. Foundation Validation | 0/2 | Ready to execute | - |
 | 2. Stock Analytics Completion | 0/1 | Not started | - |
 | 3. Purchase Order & Mutations | 0/1 | Not started | - |
