@@ -74,27 +74,27 @@
 
 ## Requirement Traceability
 
-*Updated by roadmap creation*
+*Updated: 2026-01-25 (roadmap creation)*
 
 | REQ-ID | Phase | Status |
 |--------|-------|--------|
-| READ-01 | — | Pending |
-| READ-02 | — | Pending |
-| READ-03 | — | Pending |
-| READ-04 | — | Pending |
-| READ-05 | — | Pending |
-| PO-01 | — | Pending |
-| PO-02 | — | Pending |
-| PO-03 | — | Pending |
-| PO-04 | — | Pending |
-| PO-05 | — | Pending |
-| REF-01 | — | Pending |
-| REF-02 | — | Pending |
-| VAR-01 | — | Pending |
-| INFRA-01 | — | Pending |
-| INFRA-02 | — | Pending |
-| INFRA-03 | — | Pending |
-| INFRA-04 | — | Pending |
+| INFRA-01 | Phase 1 | Pending |
+| INFRA-02 | Phase 1 | Pending |
+| INFRA-03 | Phase 1 | Pending |
+| INFRA-04 | Phase 1 | Pending |
+| READ-01 | Phase 2 | Pending |
+| READ-02 | Phase 2 | Pending |
+| READ-03 | Phase 2 | Pending |
+| READ-04 | Phase 2 | Pending |
+| READ-05 | Phase 2 | Pending |
+| REF-01 | Phase 2 | Pending |
+| REF-02 | Phase 2 | Pending |
+| PO-01 | Phase 3 | Pending |
+| PO-02 | Phase 3 | Pending |
+| PO-03 | Phase 3 | Pending |
+| PO-04 | Phase 3 | Pending |
+| PO-05 | Phase 3 | Pending |
+| VAR-01 | Phase 3 | Pending |
 
 ---
 
