@@ -12,7 +12,7 @@ This roadmap delivers a production-ready MCP server exposing Inventory Planner d
 
 - [x] **Phase 1: Foundation Validation** - Verify infrastructure and validate existing implementations
 - [x] **Phase 2: Stock Analytics Completion** - Complete read-only tools for inventory queries
-- [ ] **Phase 3: Purchase Order & Mutations** - Complete write tools for PO management and variant updates
+- [x] **Phase 3: Purchase Order & Mutations** - Complete write tools for PO management and variant updates
 
 ## Phase Details
 
@@ -60,8 +60,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 03-01-PLAN.md — Validate purchase order tools with integration tests (PO-01 to PO-05)
-- [ ] 03-02-PLAN.md — Validate mutation tools with integration tests (VAR-01)
+- [x] 03-01-PLAN.md — Validate purchase order tools with integration tests (PO-01 to PO-05)
+- [x] 03-02-PLAN.md — Validate mutation tools with integration tests (VAR-01)
 
 ## Progress
 
@@ -72,4 +72,4 @@ Phases execute in numeric order: 1 -> 2 -> 3
 |-------|----------------|--------|-----------|
 | 1. Foundation Validation | 2/2 | Complete | 2026-01-25 |
 | 2. Stock Analytics Completion | 2/2 | Complete | 2026-01-25 |
-| 3. Purchase Order & Mutations | 0/2 | Not started | - |
+| 3. Purchase Order & Mutations | 2/2 | Complete | 2026-01-25 |

@@ -18,11 +18,11 @@
 
 ### Purchase Order Management — PO-01 to PO-05
 
-- [ ] **PO-01**: User can list purchase orders with filters (status, vendor, date range)
-- [ ] **PO-02**: User can view full purchase order details with line items
-- [ ] **PO-03**: User can create purchase order with preview before execution
-- [ ] **PO-04**: User can update purchase order (status, dates, notes)
-- [ ] **PO-05**: User can record received quantities on PO items
+- [x] **PO-01**: User can list purchase orders with filters (status, vendor, date range)
+- [x] **PO-02**: User can view full purchase order details with line items
+- [x] **PO-03**: User can create purchase order with preview before execution
+- [x] **PO-04**: User can update purchase order (status, dates, notes)
+- [x] **PO-05**: User can record received quantities on PO items
 
 ### Reference Data — REF-01 to REF-02
 
@@ -31,7 +31,7 @@
 
 ### Variant Management — VAR-01
 
-- [ ] **VAR-01**: User can update planning parameters (lead time, review period, safety stock)
+- [x] **VAR-01**: User can update planning parameters (lead time, review period, safety stock)
 
 ### Infrastructure — INFRA-01 to INFRA-04
 
@@ -89,12 +89,12 @@
 | READ-05 | Phase 2 | Complete |
 | REF-01 | Phase 2 | Complete |
 | REF-02 | Phase 2 | Complete |
-| PO-01 | Phase 3 | Pending |
-| PO-02 | Phase 3 | Pending |
-| PO-03 | Phase 3 | Pending |
-| PO-04 | Phase 3 | Pending |
-| PO-05 | Phase 3 | Pending |
-| VAR-01 | Phase 3 | Pending |
+| PO-01 | Phase 3 | Complete |
+| PO-02 | Phase 3 | Complete |
+| PO-03 | Phase 3 | Complete |
+| PO-04 | Phase 3 | Complete |
+| PO-05 | Phase 3 | Complete |
+| VAR-01 | Phase 3 | Complete |
 
 ---
 
