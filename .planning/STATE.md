@@ -5,33 +5,33 @@
 See: .planning/PROJECT.md (updated 2026-01-25)
 
 **Core value:** LLM can answer questions about stock history (stockouts, duration, value) by querying Inventory Planner data
-**Current focus:** Phase 2 - Stock Analytics Completion (Complete)
+**Current focus:** Phase 3 - Purchase Order & Mutations
 
 ## Current Position
 
-Phase: 2 of 3 (Stock Analytics Completion)
-Plan: 1 of 1 in current phase
-Status: Phase 2 complete
-Last activity: 2026-01-25 - Completed 02-01-PLAN.md (Variant Tools Validation)
+Phase: 3 of 3 (Purchase Order & Mutations)
+Plan: 0 of 1 in current phase
+Status: Ready to plan
+Last activity: 2026-01-25 - Completed Phase 2 Stock Analytics Completion
 
-Progress: [██████░░░░] 67%
+Progress: [██████░░░░] 66%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 3
+- Total plans completed: 4
 - Average duration: 5 min
-- Total execution time: 16 min
+- Total execution time: 20 min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 1 | 2/2 | 12 min | 6 min |
-| 2 | 1/1 | 4 min | 4 min |
+| 2 | 2/2 | 8 min | 4 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (5 min), 01-02 (7 min), 02-01 (4 min)
+- Last 5 plans: 01-01 (5 min), 01-02 (7 min), 02-01 (4 min), 02-02 (4 min)
 - Trend: Consistent execution pace
 
 *Updated after each plan completion*
@@ -51,6 +51,7 @@ Recent decisions affecting current work:
 - [01-02]: Accept header required - MCP requests must include 'application/json, text/event-stream'
 - [02-01]: Error test strategy - Use non-retryable errors (401, 403, 404, 400) to avoid retry timeouts in tests
 - [02-01]: Result parsing - callTool helper returns { result, isError } for unified success/error handling
+- [02-02]: Reference data extraction - Since Inventory Planner API lacks dedicated warehouse/vendor endpoints, extract unique values from variant responses
 
 ### Pending Todos
 
@@ -63,8 +64,8 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-01-25T16:31:00Z
-Stopped at: Completed 02-01-PLAN.md (Phase 2 complete)
+Last session: 2026-01-25T16:45:00Z
+Stopped at: Completed 02-02-PLAN.md (Phase 2 complete)
 Resume file: None
 
 ## Phase Completion Status
@@ -83,15 +84,17 @@ Validated all infrastructure components with 103 tests:
 
 ### Phase 2: Stock Analytics Completion - Complete
 
-Validated variant tools with 26 tests:
+Validated all stock analytics tools with 43 tests:
 
 | Tool | Tests | Requirements |
 |------|-------|--------------|
 | get_variants | 12 | READ-01, READ-02, READ-04 |
 | get_variant | 8 | READ-01, READ-05 |
 | get_replenishment | 6 | READ-03 |
-| **Total** | **26** | **All READ requirements validated** |
+| list_warehouses | 8 | REF-01 |
+| list_vendors | 9 | REF-02 |
+| **Total** | **43** | **All READ + REF requirements validated** |
 
 Total test count: 146 tests (all passing)
 
-Ready to proceed to Phase 3 - Final Integration.
+Ready to proceed to Phase 3 - Purchase Order & Mutations.

@@ -10,11 +10,11 @@
 
 ### Stock Analytics — READ-01 to READ-05
 
-- [ ] **READ-01**: User can query current stock levels for any variant by SKU or filters
-- [ ] **READ-02**: User can identify items at stockout risk (oos < X days)
-- [ ] **READ-03**: User can get replenishment recommendations with quantities and urgency
-- [ ] **READ-04**: User can view inventory value by variant, vendor, or warehouse
-- [ ] **READ-05**: User can view demand forecasts (daily, weekly, monthly)
+- [x] **READ-01**: User can query current stock levels for any variant by SKU or filters
+- [x] **READ-02**: User can identify items at stockout risk (oos < X days)
+- [x] **READ-03**: User can get replenishment recommendations with quantities and urgency
+- [x] **READ-04**: User can view inventory value by variant, vendor, or warehouse
+- [x] **READ-05**: User can view demand forecasts (daily, weekly, monthly)
 
 ### Purchase Order Management — PO-01 to PO-05
 
@@ -26,8 +26,8 @@
 
 ### Reference Data — REF-01 to REF-02
 
-- [ ] **REF-01**: User can list available warehouses for filtering context
-- [ ] **REF-02**: User can list available vendors for PO creation context
+- [x] **REF-01**: User can list available warehouses for filtering context
+- [x] **REF-02**: User can list available vendors for PO creation context
 
 ### Variant Management — VAR-01
 
@@ -82,13 +82,13 @@
 | INFRA-02 | Phase 1 | Complete |
 | INFRA-03 | Phase 1 | Complete |
 | INFRA-04 | Phase 1 | Complete |
-| READ-01 | Phase 2 | Pending |
-| READ-02 | Phase 2 | Pending |
-| READ-03 | Phase 2 | Pending |
-| READ-04 | Phase 2 | Pending |
-| READ-05 | Phase 2 | Pending |
-| REF-01 | Phase 2 | Pending |
-| REF-02 | Phase 2 | Pending |
+| READ-01 | Phase 2 | Complete |
+| READ-02 | Phase 2 | Complete |
+| READ-03 | Phase 2 | Complete |
+| READ-04 | Phase 2 | Complete |
+| READ-05 | Phase 2 | Complete |
+| REF-01 | Phase 2 | Complete |
+| REF-02 | Phase 2 | Complete |
 | PO-01 | Phase 3 | Pending |
 | PO-02 | Phase 3 | Pending |
 | PO-03 | Phase 3 | Pending |
