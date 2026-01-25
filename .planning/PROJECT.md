@@ -23,12 +23,13 @@ LLM can answer questions about stock history (stockouts, duration, value) by que
 
 ### Active
 
-<!-- New capabilities for Inventory Planner -->
+<!-- v1.0 complete - all capabilities delivered -->
 
-- [ ] Read all Inventory Planner data (variants, replenishment, POs, vendors, history)
-- [ ] Create purchase orders on user instruction
-- [ ] Update purchase orders on user instruction
-- [ ] Same resilience patterns as MRPeasy (rate limiter, circuit breaker, retry, queue)
+- [x] Read all Inventory Planner data (variants, replenishment, POs, vendors, warehouses)
+- [x] Create purchase orders on user instruction
+- [x] Update purchase orders on user instruction
+- [x] Same resilience patterns as MRPeasy (rate limiter, circuit breaker, retry, queue)
+- [x] Update variant planning parameters (lead time, review period, safety stock)
 
 ### Out of Scope
 
@@ -67,9 +68,19 @@ User asks questions like:
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Read all endpoints, write only POs | User needs full data access for analytics, but wants explicit control over mutations | — Pending |
-| Reuse MRPeasy resilience patterns | Proven patterns, consistency across servers, reduced implementation risk | — Pending |
-| Standalone server (not combined with MRPeasy) | Different API, different auth, cleaner separation | — Pending |
+| Read all endpoints, write only POs | User needs full data access for analytics, but wants explicit control over mutations | ✓ Delivered in v1.0 |
+| Reuse MRPeasy resilience patterns | Proven patterns, consistency across servers, reduced implementation risk | ✓ Delivered in v1.0 |
+| Standalone server (not combined with MRPeasy) | Different API, different auth, cleaner separation | ✓ Delivered in v1.0 |
+| Preview/confirm pattern for writes | All write operations require explicit confirmation | ✓ Delivered in v1.0 |
+| App/server separation | Enable testability with supertest | ✓ Delivered in v1.0 |
+
+## Milestones
+
+| Version | Status | Date | Notes |
+|---------|--------|------|-------|
+| v1.0 | Complete | 2026-01-25 | Production-ready MCP server with 17 requirements satisfied |
+
+See [MILESTONES.md](MILESTONES.md) for detailed milestone history.
 
 ---
-*Last updated: 2026-01-25 after initialization*
+*Last updated: 2026-01-25 after v1.0 milestone completion*
