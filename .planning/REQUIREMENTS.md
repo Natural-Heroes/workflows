@@ -1,0 +1,103 @@
+# Requirements: Inventory Planner MCP Server
+
+**Version:** 1.0
+**Created:** 2026-01-25
+**Core Value:** LLM can answer questions about stock history (stockouts, duration, value) by querying Inventory Planner data
+
+---
+
+## v1 Requirements
+
+### Stock Analytics — READ-01 to READ-05
+
+- [ ] **READ-01**: User can query current stock levels for any variant by SKU or filters
+- [ ] **READ-02**: User can identify items at stockout risk (oos < X days)
+- [ ] **READ-03**: User can get replenishment recommendations with quantities and urgency
+- [ ] **READ-04**: User can view inventory value by variant, vendor, or warehouse
+- [ ] **READ-05**: User can view demand forecasts (daily, weekly, monthly)
+
+### Purchase Order Management — PO-01 to PO-05
+
+- [ ] **PO-01**: User can list purchase orders with filters (status, vendor, date range)
+- [ ] **PO-02**: User can view full purchase order details with line items
+- [ ] **PO-03**: User can create purchase order with preview before execution
+- [ ] **PO-04**: User can update purchase order (status, dates, notes)
+- [ ] **PO-05**: User can record received quantities on PO items
+
+### Reference Data — REF-01 to REF-02
+
+- [ ] **REF-01**: User can list available warehouses for filtering context
+- [ ] **REF-02**: User can list available vendors for PO creation context
+
+### Variant Management — VAR-01
+
+- [ ] **VAR-01**: User can update planning parameters (lead time, review period, safety stock)
+
+### Infrastructure — INFRA-01 to INFRA-04
+
+- [ ] **INFRA-01**: Server validates environment variables at startup (fail-fast)
+- [ ] **INFRA-02**: Server implements resilience stack (rate limiter, circuit breaker, retry, queue)
+- [ ] **INFRA-03**: Server translates API errors to LLM-friendly messages with suggestions
+- [ ] **INFRA-04**: Server supports session-based MCP protocol over HTTP
+
+---
+
+## v2 Requirements (Deferred)
+
+### Historical Analytics — HIST-01 to HIST-03
+
+*Note: These require API verification. May not be achievable with current Inventory Planner API.*
+
+- [ ] **HIST-01**: User can query how long a specific SKU was out of stock in a date range
+- [ ] **HIST-02**: User can calculate total value of stockouts for a period
+- [ ] **HIST-03**: User can view historical stock movement trends
+
+### Advanced Features
+
+- [ ] **ADV-01**: Smart reorder grouping — automatically group replenishment items by vendor
+- [ ] **ADV-02**: Vendor validation — verify vendor exists and supplies items before PO creation
+- [ ] **ADV-03**: Overstock identification — find items with excess inventory
+- [ ] **ADV-04**: Multi-warehouse aggregation — cross-warehouse inventory views
+
+---
+
+## Out of Scope
+
+- **Delete operations** — High risk of data loss; delete via source system only
+- **Direct stock adjustments** — Breaks audit trail; stock changes via source ERP/channel
+- **Real-time sales streaming** — MCP not suited for streaming; use source system
+- **Complex report generation** — Return structured data; let client format reports
+- **Automatic PO approval** — Financial risk; require explicit user confirmation
+- **Multi-tenant support** — One MCP server per account
+
+---
+
+## Requirement Traceability
+
+*Updated by roadmap creation*
+
+| REQ-ID | Phase | Status |
+|--------|-------|--------|
+| READ-01 | — | Pending |
+| READ-02 | — | Pending |
+| READ-03 | — | Pending |
+| READ-04 | — | Pending |
+| READ-05 | — | Pending |
+| PO-01 | — | Pending |
+| PO-02 | — | Pending |
+| PO-03 | — | Pending |
+| PO-04 | — | Pending |
+| PO-05 | — | Pending |
+| REF-01 | — | Pending |
+| REF-02 | — | Pending |
+| VAR-01 | — | Pending |
+| INFRA-01 | — | Pending |
+| INFRA-02 | — | Pending |
+| INFRA-03 | — | Pending |
+| INFRA-04 | — | Pending |
+
+---
+
+*17 v1 requirements across 5 categories*
+*3 v2 requirements (historical analytics — pending API verification)*
+*6 explicit out-of-scope items*
