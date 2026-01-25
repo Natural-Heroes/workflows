@@ -18,6 +18,7 @@ import { mcpAuthRouter, getOAuthProtectedResourceMetadataUrl } from '@modelconte
 import { requireBearerAuth } from '@modelcontextprotocol/sdk/server/auth/middleware/bearerAuth.js';
 import { logger } from './lib/logger.js';
 import { validateEnv, getEnv } from './lib/env.js';
+import { createIpAllowlistMiddleware } from './lib/ip-allowlist.js';
 import { createMcpServer } from './mcp/index.js';
 import { OdooClientManager } from './services/odoo/client-manager.js';
 import { CredentialStore } from './auth/credential-store.js';
@@ -128,6 +129,10 @@ const bearerAuth = requireBearerAuth({
   resourceMetadataUrl: getOAuthProtectedResourceMetadataUrl(mcpServerUrl),
 });
 
+// --- IP allowlist + OAuth combined middleware ---
+// Trusted IPs bypass OAuth, others fall through to bearerAuth
+const mcpAuth = createIpAllowlistMiddleware(env.ALLOWED_IPS, bearerAuth);
+
 // --- Health check (no auth) ---
 
 router.get('/health', (_req: Request, res: Response) => {
@@ -193,7 +198,7 @@ router.post('/login', async (req: Request, res: Response) => {
 
 // --- MCP endpoints (OAuth protected) ---
 
-router.post('/mcp', bearerAuth, async (req: Request, res: Response) => {
+router.post('/mcp', mcpAuth, async (req: Request, res: Response) => {
   const sessionId = req.headers['mcp-session-id'] as string | undefined;
 
   logger.debug('Received MCP POST request', { sessionId: sessionId || 'none' });
@@ -265,7 +270,7 @@ router.post('/mcp', bearerAuth, async (req: Request, res: Response) => {
   }
 });
 
-router.get('/mcp', bearerAuth, async (req: Request, res: Response) => {
+router.get('/mcp', mcpAuth, async (req: Request, res: Response) => {
   const sessionId = req.headers['mcp-session-id'] as string | undefined;
 
   if (!sessionId || !sessions.has(sessionId)) {
@@ -287,7 +292,7 @@ router.get('/mcp', bearerAuth, async (req: Request, res: Response) => {
   await session.transport.handleRequest(req, res);
 });
 
-router.delete('/mcp', bearerAuth, async (req: Request, res: Response) => {
+router.delete('/mcp', mcpAuth, async (req: Request, res: Response) => {
   const sessionId = req.headers['mcp-session-id'] as string | undefined;
 
   if (!sessionId || !sessions.has(sessionId)) {

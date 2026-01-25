@@ -56,6 +56,15 @@ const envSchema = z.object({
     .url()
     .optional()
     .describe('Base URL for Odoo web UI links (e.g. https://odoo.naturalheroes.nl)'),
+
+  ALLOWED_IPS: z
+    .string()
+    .optional()
+    .transform((val) => {
+      if (!val || val.trim() === '') return [];
+      return val.split(',').map((ip) => ip.trim()).filter(Boolean);
+    })
+    .describe('Comma-separated list of IPs or CIDR ranges that bypass OAuth (e.g. 10.0.0.1,192.168.1.0/24)'),
 });
 
 export type Env = z.infer<typeof envSchema>;
