@@ -6,7 +6,7 @@
  * isolation via OAuth tokens that resolve to encrypted Odoo API keys.
  */
 
-import express, { Request, Response } from 'express';
+import express, { Request, Response, Router } from 'express';
 import { randomUUID } from 'crypto';
 import { mkdirSync } from 'fs';
 import { dirname } from 'path';
@@ -22,6 +22,7 @@ import { createMcpServer } from './mcp/index.js';
 import { OdooClientManager } from './services/odoo/client-manager.js';
 import { CredentialStore } from './auth/credential-store.js';
 import { OdooOAuthProvider } from './auth/provider.js';
+import { OAuthStore } from './auth/oauth-store.js';
 import { renderLoginPage } from './auth/login-page.js';
 
 // --- Environment validation (fail fast) ---
@@ -46,14 +47,18 @@ const credentialStore = new CredentialStore({
   masterKey: env.ENCRYPTION_KEY,
 });
 
+const oauthStore = new OAuthStore(env.DB_PATH);
+
 const oauthProvider = new OdooOAuthProvider(
   credentialStore,
+  oauthStore,
   env.ODOO_URL,
   env.ODOO_DATABASE,
+  env.BASE_PATH,
 );
 
 const mcpServerUrl = new URL(env.MCP_SERVER_URL);
-const issuerUrl = new URL(mcpServerUrl.origin);
+const issuerUrl = new URL(env.BASE_PATH || '/', mcpServerUrl.origin);
 
 // --- Session store ---
 
@@ -100,9 +105,13 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// --- Router for all endpoints (mounted on BASE_PATH) ---
+
+const router = Router();
+
 // --- OAuth router (mounts /authorize, /token, /register, /revoke, /.well-known/*) ---
 
-app.use(mcpAuthRouter({
+router.use(mcpAuthRouter({
   provider: oauthProvider,
   issuerUrl,
   baseUrl: issuerUrl,
@@ -121,7 +130,7 @@ const bearerAuth = requireBearerAuth({
 
 // --- Health check (no auth) ---
 
-app.get('/health', (_req: Request, res: Response) => {
+router.get('/health', (_req: Request, res: Response) => {
   res.status(200).json({
     status: 'healthy',
     version: '0.1.0',
@@ -132,7 +141,7 @@ app.get('/health', (_req: Request, res: Response) => {
 
 // --- Login endpoints ---
 
-app.get('/login', (req: Request, res: Response) => {
+router.get('/login', (req: Request, res: Response) => {
   const pendingId = req.query.pending as string;
   if (!pendingId) {
     res.status(400).send('Missing pending authorization');
@@ -145,15 +154,15 @@ app.get('/login', (req: Request, res: Response) => {
     return;
   }
 
-  res.type('html').send(renderLoginPage(pendingId));
+  res.type('html').send(renderLoginPage(pendingId, undefined, env.BASE_PATH));
 });
 
-app.post('/login', async (req: Request, res: Response) => {
+router.post('/login', async (req: Request, res: Response) => {
   const { pending, email, api_key } = req.body;
 
   if (!pending || !email || !api_key) {
     res.status(400).type('html').send(
-      renderLoginPage(pending || '', 'All fields are required.')
+      renderLoginPage(pending || '', 'All fields are required.', env.BASE_PATH)
     );
     return;
   }
@@ -161,7 +170,7 @@ app.post('/login', async (req: Request, res: Response) => {
   const pendingAuth = oauthProvider.getPendingAuth(pending);
   if (!pendingAuth) {
     res.status(400).type('html').send(
-      renderLoginPage(pending, 'Authorization request expired. Please try again.')
+      renderLoginPage(pending, 'Authorization request expired. Please try again.', env.BASE_PATH)
     );
     return;
   }
@@ -169,7 +178,7 @@ app.post('/login', async (req: Request, res: Response) => {
   const userId = await oauthProvider.validateOdooCredentials(email, api_key);
   if (!userId) {
     res.type('html').send(
-      renderLoginPage(pending, 'Invalid credentials. Check your email and API key.')
+      renderLoginPage(pending, 'Invalid credentials. Check your email and API key.', env.BASE_PATH)
     );
     return;
   }
@@ -184,7 +193,7 @@ app.post('/login', async (req: Request, res: Response) => {
 
 // --- MCP endpoints (OAuth protected) ---
 
-app.post('/mcp', bearerAuth, async (req: Request, res: Response) => {
+router.post('/mcp', bearerAuth, async (req: Request, res: Response) => {
   const sessionId = req.headers['mcp-session-id'] as string | undefined;
 
   logger.debug('Received MCP POST request', { sessionId: sessionId || 'none' });
@@ -256,7 +265,7 @@ app.post('/mcp', bearerAuth, async (req: Request, res: Response) => {
   }
 });
 
-app.get('/mcp', bearerAuth, async (req: Request, res: Response) => {
+router.get('/mcp', bearerAuth, async (req: Request, res: Response) => {
   const sessionId = req.headers['mcp-session-id'] as string | undefined;
 
   if (!sessionId || !sessions.has(sessionId)) {
@@ -278,7 +287,7 @@ app.get('/mcp', bearerAuth, async (req: Request, res: Response) => {
   await session.transport.handleRequest(req, res);
 });
 
-app.delete('/mcp', bearerAuth, async (req: Request, res: Response) => {
+router.delete('/mcp', bearerAuth, async (req: Request, res: Response) => {
   const sessionId = req.headers['mcp-session-id'] as string | undefined;
 
   if (!sessionId || !sessions.has(sessionId)) {
@@ -300,6 +309,20 @@ app.delete('/mcp', bearerAuth, async (req: Request, res: Response) => {
   sessions.delete(sessionId);
 });
 
+// --- Root-level health check for Docker (before router mount) ---
+
+app.get('/health', (_req: Request, res: Response) => {
+  res.status(200).json({
+    status: 'healthy',
+    version: '0.1.0',
+    sessions: sessions.size,
+  });
+});
+
+// --- Mount router on BASE_PATH ---
+
+app.use(env.BASE_PATH || '/', router);
+
 // --- Graceful shutdown ---
 
 function setupGracefulShutdown(httpServer: Server): void {
@@ -316,6 +339,7 @@ function setupGracefulShutdown(httpServer: Server): void {
 
     clearInterval(sweepInterval);
     clientManager.clear();
+    oauthStore.close();
     credentialStore.close();
 
     logger.info('Shutdown complete');
@@ -331,6 +355,7 @@ function setupGracefulShutdown(httpServer: Server): void {
 const httpServer = app.listen(env.PORT, () => {
   logger.info('Odoo MCP server started', {
     port: env.PORT,
+    basePath: env.BASE_PATH || '/',
     env: env.NODE_ENV,
   });
 });

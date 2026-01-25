@@ -41,6 +41,16 @@ const envSchema = z.object({
 
   DB_PATH: z.string().default('./data/credentials.db'),
 
+  BASE_PATH: z
+    .string()
+    .default('')
+    .transform((val) => {
+      if (!val) return '';
+      let p = val.startsWith('/') ? val : '/' + val;
+      if (p.endsWith('/')) p = p.slice(0, -1);
+      return p;
+    }),
+
   ODOO_WEB_URL: z
     .string()
     .url()

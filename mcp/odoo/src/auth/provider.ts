@@ -5,6 +5,9 @@
  * OAuth 2.1 authorization code flow with PKCE. Maps authenticated users to
  * their Odoo API keys stored in the encrypted credential store.
  *
+ * Tokens and client registrations are persisted to SQLite via OAuthStore
+ * so they survive container restarts.
+ *
  * Flow:
  * 1. authorize() -> redirect to /login with pending auth ID
  * 2. User submits login form -> validateOdooCredentials() verifies against Odoo
@@ -24,7 +27,7 @@ import {
   OAuthTokenRevocationRequest,
 } from '@modelcontextprotocol/sdk/shared/auth.js';
 import { CredentialStore } from './credential-store.js';
-import { InMemoryClientsStore } from './clients-store.js';
+import { OAuthStore } from './oauth-store.js';
 import { OdooClient } from '../services/odoo/client.js';
 import { logger } from '../lib/logger.js';
 
@@ -35,41 +38,26 @@ interface CodeData {
   createdAt: number;
 }
 
-interface TokenData {
-  clientId: string;
-  userId: string;
-  scopes: string[];
-  expiresAt: number; // seconds since epoch
-}
-
-interface RefreshData {
-  userId: string;
-  clientId: string;
-  scopes: string[];
-}
-
 interface PendingAuth {
   client: OAuthClientInformationFull;
   params: AuthorizationParams;
 }
 
 export class OdooOAuthProvider implements OAuthServerProvider {
+  // Short-lived state kept in-memory (only lives during the auth flow)
   private codes = new Map<string, CodeData>();
-  private tokens = new Map<string, TokenData>();
-  private refreshTokens = new Map<string, RefreshData>();
   private pendingAuths = new Map<string, PendingAuth>();
-  private _clientsStore: InMemoryClientsStore;
 
   constructor(
     private readonly credentialStore: CredentialStore,
+    private readonly oauthStore: OAuthStore,
     private readonly odooUrl: string,
     private readonly odooDatabase: string,
-  ) {
-    this._clientsStore = new InMemoryClientsStore();
-  }
+    private readonly basePath = '',
+  ) {}
 
   get clientsStore(): OAuthRegisteredClientsStore {
-    return this._clientsStore;
+    return this.oauthStore;
   }
 
   /**
@@ -83,7 +71,7 @@ export class OdooOAuthProvider implements OAuthServerProvider {
   ): Promise<void> {
     const pendingId = randomUUID();
     this.pendingAuths.set(pendingId, { client, params });
-    res.redirect('/login?pending=' + pendingId);
+    res.redirect(this.basePath + '/login?pending=' + pendingId);
     logger.info('OAuth authorize: redirecting to login', { clientId: client.client_id });
   }
 
@@ -157,6 +145,7 @@ export class OdooOAuthProvider implements OAuthServerProvider {
   /**
    * Exchanges an authorization code for access and refresh tokens.
    * Validates that the code was issued to the requesting client.
+   * Tokens are persisted to SQLite.
    */
   async exchangeAuthorizationCode(
     client: OAuthClientInformationFull,
@@ -178,14 +167,14 @@ export class OdooOAuthProvider implements OAuthServerProvider {
     const refreshToken = randomUUID();
     const expiresIn = 3600; // 1 hour
 
-    this.tokens.set(accessToken, {
+    this.oauthStore.setToken(accessToken, {
       clientId: client.client_id,
       userId: codeData.userId,
       scopes: codeData.params.scopes || [],
       expiresAt: Math.floor(Date.now() / 1000) + expiresIn,
     });
 
-    this.refreshTokens.set(refreshToken, {
+    this.oauthStore.setRefreshToken(refreshToken, {
       userId: codeData.userId,
       clientId: client.client_id,
       scopes: codeData.params.scopes || [],
@@ -205,6 +194,7 @@ export class OdooOAuthProvider implements OAuthServerProvider {
   /**
    * Exchanges a refresh token for a new access token.
    * Implements refresh token rotation (old token invalidated, new one issued).
+   * All token state is persisted to SQLite.
    */
   async exchangeRefreshToken(
     client: OAuthClientInformationFull,
@@ -212,27 +202,27 @@ export class OdooOAuthProvider implements OAuthServerProvider {
     scopes?: string[],
     _resource?: URL,
   ): Promise<OAuthTokens> {
-    const data = this.refreshTokens.get(refreshToken);
+    const data = this.oauthStore.getRefreshToken(refreshToken);
     if (!data || data.clientId !== client.client_id) {
       throw new Error('Invalid refresh token');
     }
 
     // Rotate refresh token
-    this.refreshTokens.delete(refreshToken);
+    this.oauthStore.deleteRefreshToken(refreshToken);
 
     const newAccessToken = randomUUID();
     const newRefreshToken = randomUUID();
     const expiresIn = 3600;
     const finalScopes = scopes || data.scopes;
 
-    this.tokens.set(newAccessToken, {
+    this.oauthStore.setToken(newAccessToken, {
       clientId: client.client_id,
       userId: data.userId,
       scopes: finalScopes,
       expiresAt: Math.floor(Date.now() / 1000) + expiresIn,
     });
 
-    this.refreshTokens.set(newRefreshToken, {
+    this.oauthStore.setRefreshToken(newRefreshToken, {
       userId: data.userId,
       clientId: client.client_id,
       scopes: finalScopes,
@@ -258,13 +248,13 @@ export class OdooOAuthProvider implements OAuthServerProvider {
    * Returns the user's Odoo API key in extra.odooApiKey for use in tool handlers.
    */
   async verifyAccessToken(token: string): Promise<AuthInfo> {
-    const data = this.tokens.get(token);
+    const data = this.oauthStore.getToken(token);
     if (!data) {
       throw new Error('Invalid token');
     }
 
     if (data.expiresAt < Math.floor(Date.now() / 1000)) {
-      this.tokens.delete(token);
+      this.oauthStore.deleteToken(token);
       throw new Error('Token expired');
     }
 
@@ -293,8 +283,8 @@ export class OdooOAuthProvider implements OAuthServerProvider {
     _client: OAuthClientInformationFull,
     request: OAuthTokenRevocationRequest,
   ): Promise<void> {
-    this.tokens.delete(request.token);
-    this.refreshTokens.delete(request.token);
+    this.oauthStore.deleteToken(request.token);
+    this.oauthStore.deleteRefreshToken(request.token);
   }
 
   /**
