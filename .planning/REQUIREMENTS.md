@@ -35,10 +35,10 @@
 
 ### Infrastructure — INFRA-01 to INFRA-04
 
-- [ ] **INFRA-01**: Server validates environment variables at startup (fail-fast)
-- [ ] **INFRA-02**: Server implements resilience stack (rate limiter, circuit breaker, retry, queue)
-- [ ] **INFRA-03**: Server translates API errors to LLM-friendly messages with suggestions
-- [ ] **INFRA-04**: Server supports session-based MCP protocol over HTTP
+- [x] **INFRA-01**: Server validates environment variables at startup (fail-fast)
+- [x] **INFRA-02**: Server implements resilience stack (rate limiter, circuit breaker, retry, queue)
+- [x] **INFRA-03**: Server translates API errors to LLM-friendly messages with suggestions
+- [x] **INFRA-04**: Server supports session-based MCP protocol over HTTP
 
 ---
 
@@ -78,10 +78,10 @@
 
 | REQ-ID | Phase | Status |
 |--------|-------|--------|
-| INFRA-01 | Phase 1 | Pending |
-| INFRA-02 | Phase 1 | Pending |
-| INFRA-03 | Phase 1 | Pending |
-| INFRA-04 | Phase 1 | Pending |
+| INFRA-01 | Phase 1 | Complete |
+| INFRA-02 | Phase 1 | Complete |
+| INFRA-03 | Phase 1 | Complete |
+| INFRA-04 | Phase 1 | Complete |
 | READ-01 | Phase 2 | Pending |
 | READ-02 | Phase 2 | Pending |
 | READ-03 | Phase 2 | Pending |
