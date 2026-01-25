@@ -41,10 +41,11 @@ Plans:
   3. User can get replenishment recommendations with quantities, vendors, and urgency indicators
   4. User can view inventory value breakdowns (by variant, vendor, or warehouse)
   5. User can list warehouses and vendors to understand available filtering options
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 02-01: Complete stock analytics and reference data tools
+- [ ] 02-01-PLAN.md — Validate variant tools with integration tests (READ-01 to READ-05)
+- [ ] 02-02-PLAN.md — Implement and test reference data tools (REF-01, REF-02)
 
 ### Phase 3: Purchase Order & Mutations
 **Goal**: User can manage purchase orders and update planning parameters through natural language
@@ -68,6 +69,6 @@ Phases execute in numeric order: 1 -> 2 -> 3
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation Validation | 2/2 | ✓ Complete | 2026-01-25 |
-| 2. Stock Analytics Completion | 0/1 | Ready to execute | - |
+| 1. Foundation Validation | 2/2 | Complete | 2026-01-25 |
+| 2. Stock Analytics Completion | 0/2 | Ready to execute | - |
 | 3. Purchase Order & Mutations | 0/1 | Not started | - |
