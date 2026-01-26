@@ -32,7 +32,7 @@ export function registerVariantTools(
       sku: z
         .string()
         .optional()
-        .describe('Filter by SKU (exact match)'),
+        .describe('Filter by SKU (case-insensitive)'),
       warehouse_id: z
         .string()
         .optional()
@@ -72,7 +72,7 @@ export function registerVariantTools(
 
       try {
         const response = await client.getVariants({
-          sku: params.sku,
+          sku_eqi: params.sku, // Use case-insensitive filter for better UX
           warehouse_id: params.warehouse_id,
           vendor_id: params.vendor_id,
           stock_on_hand_lt: params.stock_on_hand_lt,
