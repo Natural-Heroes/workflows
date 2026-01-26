@@ -399,19 +399,55 @@ export function registerLookupTools(
   // -------------------------------------------------------------------------
   server.tool(
     'get_sites',
-    'Get all manufacturing sites. Use this to find valid site_id values for create_manufacturing_order.',
+    'Get all manufacturing sites. Use this to find valid site_id values for create_manufacturing_order. Extracts unique sites from work stations.',
     {},
     async () => {
       logger.debug('get_sites called');
 
       try {
-        const sites = await client.getSites();
-        const formattedResponse = formatSitesResponse(sites);
+        // MRPeasy doesn't have a dedicated /sites endpoint.
+        // Sites are extracted from work stations which have site_id.
+        const workstations = await client.getWorkCenters();
+
+        // Extract unique sites from work stations
+        const siteMap = new Map<number, { id: number; name: string | null }>();
+        for (const ws of workstations) {
+          if (ws.site_id && !siteMap.has(ws.site_id)) {
+            siteMap.set(ws.site_id, {
+              id: ws.site_id,
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              name: (ws as any).site_name ?? (ws as any).site_title ?? null,
+            });
+          }
+        }
+
+        const sites = Array.from(siteMap.values());
+
+        if (sites.length === 0) {
+          return {
+            content: [{
+              type: 'text',
+              text: JSON.stringify({
+                summary: 'No sites found. Your MRPeasy account may not have multi-site enabled, or work stations have no site assignments.',
+                hint: 'If using single-site mode, you may not need to specify site_id for manufacturing orders.',
+                sites: [],
+              }),
+            }],
+          };
+        }
+
+        const response = {
+          summary: `${sites.length} manufacturing site(s) found (extracted from work stations).`,
+          sites: sites.map((s) => ({
+            id: s.id,
+            name: s.name ?? `Site ${s.id}`,
+          })),
+        };
 
         logger.debug('get_sites success', { count: sites.length });
 
         return {
-          content: [{ type: 'text', text: formattedResponse }],
+          content: [{ type: 'text', text: JSON.stringify(response) }],
         };
       } catch (error) {
         return handleToolError(error, 'get_sites');
@@ -424,19 +460,57 @@ export function registerLookupTools(
   // -------------------------------------------------------------------------
   server.tool(
     'get_users',
-    'Get all users. Use this to find valid assigned_id values for create_manufacturing_order.',
+    'Get users/workers for manufacturing order assignments. Extracts unique assigned users from recent manufacturing orders.',
     {},
     async () => {
       logger.debug('get_users called');
 
       try {
-        const users = await client.getUsers();
-        const formattedResponse = formatUsersResponse(users);
+        // MRPeasy doesn't have a dedicated /users endpoint for listing employees.
+        // We extract unique users from manufacturing orders which have assigned_id and assigned_name.
+        const manufacturingOrders = await client.getManufacturingOrders({ per_page: 100 });
+
+        // Extract unique users from MO assignments
+        const userMap = new Map<number, { id: number; name: string | null }>();
+        for (const mo of manufacturingOrders) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const raw = mo as any;
+          if (raw.assigned_id && !userMap.has(raw.assigned_id)) {
+            userMap.set(raw.assigned_id, {
+              id: raw.assigned_id,
+              name: raw.assigned_name ?? raw.assigned ?? null,
+            });
+          }
+        }
+
+        const users = Array.from(userMap.values());
+
+        if (users.length === 0) {
+          return {
+            content: [{
+              type: 'text',
+              text: JSON.stringify({
+                summary: 'No assigned users found in recent manufacturing orders.',
+                hint: 'Try looking at an existing manufacturing order to find a valid assigned_id, or check your MRPeasy user management settings.',
+                users: [],
+              }),
+            }],
+          };
+        }
+
+        const response = {
+          summary: `${users.length} user(s) found (extracted from manufacturing order assignments).`,
+          note: 'This list shows users who have been assigned to manufacturing orders. Your organization may have additional users.',
+          users: users.map((u) => ({
+            id: u.id,
+            name: u.name ?? `User ${u.id}`,
+          })),
+        };
 
         logger.debug('get_users success', { count: users.length });
 
         return {
-          content: [{ type: 'text', text: formattedResponse }],
+          content: [{ type: 'text', text: JSON.stringify(response) }],
         };
       } catch (error) {
         return handleToolError(error, 'get_users');
