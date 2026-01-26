@@ -32,6 +32,7 @@ import type {
   UpdateVariantPayload,
   PaginationMeta,
   InventoryPlannerError,
+  Warehouse,
 } from './types.js';
 
 /**
@@ -375,6 +376,27 @@ export class InventoryPlannerClient {
   // ===========================================================================
 
   /**
+   * Converts page number from 1-indexed (user-friendly) to 0-indexed (API).
+   *
+   * The Inventory Planner API uses 0-indexed pagination (page=0 is first page),
+   * but for better UX our tools use 1-indexed pagination (page=1 is first page).
+   *
+   * @param params - Query parameters with optional page field
+   * @returns Parameters with converted page number
+   */
+  private convertPageToZeroIndexed<T extends { page?: number }>(
+    params?: T
+  ): T | undefined {
+    if (!params || params.page === undefined) {
+      return params;
+    }
+    return {
+      ...params,
+      page: Math.max(0, params.page - 1),
+    };
+  }
+
+  /**
    * Get variants with demand forecasting and replenishment metrics.
    *
    * This is the primary endpoint for inventory analysis.
@@ -384,11 +406,13 @@ export class InventoryPlannerClient {
    * @returns Paginated list of variants with metrics
    */
   async getVariants(params?: VariantsParams): Promise<PaginatedResponse<Variant>> {
+    // Convert from 1-indexed (user-friendly) to 0-indexed (API)
+    const apiParams = this.convertPageToZeroIndexed(params);
     const response = await this.request<{
       result?: { status: string; message?: string };
       meta?: PaginationMeta;
       variants?: Variant[];
-    }>('/api/v1/variants', params as Record<string, unknown>);
+    }>('/api/v1/variants', apiParams as Record<string, unknown>);
 
     return {
       data: response.variants ?? [],
@@ -433,6 +457,28 @@ export class InventoryPlannerClient {
   }
 
   // ===========================================================================
+  // Warehouses (Reference Data)
+  // ===========================================================================
+
+  /**
+   * Get warehouses/locations.
+   *
+   * @returns Paginated list of warehouses
+   */
+  async getWarehouses(): Promise<PaginatedResponse<Warehouse>> {
+    const response = await this.request<{
+      result?: { status: string; message?: string };
+      meta?: PaginationMeta;
+      warehouses?: Warehouse[];
+    }>('/api/v1/warehouses');
+
+    return {
+      data: response.warehouses ?? [],
+      meta: response.meta,
+    };
+  }
+
+  // ===========================================================================
   // Purchase Orders (Core Read Operations)
   // ===========================================================================
 
@@ -445,11 +491,13 @@ export class InventoryPlannerClient {
   async getPurchaseOrders(
     params?: PurchaseOrdersParams
   ): Promise<PaginatedResponse<PurchaseOrder>> {
+    // Convert from 1-indexed (user-friendly) to 0-indexed (API)
+    const apiParams = this.convertPageToZeroIndexed(params);
     const response = await this.request<{
       result?: { status: string; message?: string };
       meta?: PaginationMeta;
       'purchase-orders'?: PurchaseOrder[];
-    }>('/api/v1/purchase-orders', params as Record<string, unknown>);
+    }>('/api/v1/purchase-orders', apiParams as Record<string, unknown>);
 
     return {
       data: response['purchase-orders'] ?? [],
@@ -559,6 +607,8 @@ export class InventoryPlannerClient {
   /**
    * Update a variant's planning parameters.
    *
+   * API requires payload wrapped in "variant" key: { variant: { lead_time: 21 } }
+   *
    * @param id - Variant ID
    * @param payload - Fields to update
    * @returns Updated variant
@@ -567,7 +617,7 @@ export class InventoryPlannerClient {
     const response = await this.request<{
       result?: { status: string; message?: string };
       variant?: Variant;
-    }>(`/api/v1/variants/${id}`, undefined, 'PATCH', payload);
+    }>(`/api/v1/variants/${id}`, undefined, 'PATCH', { variant: payload });
 
     if (!response.variant) {
       throw new InventoryPlannerApiError('Failed to update variant', 500);
