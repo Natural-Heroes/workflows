@@ -312,41 +312,45 @@ export function registerBackInStockTools(
         logger.debug('Fetching open manufacturing orders');
         const moResults: ManufacturingOrderInfo[] = [];
 
-        // Query MOs for each product by item_code
-        for (const product of matchedProducts) {
-          try {
-            const mos = await client.getManufacturingOrders({
-              item_code: product.code,
-              'status[]': [20, 30, 35], // Scheduled, In Progress, Paused
-            } as Record<string, unknown>);
+        // Get all open MOs and filter by article_id (more reliable than item_code filter)
+        try {
+          const allOpenMOs = await client.getManufacturingOrders({
+            'status[]': [20, 30, 35], // Scheduled, In Progress, Paused
+          } as Record<string, unknown>);
 
-            for (const mo of mos) {
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              const rawMO = mo as any;
-              const quantity = Number(rawMO.quantity ?? 0);
-              const produced = Number(rawMO.produced_quantity ?? rawMO.produced_qty ?? 0);
-              const remaining = quantity - produced;
-              const progress = quantity > 0 ? Math.round((produced / quantity) * 100) : 0;
+          for (const mo of allOpenMOs) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const rawMO = mo as any;
+            const moArticleId = rawMO.article_id ?? rawMO.product_id;
 
-              moResults.push({
-                productCode: product.code,
-                productName: product.title,
-                moCode: rawMO.code ?? 'N/A',
-                moId: rawMO.man_ord_id ?? rawMO.id,
-                status: formatManufacturingOrderStatus(rawMO.status),
-                dueDate: formatDate(rawMO.due_date ?? rawMO.finish_date),
-                quantity,
-                produced,
-                remaining,
-                progress,
-              });
-            }
-          } catch (err) {
-            logger.debug('Failed to get MOs for product', {
-              code: product.code,
-              error: err instanceof Error ? err.message : 'Unknown',
+            // Check if this MO is for one of our products
+            if (!productArticleIds.has(moArticleId)) continue;
+
+            const matchedProduct = productCodeMap.get(moArticleId);
+            if (!matchedProduct) continue;
+
+            const quantity = Number(rawMO.quantity ?? 0);
+            const produced = Number(rawMO.produced_quantity ?? rawMO.produced_qty ?? 0);
+            const remaining = quantity - produced;
+            const progress = quantity > 0 ? Math.round((produced / quantity) * 100) : 0;
+
+            moResults.push({
+              productCode: matchedProduct.code,
+              productName: matchedProduct.title,
+              moCode: rawMO.code ?? 'N/A',
+              moId: rawMO.man_ord_id ?? rawMO.id,
+              status: formatManufacturingOrderStatus(rawMO.status),
+              dueDate: formatDate(rawMO.due_date ?? rawMO.finish_date),
+              quantity,
+              produced,
+              remaining,
+              progress,
             });
           }
+        } catch (err) {
+          logger.debug('Failed to get open MOs', {
+            error: err instanceof Error ? err.message : 'Unknown',
+          });
         }
 
         logger.debug('Fetched manufacturing orders', { count: moResults.length });
