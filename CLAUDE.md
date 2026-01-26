@@ -2,6 +2,20 @@
 
 Central repository for reusable GitHub Actions workflows.
 
+## Git Workflow
+
+This project uses a simplified git workflow - PRs go directly to `main`:
+
+```
+feature branches → main
+```
+
+- Create feature branches from `main` (e.g., `feat/nat-24-description`, `fix/nat-24-description`)
+- PRs target `main` directly (no staging branch required)
+- Merging to main triggers auto-deployment via Dokploy webhooks
+
+This differs from the user-level CLAUDE.md which specifies staging → main flow. For this repo, direct to main is preferred.
+
 ## Structure
 
 - `.github/workflows/` - Reusable workflow definitions (called by other repos)
