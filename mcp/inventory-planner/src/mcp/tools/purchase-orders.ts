@@ -75,7 +75,7 @@ export function registerPurchaseOrderTools(
           warehouse_id: params.warehouse_id,
           expected_date_gt: params.expected_date_gt,
           expected_date_lt: params.expected_date_lt,
-          page: params.page,
+          page: params.page - 1, // Convert to 0-indexed (API uses 0-indexed pagination)
           limit: params.limit,
         });
 

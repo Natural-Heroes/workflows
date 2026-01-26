@@ -78,7 +78,7 @@ export function registerVariantTools(
           stock_on_hand_lt: params.stock_on_hand_lt,
           oos_lt: params.oos_lt,
           fields: params.fields,
-          page: params.page,
+          page: params.page - 1, // Convert to 0-indexed (API uses 0-indexed pagination)
           limit: params.limit,
         });
 
@@ -288,7 +288,7 @@ export function registerVariantTools(
           warehouse_id: params.warehouse_id,
           vendor_id: params.vendor_id,
           sort_desc: params.sort_desc,
-          page: params.page,
+          page: params.page - 1, // Convert to 0-indexed (API uses 0-indexed pagination)
           limit: params.limit,
         });
 
