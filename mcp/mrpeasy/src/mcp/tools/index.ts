@@ -92,7 +92,7 @@ This server provides read and write access to MRPeasy ERP data including invento
 - **get_shipment_details**: Get shipment details by ID or code (e.g., "SH-00123").
 
 ### Back-in-Stock
-- **get_back_in_stock_date**: Get expected back-in-stock dates for products by SKU. Accepts \`skus\` array (e.g., ["ZPEO-NH-1", "ZSHO-NH-1"]). Finds open customer orders containing the products, gets planned ship dates, and adds 7 days. Use **search_items** first if you only have a product name.
+- **get_back_in_stock_date**: Get expected back-in-stock dates for products by SKU. Accepts \`skus\` array. Returns: (1) incoming shipments from customer orders (planned ship date + 7 days), and (2) open manufacturing orders (scheduled/in-progress) with MO code, status, due date, and quantities. Use **search_items** first if you only have a product name.
 
 ### Reports
 - **get_report**: Fetch reports by type (inventory_summary, inventory_movements, procurement, production). Requires from/to dates.
