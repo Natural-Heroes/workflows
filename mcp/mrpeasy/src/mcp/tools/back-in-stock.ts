@@ -1,35 +1,22 @@
 /**
  * MCP Tool: get_back_in_stock_date
  *
- * Retrieves the expected back-in-stock date for a product by:
- * 1. Finding customer orders (COs) containing the product
- * 2. Getting the planned ship date of those COs
- * 3. Adding 7 days to calculate the expected back-in-stock date
+ * Retrieves the expected back-in-stock date for products by SKU:
+ * 1. Looking up products by exact SKU match
+ * 2. Finding customer orders (COs) containing those products
+ * 3. Getting the planned ship date and adding 7 days
  * 4. Checking shipments for partial deliveries
+ * 5. Finding open manufacturing orders (MOs) for the products
+ *
+ * Use search_items first to find SKUs if unknown.
  */
 
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { MrpEasyClient } from '../../services/mrpeasy/client.js';
-import type { CustomerOrder, Shipment, StockItem } from '../../services/mrpeasy/types.js';
+import type { CustomerOrder } from '../../services/mrpeasy/types.js';
 import { logger } from '../../lib/logger.js';
 import { handleToolError } from './error-handler.js';
-
-// ============================================================================
-// Zod Schemas
-// ============================================================================
-
-/**
- * Input schema for get_back_in_stock_date tool.
- */
-const GetBackInStockDateInputSchema = z.object({
-  sku: z.string().optional().describe(
-    'The product SKU/part number (e.g., "ZPEO-NH-1"). If provided, searches by exact code first.'
-  ),
-  search: z.string().optional().describe(
-    'Search term to find products by name (e.g., "Shea Nilotica"). Used if SKU not provided or not found.'
-  ),
-});
 
 // ============================================================================
 // Types
@@ -48,6 +35,19 @@ interface BackInStockResult {
   remainingQuantity: number;
   isPartialShipment: boolean;
   orderStatus: string;
+}
+
+interface ManufacturingOrderInfo {
+  productCode: string;
+  productName: string;
+  moCode: string;
+  moId: number;
+  status: string;
+  dueDate: string;
+  quantity: number;
+  produced: number;
+  remaining: number;
+  progress: number;
 }
 
 // ============================================================================
@@ -118,13 +118,25 @@ function formatCustomerOrderStatus(status: unknown): string {
 }
 
 /**
- * Checks if a CO status is "open" (not delivered, archived, or cancelled).
+ * Maps numeric status code to readable string for manufacturing orders.
  */
-function isOpenStatus(status: unknown): boolean {
+function formatManufacturingOrderStatus(status: unknown): string {
+  if (status === null || status === undefined) return 'Unknown';
+
+  const statusMap: Record<number, string> = {
+    10: 'New',
+    15: 'Not Scheduled',
+    20: 'Scheduled',
+    30: 'In Progress',
+    35: 'Paused',
+    40: 'Done',
+    50: 'Shipped',
+    60: 'Closed',
+    70: 'Cancelled',
+  };
+
   const numStatus = typeof status === 'number' ? status : parseInt(String(status), 10);
-  // Open statuses: 10-70 (Quotation through Shipped)
-  // Closed: 80 (Delivered), 85 (Archived), 90 (Cancelled)
-  return numStatus >= 10 && numStatus <= 70;
+  return statusMap[numStatus] ?? String(status);
 }
 
 // ============================================================================
@@ -145,78 +157,40 @@ export function registerBackInStockTools(
 
   server.tool(
     'get_back_in_stock_date',
-    'Get the expected back-in-stock date for a product. Finds customer orders (COs) containing the product, gets the planned ship date, and adds 7 days. Shows partial shipments if applicable. If user provides only a SKU or product title, assume they want to know the back-in-stock date.',
+    'Get expected back-in-stock dates for products by SKU. Finds open customer orders (with planned ship date + 7 days) and open manufacturing orders (scheduled/in-progress). Use search_items first to find SKUs if you only have a product name.',
     {
-      sku: GetBackInStockDateInputSchema.shape.sku,
-      search: GetBackInStockDateInputSchema.shape.search,
+      skus: z
+        .array(z.string())
+        .min(1)
+        .describe('Array of product SKUs/part numbers (e.g., ["ZPEO-NH-1", "ZSHO-NH-1"])'),
     },
     async (params) => {
-      logger.debug('get_back_in_stock_date called', { params });
+      logger.debug('get_back_in_stock_date called', { skus: params.skus });
 
       try {
-        // Validate: must provide either sku or search
-        if (!params.sku && !params.search) {
-          return {
-            content: [
-              {
-                type: 'text',
-                text: JSON.stringify({
-                  summary: 'Please provide either sku (SKU/part number) or search (product name).',
-                  error: 'MISSING_PARAMETER',
-                }),
-              },
-            ],
-            isError: true,
-          };
-        }
-
-        // Step 1: Find the product(s)
+        // Step 1: Look up each SKU
         const matchedProducts: Array<{ articleId: number; code: string; title: string }> = [];
+        const notFoundSkus: string[] = [];
 
-        // If SKU provided, try direct lookup first
-        if (params.sku) {
-          logger.debug('Searching by SKU', { sku: params.sku });
+        for (const sku of params.skus) {
+          logger.debug('Looking up SKU', { sku });
           try {
-            const items = await client.getItems({ code: params.sku, per_page: 10 });
-            for (const item of items) {
-              if (item.code?.toLowerCase() === params.sku.toLowerCase()) {
-                matchedProducts.push({
-                  articleId: item.article_id,
-                  code: item.code,
-                  title: item.title ?? 'Unknown',
-                });
-              }
+            const items = await client.getItems({ code: sku, per_page: 10 });
+            const exactMatch = items.find(
+              (item) => item.code?.toLowerCase() === sku.toLowerCase()
+            );
+            if (exactMatch) {
+              matchedProducts.push({
+                articleId: exactMatch.article_id,
+                code: exactMatch.code ?? sku,
+                title: exactMatch.title ?? 'Unknown',
+              });
+            } else {
+              notFoundSkus.push(sku);
             }
-            logger.debug('SKU search result', { found: matchedProducts.length });
           } catch (err) {
-            logger.debug('SKU search failed', { error: err instanceof Error ? err.message : 'Unknown' });
-          }
-        }
-
-        // If no products found by SKU or search term provided, search by name
-        if (matchedProducts.length === 0 && (params.search || params.sku)) {
-          const searchTerm = params.search ?? params.sku ?? '';
-          logger.debug('Searching by name', { search: searchTerm });
-          try {
-            const items = await client.getItems({ search: searchTerm, per_page: 100 });
-            const lowerSearch = searchTerm.toLowerCase();
-            for (const item of items) {
-              const codeMatch = item.code?.toLowerCase().includes(lowerSearch);
-              const titleMatch = item.title?.toLowerCase().includes(lowerSearch);
-              if (codeMatch || titleMatch) {
-                // Avoid duplicates
-                if (!matchedProducts.some(p => p.articleId === item.article_id)) {
-                  matchedProducts.push({
-                    articleId: item.article_id,
-                    code: item.code ?? 'N/A',
-                    title: item.title ?? 'Unknown',
-                  });
-                }
-              }
-            }
-            logger.debug('Name search result', { found: matchedProducts.length });
-          } catch (err) {
-            logger.debug('Name search failed', { error: err instanceof Error ? err.message : 'Unknown' });
+            logger.debug('SKU lookup failed', { sku, error: err instanceof Error ? err.message : 'Unknown' });
+            notFoundSkus.push(sku);
           }
         }
 
@@ -226,26 +200,27 @@ export function registerBackInStockTools(
               {
                 type: 'text',
                 text: JSON.stringify({
-                  summary: `No products found matching "${params.sku ?? params.search}".`,
+                  summary: `No products found for SKUs: ${params.skus.join(', ')}`,
                   error: 'NOT_FOUND',
-                  tip: 'Try search_items to find products by partial name or code.',
+                  tip: 'Use search_items to find products by name and get their SKUs.',
                 }),
               },
             ],
           };
         }
 
-        // Step 2: Get all open customer orders
+        const productArticleIds = new Set(matchedProducts.map((p) => p.articleId));
+        const productCodeMap = new Map(matchedProducts.map((p) => [p.articleId, p]));
+
+        // Step 2: Get all open customer orders (status 10-70)
         logger.debug('Fetching open customer orders');
-        // Get COs with open statuses (10-70)
         const openCOs = await client.getCustomerOrders({
           'status[]': [10, 20, 30, 40, 50, 60, 70],
         } as Record<string, unknown>);
         logger.debug('Fetched customer orders', { count: openCOs.length });
 
         // Step 3: For each product, find COs that contain it
-        const results: BackInStockResult[] = [];
-        const productArticleIds = new Set(matchedProducts.map(p => p.articleId));
+        const coResults: BackInStockResult[] = [];
 
         for (const co of openCOs) {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -258,7 +233,10 @@ export function registerBackInStockTools(
           try {
             coDetails = await client.getCustomerOrder(coId);
           } catch (err) {
-            logger.debug('Failed to get CO details', { coId, error: err instanceof Error ? err.message : 'Unknown' });
+            logger.debug('Failed to get CO details', {
+              coId,
+              error: err instanceof Error ? err.message : 'Unknown',
+            });
             continue;
           }
 
@@ -272,7 +250,7 @@ export function registerBackInStockTools(
             if (!productArticleIds.has(itemArticleId)) continue;
 
             // Found a matching product in this CO
-            const matchedProduct = matchedProducts.find(p => p.articleId === itemArticleId);
+            const matchedProduct = productCodeMap.get(itemArticleId);
             if (!matchedProduct) continue;
 
             const orderedQty = Number(lineItem.quantity ?? lineItem.qty ?? 0);
@@ -280,7 +258,7 @@ export function registerBackInStockTools(
             const plannedShipDate = formatDate(rawDetails.delivery_date);
             const expectedBackInStock = addDays(plannedShipDate, 7);
 
-            // Step 4: Check shipments for this CO to verify shipped quantities
+            // Check shipments for this CO to verify shipped quantities
             let totalShippedFromShipments = 0;
             try {
               const shipments = await client.getShipments({ customer_order_id: coId });
@@ -299,7 +277,10 @@ export function registerBackInStockTools(
                 }
               }
             } catch (err) {
-              logger.debug('Failed to get shipments for CO', { coId, error: err instanceof Error ? err.message : 'Unknown' });
+              logger.debug('Failed to get shipments for CO', {
+                coId,
+                error: err instanceof Error ? err.message : 'Unknown',
+              });
             }
 
             // Use the larger of the two shipped quantities
@@ -309,7 +290,7 @@ export function registerBackInStockTools(
 
             // Only include if there's remaining quantity to be delivered
             if (remainingQty > 0) {
-              results.push({
+              coResults.push({
                 productCode: matchedProduct.code,
                 productName: matchedProduct.title,
                 customerOrderCode: coCode,
@@ -327,38 +308,103 @@ export function registerBackInStockTools(
           }
         }
 
+        // Step 4: Get open manufacturing orders (Scheduled, In Progress, Paused)
+        logger.debug('Fetching open manufacturing orders');
+        const moResults: ManufacturingOrderInfo[] = [];
+
+        // Get all open MOs and filter by article_id (more reliable than item_code filter)
+        try {
+          const allOpenMOs = await client.getManufacturingOrders({
+            'status[]': [20, 30, 35], // Scheduled, In Progress, Paused
+          } as Record<string, unknown>);
+
+          for (const mo of allOpenMOs) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const rawMO = mo as any;
+            const moArticleId = rawMO.article_id ?? rawMO.product_id;
+
+            // Check if this MO is for one of our products
+            if (!productArticleIds.has(moArticleId)) continue;
+
+            const matchedProduct = productCodeMap.get(moArticleId);
+            if (!matchedProduct) continue;
+
+            const quantity = Number(rawMO.quantity ?? 0);
+            const produced = Number(rawMO.produced_quantity ?? rawMO.produced_qty ?? 0);
+            const remaining = quantity - produced;
+            const progress = quantity > 0 ? Math.round((produced / quantity) * 100) : 0;
+
+            moResults.push({
+              productCode: matchedProduct.code,
+              productName: matchedProduct.title,
+              moCode: rawMO.code ?? 'N/A',
+              moId: rawMO.man_ord_id ?? rawMO.id,
+              status: formatManufacturingOrderStatus(rawMO.status),
+              dueDate: formatDate(rawMO.due_date ?? rawMO.finish_date),
+              quantity,
+              produced,
+              remaining,
+              progress,
+            });
+          }
+        } catch (err) {
+          logger.debug('Failed to get open MOs', {
+            error: err instanceof Error ? err.message : 'Unknown',
+          });
+        }
+
+        logger.debug('Fetched manufacturing orders', { count: moResults.length });
+
         // Step 5: Format response
-        if (results.length === 0) {
+        if (coResults.length === 0 && moResults.length === 0) {
+          const response: Record<string, unknown> = {
+            summary: `No open orders found for: ${matchedProducts.map((p) => p.code).join(', ')}`,
+            products: matchedProducts.map((p) => ({ code: p.code, name: p.title })),
+            note: 'Products may be in stock or have no pending orders.',
+          };
+          if (notFoundSkus.length > 0) {
+            response.notFoundSkus = notFoundSkus;
+          }
           return {
             content: [
               {
                 type: 'text',
-                text: JSON.stringify({
-                  summary: `No open customer orders found containing "${params.sku ?? params.search}".`,
-                  products: matchedProducts.map(p => ({ code: p.code, name: p.title })),
-                  note: 'The product may be in stock or have no pending orders.',
-                }),
+                text: JSON.stringify(response),
               },
             ],
           };
         }
 
-        // Sort by expected back-in-stock date (earliest first)
-        results.sort((a, b) => {
+        // Sort CO results by expected back-in-stock date (earliest first)
+        coResults.sort((a, b) => {
           if (a.expectedBackInStockDate === 'N/A') return 1;
           if (b.expectedBackInStockDate === 'N/A') return -1;
           return a.expectedBackInStockDate.localeCompare(b.expectedBackInStockDate);
         });
 
-        // Build response
-        const uniqueProducts = [...new Set(results.map(r => r.productCode))];
-        const summary = results.length === 1
-          ? `${results[0].productCode}: Expected back in stock ${results[0].expectedBackInStockDate} (${results[0].remainingQuantity} units from ${results[0].customerOrderCode})${results[0].isPartialShipment ? ' - PARTIAL SHIPMENT' : ''}`
-          : `${results.length} pending deliveries for ${uniqueProducts.length} product(s). Earliest back in stock: ${results[0].expectedBackInStockDate}`;
+        // Sort MO results by due date (earliest first)
+        moResults.sort((a, b) => {
+          if (a.dueDate === 'N/A') return 1;
+          if (b.dueDate === 'N/A') return -1;
+          return a.dueDate.localeCompare(b.dueDate);
+        });
 
-        const response = {
+        // Build summary
+        const uniqueProducts = [...new Set([...coResults.map((r) => r.productCode), ...moResults.map((r) => r.productCode)])];
+        const summaryParts: string[] = [];
+
+        if (coResults.length > 0) {
+          summaryParts.push(`${coResults.length} incoming shipment(s), earliest back in stock: ${coResults[0].expectedBackInStockDate}`);
+        }
+        if (moResults.length > 0) {
+          summaryParts.push(`${moResults.length} open MO(s) in production`);
+        }
+
+        const summary = `${uniqueProducts.length} product(s): ${summaryParts.join('; ')}`;
+
+        const response: Record<string, unknown> = {
           summary,
-          results: results.map(r => ({
+          incomingShipments: coResults.map((r) => ({
             product: {
               code: r.productCode,
               name: r.productName,
@@ -380,9 +426,35 @@ export function registerBackInStockTools(
             },
             isPartialShipment: r.isPartialShipment,
           })),
+          manufacturingOrders: moResults.map((r) => ({
+            product: {
+              code: r.productCode,
+              name: r.productName,
+            },
+            mo: {
+              code: r.moCode,
+              id: r.moId,
+              status: r.status,
+              dueDate: r.dueDate,
+            },
+            quantities: {
+              planned: r.quantity,
+              produced: r.produced,
+              remaining: r.remaining,
+            },
+            progress: `${r.progress}%`,
+            note: 'Completion date uncertain - inquire with production manager if needed.',
+          })),
         };
 
-        logger.debug('get_back_in_stock_date success', { resultCount: results.length });
+        if (notFoundSkus.length > 0) {
+          response.notFoundSkus = notFoundSkus;
+        }
+
+        logger.debug('get_back_in_stock_date success', {
+          coCount: coResults.length,
+          moCount: moResults.length,
+        });
 
         return {
           content: [
