@@ -302,7 +302,7 @@ describe('MCP Session Protocol', () => {
       expect(tools.length).toBeGreaterThan(0);
 
       // Check that ping tool exists
-      const pingTool = tools.find((t) => t.name === 'ip_ping');
+      const pingTool = tools.find((t) => t.name === 'ping');
       expect(pingTool).toBeDefined();
     });
 
@@ -359,7 +359,7 @@ describe('MCP Session Protocol', () => {
           jsonrpc: '2.0',
           method: 'tools/call',
           params: {
-            name: 'ip_ping',
+            name: 'ping',
             arguments: {},
           },
           id: 2,

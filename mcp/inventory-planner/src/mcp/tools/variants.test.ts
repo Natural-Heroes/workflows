@@ -180,7 +180,7 @@ describe('Variant Tools', () => {
       );
 
       const sessionId = await initializeSession();
-      const { result } = await callTool(sessionId, 'ip_get_variants', {});
+      const { result } = await callTool(sessionId, 'get_variants', {});
 
       expect(result).toBeDefined();
       const data = result as Record<string, unknown>;
@@ -210,7 +210,7 @@ describe('Variant Tools', () => {
       );
 
       const sessionId = await initializeSession();
-      const { result } = await callTool(sessionId, 'ip_get_variants', {
+      const { result } = await callTool(sessionId, 'get_variants', {
         sku: 'SPECIFIC-SKU',
       });
 
@@ -220,9 +220,9 @@ describe('Variant Tools', () => {
       expect(variants).toHaveLength(1);
       expect(variants[0].sku).toBe('SPECIFIC-SKU');
 
-      // Verify the API was called with the case-insensitive SKU parameter
+      // Verify the API was called with the SKU parameter
       const fetchCall = fetchMocker.mock.calls[0];
-      expect(fetchCall[0]).toContain('sku_eqi=SPECIFIC-SKU');
+      expect(fetchCall[0]).toContain('sku_eqi=SPECIFIC-SKU'); // Case-insensitive filter
     });
 
     it('filters by warehouse_id parameter', async () => {
@@ -238,7 +238,7 @@ describe('Variant Tools', () => {
       );
 
       const sessionId = await initializeSession();
-      const { result } = await callTool(sessionId, 'ip_get_variants', {
+      const { result } = await callTool(sessionId, 'get_variants', {
         warehouse_id: 'wh-1',
       });
 
@@ -259,7 +259,7 @@ describe('Variant Tools', () => {
       );
 
       const sessionId = await initializeSession();
-      const { result } = await callTool(sessionId, 'ip_get_variants', {
+      const { result } = await callTool(sessionId, 'get_variants', {
         vendor_id: 'vendor-123',
       });
 
@@ -280,7 +280,7 @@ describe('Variant Tools', () => {
       );
 
       const sessionId = await initializeSession();
-      const { result } = await callTool(sessionId, 'ip_get_variants', {
+      const { result } = await callTool(sessionId, 'get_variants', {
         stock_on_hand_lt: 10,
       });
 
@@ -302,7 +302,7 @@ describe('Variant Tools', () => {
       );
 
       const sessionId = await initializeSession();
-      const { result } = await callTool(sessionId, 'ip_get_variants', {
+      const { result } = await callTool(sessionId, 'get_variants', {
         oos_lt: 7,
       });
 
@@ -328,7 +328,7 @@ describe('Variant Tools', () => {
       );
 
       const sessionId = await initializeSession();
-      const { result } = await callTool(sessionId, 'ip_get_variants', {});
+      const { result } = await callTool(sessionId, 'get_variants', {});
 
       expect(result).toBeDefined();
       const data = result as Record<string, unknown>;
@@ -350,7 +350,7 @@ describe('Variant Tools', () => {
       );
 
       const sessionId = await initializeSession();
-      const { result } = await callTool(sessionId, 'ip_get_variants', {
+      const { result } = await callTool(sessionId, 'get_variants', {
         sku: 'NONEXISTENT',
       });
 
@@ -375,7 +375,7 @@ describe('Variant Tools', () => {
       );
 
       const sessionId = await initializeSession();
-      const { result } = await callTool(sessionId, 'ip_get_variants', {
+      const { result } = await callTool(sessionId, 'get_variants', {
         page: 1,
         limit: 100,
       });
@@ -397,7 +397,7 @@ describe('Variant Tools', () => {
       );
 
       const sessionId = await initializeSession();
-      const { result, isError } = await callTool(sessionId, 'ip_get_variants', {});
+      const { result, isError } = await callTool(sessionId, 'get_variants', {});
 
       // Error responses are plain text, not JSON
       expect(isError).toBe(true);
@@ -413,7 +413,7 @@ describe('Variant Tools', () => {
       );
 
       const sessionId = await initializeSession();
-      const { result, isError } = await callTool(sessionId, 'ip_get_variants', {});
+      const { result, isError } = await callTool(sessionId, 'get_variants', {});
 
       // Error responses are plain text, not JSON
       expect(isError).toBe(true);
@@ -472,7 +472,7 @@ describe('Variant Tools', () => {
       );
 
       const sessionId = await initializeSession();
-      const { result } = await callTool(sessionId, 'ip_get_variant', { id: 'v1' });
+      const { result } = await callTool(sessionId, 'get_variant', { id: 'v1' });
 
       expect(result).toBeDefined();
       const data = result as Record<string, unknown>;
@@ -496,7 +496,7 @@ describe('Variant Tools', () => {
       );
 
       const sessionId = await initializeSession();
-      const { result } = await callTool(sessionId, 'ip_get_variant', { id: 'v1' });
+      const { result } = await callTool(sessionId, 'get_variant', { id: 'v1' });
 
       expect(result).toBeDefined();
       const data = result as Record<string, unknown>;
@@ -523,7 +523,7 @@ describe('Variant Tools', () => {
       );
 
       const sessionId = await initializeSession();
-      const { result } = await callTool(sessionId, 'ip_get_variant', { id: 'v1' });
+      const { result } = await callTool(sessionId, 'get_variant', { id: 'v1' });
 
       expect(result).toBeDefined();
       const data = result as Record<string, unknown>;
@@ -551,7 +551,7 @@ describe('Variant Tools', () => {
       );
 
       const sessionId = await initializeSession();
-      const { result } = await callTool(sessionId, 'ip_get_variant', { id: 'v1' });
+      const { result } = await callTool(sessionId, 'get_variant', { id: 'v1' });
 
       expect(result).toBeDefined();
       const data = result as Record<string, unknown>;
@@ -579,7 +579,7 @@ describe('Variant Tools', () => {
       );
 
       const sessionId = await initializeSession();
-      const { result } = await callTool(sessionId, 'ip_get_variant', { id: 'v1' });
+      const { result } = await callTool(sessionId, 'get_variant', { id: 'v1' });
 
       expect(result).toBeDefined();
       const data = result as Record<string, unknown>;
@@ -610,7 +610,7 @@ describe('Variant Tools', () => {
       );
 
       const sessionId = await initializeSession();
-      const { result } = await callTool(sessionId, 'ip_get_variant', { id: 'v1' });
+      const { result } = await callTool(sessionId, 'get_variant', { id: 'v1' });
 
       expect(result).toBeDefined();
       const data = result as Record<string, unknown>;
@@ -631,7 +631,7 @@ describe('Variant Tools', () => {
       );
 
       const sessionId = await initializeSession();
-      const { result, isError } = await callTool(sessionId, 'ip_get_variant', {
+      const { result, isError } = await callTool(sessionId, 'get_variant', {
         id: 'nonexistent',
       });
 
@@ -681,7 +681,7 @@ describe('Variant Tools', () => {
       );
 
       const sessionId = await initializeSession();
-      const { result } = await callTool(sessionId, 'ip_get_replenishment', {});
+      const { result } = await callTool(sessionId, 'get_replenishment', {});
 
       expect(result).toBeDefined();
       const data = result as Record<string, unknown>;
@@ -713,7 +713,7 @@ describe('Variant Tools', () => {
       );
 
       const sessionId = await initializeSession();
-      const { result } = await callTool(sessionId, 'ip_get_replenishment', {
+      const { result } = await callTool(sessionId, 'get_replenishment', {
         warehouse_id: 'wh-specific',
       });
 
@@ -740,7 +740,7 @@ describe('Variant Tools', () => {
       );
 
       const sessionId = await initializeSession();
-      const { result } = await callTool(sessionId, 'ip_get_replenishment', {
+      const { result } = await callTool(sessionId, 'get_replenishment', {
         vendor_id: 'vendor-specific',
       });
 
@@ -774,7 +774,7 @@ describe('Variant Tools', () => {
       );
 
       const sessionId = await initializeSession();
-      const { result } = await callTool(sessionId, 'ip_get_replenishment', {});
+      const { result } = await callTool(sessionId, 'get_replenishment', {});
 
       expect(result).toBeDefined();
       const data = result as Record<string, unknown>;
@@ -802,7 +802,7 @@ describe('Variant Tools', () => {
       );
 
       const sessionId = await initializeSession();
-      const { result } = await callTool(sessionId, 'ip_get_replenishment', {});
+      const { result } = await callTool(sessionId, 'get_replenishment', {});
 
       expect(result).toBeDefined();
       const data = result as Record<string, unknown>;
@@ -820,7 +820,7 @@ describe('Variant Tools', () => {
       );
 
       const sessionId = await initializeSession();
-      const { result } = await callTool(sessionId, 'ip_get_replenishment', {});
+      const { result } = await callTool(sessionId, 'get_replenishment', {});
 
       expect(result).toBeDefined();
       const data = result as Record<string, unknown>;
@@ -839,7 +839,7 @@ describe('Variant Tools', () => {
       );
 
       const sessionId = await initializeSession();
-      const { result, isError } = await callTool(sessionId, 'ip_get_replenishment', {});
+      const { result, isError } = await callTool(sessionId, 'get_replenishment', {});
 
       // Error responses are plain text, not JSON
       expect(isError).toBe(true);
@@ -859,7 +859,7 @@ describe('Variant Tools', () => {
       );
 
       const sessionId = await initializeSession();
-      const { result } = await callTool(sessionId, 'ip_get_replenishment', {
+      const { result } = await callTool(sessionId, 'get_replenishment', {
         page: 1,
         limit: 50,
       });

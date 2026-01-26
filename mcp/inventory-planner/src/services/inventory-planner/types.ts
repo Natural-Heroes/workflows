@@ -190,6 +190,48 @@ export interface Variant {
   updated_at?: string;
   /** Created timestamp (RFC822) */
   created_at?: string;
+
+  // Sales lifecycle dates
+  /** Whether product is published/listed for sale */
+  published?: boolean;
+  /** When product was published/listed for sale (timestamp) */
+  published_at_time?: string;
+  /** Date of first customer order (YYYY-MM-DD) */
+  first_order_date?: string;
+  /** Timestamp of first customer order */
+  first_self_order_date?: string;
+  /** Date of most recent order (YYYY-MM-DD) */
+  last_order_date?: string;
+  /** When first stock was received (date or timestamp) */
+  first_received_at_time?: string;
+  /** Quantity of first stock received */
+  first_received_qty?: number;
+
+  // Stockout history and analysis (from API)
+  /**
+   * Total days out of stock historically
+   * (API field: oos - but this represents total OOS days, not just forecast)
+   */
+  oos_days_total?: number;
+  /** Days out of stock in the last 60 days */
+  oos_last_60_days?: number;
+  /** Whether continuing to sell when OOS */
+  oos_sell?: boolean;
+  /** Mean OOS duration (days) */
+  cur_mean_oos?: number;
+  /**
+   * Stockout history - array of [date, status] pairs
+   * where status: 1 = stockout started, 0 = back in stock
+   */
+  stockouts_hist?: [string, number][];
+  /** Stock level history - array of [date, quantity] pairs */
+  stock_hist?: [string, number][];
+  /** Forecasted stockouts during days of stock period */
+  forecasted_stockouts_dos?: number;
+  /** Forecasted lost sales during lead time (units) */
+  forecasted_lost_sales_lead_time?: number;
+  /** Forecasted lost revenue during lead time */
+  forecasted_lost_revenue_lead_time?: number;
 }
 
 /**
@@ -449,4 +491,30 @@ export interface UpdateVariantPayload {
   reorder_point?: number;
   /** Active status */
   active?: boolean;
+}
+
+// ============================================================================
+// Warehouse Types
+// ============================================================================
+
+/**
+ * Warehouse/location from /api/v1/warehouses endpoint.
+ */
+export interface Warehouse {
+  /** Warehouse ID (e.g., "c955_330498075") */
+  name: string;
+  /** Display name (e.g., "Monta") */
+  display_name: string;
+  /** Warehouse type */
+  type?: string;
+  /** Whether warehouse is disabled */
+  disabled?: boolean;
+  /** Connection name (e.g., Shopify store) */
+  connection?: string;
+  /** Currency code */
+  currency?: string;
+  /** Created timestamp */
+  created_at?: string;
+  /** Updated timestamp */
+  updated_at?: string;
 }

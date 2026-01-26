@@ -127,49 +127,52 @@ describe('Reference Data Tools', () => {
   });
 
   describe('list_warehouses tool (REF-01)', () => {
-    it('returns unique warehouses from variant data', async () => {
+    it('returns warehouses from /api/v1/warehouses endpoint', async () => {
       fetchMocker.mockResponseOnce(
         JSON.stringify({
           result: { status: 'success' },
-          meta: { name: 'variants', total: 3, count: 3, limit: 1000 },
-          variants: [
-            { warehouse_id: 'wh-1', warehouse_name: 'Main Warehouse' },
-            { warehouse_id: 'wh-2', warehouse_name: 'East Coast DC' },
-            { warehouse_id: 'wh-3', warehouse_name: 'West Coast DC' },
+          meta: { name: 'warehouses', total: 3, count: 3, limit: 10 },
+          warehouses: [
+            { name: 'wh-1', display_name: 'Main Warehouse', type: 'warehouse', disabled: false },
+            { name: 'wh-2', display_name: 'East Coast DC', type: 'warehouse', disabled: false },
+            { name: 'wh-3', display_name: 'West Coast DC', type: 'warehouse', disabled: true },
           ],
         })
       );
 
       const sessionId = await initializeSession();
-      const result = await callTool(sessionId, 'ip_list_warehouses', {});
+      const result = await callTool(sessionId, 'list_warehouses', {});
 
       expect(result.result).toBeDefined();
       const toolResult = result.result as Record<string, unknown>;
       const content = toolResult.content as Array<{ text: string }>;
       const parsed = JSON.parse(content[0].text);
 
-      expect(parsed.warehouses).toHaveLength(3);
-      expect(parsed.warehouses).toContainEqual({ id: 'wh-1', name: 'Main Warehouse' });
-      expect(parsed.warehouses).toContainEqual({ id: 'wh-2', name: 'East Coast DC' });
-      expect(parsed.warehouses).toContainEqual({ id: 'wh-3', name: 'West Coast DC' });
+      // By default, disabled warehouses are filtered out
+      expect(parsed.warehouses).toHaveLength(2);
+      expect(parsed.warehouses).toContainEqual({
+        id: 'wh-1',
+        name: 'Main Warehouse',
+        type: 'warehouse',
+        disabled: false,
+        connection: undefined,
+      });
     });
 
-    it('deduplicates warehouses by ID', async () => {
+    it('includes disabled warehouses when include_disabled=true', async () => {
       fetchMocker.mockResponseOnce(
         JSON.stringify({
           result: { status: 'success' },
-          meta: { name: 'variants', total: 4, count: 4, limit: 1000 },
-          variants: [
-            { warehouse_id: 'wh-1', warehouse_name: 'Main Warehouse' },
-            { warehouse_id: 'wh-2', warehouse_name: 'East Coast DC' },
-            { warehouse_id: 'wh-1', warehouse_name: 'Main Warehouse' }, // duplicate
-            { warehouse_id: 'wh-1', warehouse_name: 'Main Warehouse' }, // duplicate
+          meta: { name: 'warehouses', total: 3, count: 3, limit: 10 },
+          warehouses: [
+            { name: 'wh-1', display_name: 'Active Warehouse', type: 'warehouse', disabled: false },
+            { name: 'wh-2', display_name: 'Disabled Warehouse', type: 'warehouse', disabled: true },
           ],
         })
       );
 
       const sessionId = await initializeSession();
-      const result = await callTool(sessionId, 'ip_list_warehouses', {});
+      const result = await callTool(sessionId, 'list_warehouses', { include_disabled: true });
 
       const toolResult = result.result as Record<string, unknown>;
       const content = toolResult.content as Array<{ text: string }>;
@@ -178,94 +181,48 @@ describe('Reference Data Tools', () => {
       expect(parsed.warehouses).toHaveLength(2);
     });
 
-    it('respects limit parameter', async () => {
+    it('returns summary with active and disabled counts', async () => {
       fetchMocker.mockResponseOnce(
         JSON.stringify({
           result: { status: 'success' },
-          meta: { name: 'variants', total: 5, count: 5, limit: 1000 },
-          variants: [
-            { warehouse_id: 'wh-1', warehouse_name: 'Warehouse 1' },
-            { warehouse_id: 'wh-2', warehouse_name: 'Warehouse 2' },
-            { warehouse_id: 'wh-3', warehouse_name: 'Warehouse 3' },
-            { warehouse_id: 'wh-4', warehouse_name: 'Warehouse 4' },
-            { warehouse_id: 'wh-5', warehouse_name: 'Warehouse 5' },
+          meta: { name: 'warehouses', total: 4, count: 4, limit: 10 },
+          warehouses: [
+            { name: 'wh-1', display_name: 'Active 1', type: 'warehouse', disabled: false },
+            { name: 'wh-2', display_name: 'Active 2', type: 'warehouse', disabled: false },
+            { name: 'wh-3', display_name: 'Disabled 1', type: 'warehouse', disabled: true },
+            { name: 'wh-4', display_name: 'Disabled 2', type: 'warehouse', disabled: true },
           ],
         })
       );
 
       const sessionId = await initializeSession();
-      const result = await callTool(sessionId, 'ip_list_warehouses', { limit: 2 });
+      const result = await callTool(sessionId, 'list_warehouses', { include_disabled: true });
 
       const toolResult = result.result as Record<string, unknown>;
       const content = toolResult.content as Array<{ text: string }>;
       const parsed = JSON.parse(content[0].text);
 
-      expect(parsed.warehouses).toHaveLength(2);
-      expect(parsed.note).toContain('Results limited');
+      expect(parsed.summary).toBe('4 warehouse(s) found. 2 active, 2 disabled.');
     });
 
-    it('returns summary with count', async () => {
+    it('handles empty warehouses list', async () => {
       fetchMocker.mockResponseOnce(
         JSON.stringify({
           result: { status: 'success' },
-          meta: { name: 'variants', total: 2, count: 2, limit: 1000 },
-          variants: [
-            { warehouse_id: 'wh-1', warehouse_name: 'Warehouse 1' },
-            { warehouse_id: 'wh-2', warehouse_name: 'Warehouse 2' },
-          ],
+          meta: { name: 'warehouses', total: 0, count: 0, limit: 10 },
+          warehouses: [],
         })
       );
 
       const sessionId = await initializeSession();
-      const result = await callTool(sessionId, 'ip_list_warehouses', {});
-
-      const toolResult = result.result as Record<string, unknown>;
-      const content = toolResult.content as Array<{ text: string }>;
-      const parsed = JSON.parse(content[0].text);
-
-      expect(parsed.summary).toBe('2 warehouse(s) found.');
-    });
-
-    it('returns note about all warehouses shown when below limit', async () => {
-      fetchMocker.mockResponseOnce(
-        JSON.stringify({
-          result: { status: 'success' },
-          meta: { name: 'variants', total: 2, count: 2, limit: 1000 },
-          variants: [
-            { warehouse_id: 'wh-1', warehouse_name: 'Warehouse 1' },
-            { warehouse_id: 'wh-2', warehouse_name: 'Warehouse 2' },
-          ],
-        })
-      );
-
-      const sessionId = await initializeSession();
-      const result = await callTool(sessionId, 'ip_list_warehouses', { limit: 50 });
-
-      const toolResult = result.result as Record<string, unknown>;
-      const content = toolResult.content as Array<{ text: string }>;
-      const parsed = JSON.parse(content[0].text);
-
-      expect(parsed.note).toBe('All available warehouses shown.');
-    });
-
-    it('handles empty variants (no warehouses found)', async () => {
-      fetchMocker.mockResponseOnce(
-        JSON.stringify({
-          result: { status: 'success' },
-          meta: { name: 'variants', total: 0, count: 0, limit: 1000 },
-          variants: [],
-        })
-      );
-
-      const sessionId = await initializeSession();
-      const result = await callTool(sessionId, 'ip_list_warehouses', {});
+      const result = await callTool(sessionId, 'list_warehouses', {});
 
       const toolResult = result.result as Record<string, unknown>;
       const content = toolResult.content as Array<{ text: string }>;
       const parsed = JSON.parse(content[0].text);
 
       expect(parsed.warehouses).toHaveLength(0);
-      expect(parsed.summary).toBe('0 warehouse(s) found.');
+      expect(parsed.summary).toBe('0 warehouse(s) found. 0 active, 0 disabled.');
     });
 
     it('returns LLM-friendly error on API failure', async () => {
@@ -275,7 +232,7 @@ describe('Reference Data Tools', () => {
       });
 
       const sessionId = await initializeSession();
-      const result = await callTool(sessionId, 'ip_list_warehouses', {});
+      const result = await callTool(sessionId, 'list_warehouses', {});
 
       const toolResult = result.result as Record<string, unknown>;
       expect(toolResult.isError).toBe(true);
@@ -300,7 +257,7 @@ describe('Reference Data Tools', () => {
       );
 
       const sessionId = await initializeSession();
-      const result = await callTool(sessionId, 'ip_list_vendors', {});
+      const result = await callTool(sessionId, 'list_vendors', {});
 
       const toolResult = result.result as Record<string, unknown>;
       const content = toolResult.content as Array<{ text: string }>;
@@ -332,7 +289,7 @@ describe('Reference Data Tools', () => {
       );
 
       const sessionId = await initializeSession();
-      const result = await callTool(sessionId, 'ip_list_vendors', {});
+      const result = await callTool(sessionId, 'list_vendors', {});
 
       const toolResult = result.result as Record<string, unknown>;
       const content = toolResult.content as Array<{ text: string }>;
@@ -370,7 +327,7 @@ describe('Reference Data Tools', () => {
       );
 
       const sessionId = await initializeSession();
-      const result = await callTool(sessionId, 'ip_list_vendors', {});
+      const result = await callTool(sessionId, 'list_vendors', {});
 
       const toolResult = result.result as Record<string, unknown>;
       const content = toolResult.content as Array<{ text: string }>;
@@ -396,7 +353,7 @@ describe('Reference Data Tools', () => {
       );
 
       const sessionId = await initializeSession();
-      const result = await callTool(sessionId, 'ip_list_vendors', { limit: 3 });
+      const result = await callTool(sessionId, 'list_vendors', { limit: 3 });
 
       const toolResult = result.result as Record<string, unknown>;
       const content = toolResult.content as Array<{ text: string }>;
@@ -419,7 +376,7 @@ describe('Reference Data Tools', () => {
       );
 
       const sessionId = await initializeSession();
-      const result = await callTool(sessionId, 'ip_list_vendors', {});
+      const result = await callTool(sessionId, 'list_vendors', {});
 
       const toolResult = result.result as Record<string, unknown>;
       const content = toolResult.content as Array<{ text: string }>;
@@ -438,7 +395,7 @@ describe('Reference Data Tools', () => {
       );
 
       const sessionId = await initializeSession();
-      const result = await callTool(sessionId, 'ip_list_vendors', {});
+      const result = await callTool(sessionId, 'list_vendors', {});
 
       const toolResult = result.result as Record<string, unknown>;
       const content = toolResult.content as Array<{ text: string }>;
@@ -455,7 +412,7 @@ describe('Reference Data Tools', () => {
       });
 
       const sessionId = await initializeSession();
-      const result = await callTool(sessionId, 'ip_list_vendors', {});
+      const result = await callTool(sessionId, 'list_vendors', {});
 
       const toolResult = result.result as Record<string, unknown>;
       expect(toolResult.isError).toBe(true);
@@ -479,7 +436,7 @@ describe('Reference Data Tools', () => {
       );
 
       const sessionId = await initializeSession();
-      const result = await callTool(sessionId, 'ip_list_vendors', {});
+      const result = await callTool(sessionId, 'list_vendors', {});
 
       const toolResult = result.result as Record<string, unknown>;
       const content = toolResult.content as Array<{ text: string }>;
@@ -492,28 +449,25 @@ describe('Reference Data Tools', () => {
   });
 
   describe('API request verification', () => {
-    it('list_warehouses requests warehouse fields only', async () => {
+    it('list_warehouses calls /api/v1/warehouses endpoint', async () => {
       fetchMocker.mockResponseOnce(
         JSON.stringify({
           result: { status: 'success' },
-          meta: { name: 'variants', total: 0, count: 0, limit: 1000 },
-          variants: [],
+          meta: { name: 'warehouses', total: 0, count: 0, limit: 10 },
+          warehouses: [],
         })
       );
 
       const sessionId = await initializeSession();
-      await callTool(sessionId, 'ip_list_warehouses', {});
+      await callTool(sessionId, 'list_warehouses', {});
 
-      // Check the fetch was called with correct parameters
+      // Check the fetch was called with correct endpoint
       const calls = fetchMocker.mock.calls;
-      const variantsCall = calls.find((call) =>
-        String(call[0]).includes('/api/v1/variants')
+      const warehousesCall = calls.find((call) =>
+        String(call[0]).includes('/api/v1/warehouses')
       );
 
-      expect(variantsCall).toBeDefined();
-      const url = new URL(String(variantsCall![0]));
-      expect(url.searchParams.get('fields')).toBe('warehouse_id,warehouse_name');
-      expect(url.searchParams.get('limit')).toBe('1000');
+      expect(warehousesCall).toBeDefined();
     });
 
     it('list_vendors requests vendor fields only', async () => {
@@ -526,7 +480,7 @@ describe('Reference Data Tools', () => {
       );
 
       const sessionId = await initializeSession();
-      await callTool(sessionId, 'ip_list_vendors', {});
+      await callTool(sessionId, 'list_vendors', {});
 
       // Check the fetch was called with correct parameters
       const calls = fetchMocker.mock.calls;

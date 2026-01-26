@@ -26,7 +26,7 @@ export function registerVariantTools(
 ): void {
   // get_variants - List variants with filtering
   server.tool(
-    'ip_get_variants',
+    'get_variants',
     'Get variants with demand forecasting and replenishment metrics. Filter by SKU, warehouse, vendor, or stock levels. Returns stock on hand, replenishment recommendations, days until stockout, and forecast data.',
     {
       sku: z
@@ -78,7 +78,7 @@ export function registerVariantTools(
           stock_on_hand_lt: params.stock_on_hand_lt,
           oos_lt: params.oos_lt,
           fields: params.fields,
-          page: params.page - 1, // Convert to 0-indexed (API uses 0-indexed pagination)
+          page: params.page,
           limit: params.limit,
         });
 
@@ -149,15 +149,15 @@ export function registerVariantTools(
           ],
         };
       } catch (error) {
-        return handleToolError(error, 'ip_get_variants');
+        return handleToolError(error, 'get_variants');
       }
     }
   );
 
   // get_variant - Get single variant by ID
   server.tool(
-    'ip_get_variant',
-    'Get detailed information for a single variant by ID. Returns full metrics including stock levels, replenishment data, forecasts, vendor information, and planning parameters.',
+    'get_variant',
+    'Get detailed information for a single variant by ID. Returns full metrics including stock levels, replenishment data, forecasts, vendor information, planning parameters, and stockout history.',
     {
       id: z.string().describe('Variant ID'),
     },
@@ -166,6 +166,90 @@ export function registerVariantTools(
 
       try {
         const variant = await client.getVariant(params.id);
+
+        // Parse stockout history into human-readable events
+        const stockoutEvents: {
+          startDate: string;
+          endDate: string | null;
+          durationDays: number | null;
+        }[] = [];
+
+        if (variant.stockouts_hist && Array.isArray(variant.stockouts_hist)) {
+          let currentStockoutStart: string | null = null;
+
+          for (const [date, status] of variant.stockouts_hist) {
+            if (status === 1) {
+              // Stockout started
+              currentStockoutStart = date;
+            } else if (status === 0 && currentStockoutStart) {
+              // Stockout ended - calculate duration
+              const startDate = new Date(currentStockoutStart);
+              const endDate = new Date(date);
+              const durationMs = endDate.getTime() - startDate.getTime();
+              const durationDays = Math.round(durationMs / (1000 * 60 * 60 * 24));
+
+              stockoutEvents.push({
+                startDate: currentStockoutStart.split('T')[0],
+                endDate: date.split('T')[0],
+                durationDays,
+              });
+              currentStockoutStart = null;
+            }
+          }
+
+          // If still in stockout (no end date yet)
+          if (currentStockoutStart) {
+            stockoutEvents.push({
+              startDate: currentStockoutStart.split('T')[0],
+              endDate: null,
+              durationDays: null,
+            });
+          }
+        }
+
+        // Calculate stockout summary
+        const totalStockoutDays = stockoutEvents
+          .filter((e) => e.durationDays !== null)
+          .reduce((sum, e) => sum + (e.durationDays ?? 0), 0);
+        const currentlyOOS = stockoutEvents.some((e) => e.endDate === null);
+
+        // Calculate lifecycle-aware stockout metrics (only count stockouts while actively selling)
+        // Use first_order_date as the "selling start" - this is when sales actually began
+        const sellingStartDate = variant.first_order_date
+          ? new Date(variant.first_order_date)
+          : variant.published_at_time
+            ? new Date(variant.published_at_time)
+            : null;
+
+        let stockoutEventsSinceSelling = 0;
+        let daysOOSWhileSelling = 0;
+        let firstStockoutAfterSelling: string | null = null;
+
+        if (sellingStartDate) {
+          for (const event of stockoutEvents) {
+            const eventStart = new Date(event.startDate);
+            const eventEnd = event.endDate ? new Date(event.endDate) : new Date();
+
+            // Check if stockout overlaps with selling period
+            if (eventEnd >= sellingStartDate) {
+              // This stockout affected sales
+              stockoutEventsSinceSelling++;
+
+              // Calculate days of this stockout that were while selling
+              const effectiveStart =
+                eventStart > sellingStartDate ? eventStart : sellingStartDate;
+              const daysWhileSelling = Math.round(
+                (eventEnd.getTime() - effectiveStart.getTime()) / (1000 * 60 * 60 * 24)
+              );
+              daysOOSWhileSelling += Math.max(0, daysWhileSelling);
+
+              // Track first stockout after selling started
+              if (!firstStockoutAfterSelling && eventStart >= sellingStartDate) {
+                firstStockoutAfterSelling = event.startDate;
+              }
+            }
+          }
+        }
 
         const result = {
           id: variant.id,
@@ -214,6 +298,37 @@ export function registerVariantTools(
             overValue: variant.over_value ?? null,
           },
 
+          // Stockout history and analysis
+          stockoutHistory: {
+            summary: {
+              // Raw totals (all time, including before product was selling)
+              totalStockoutEvents: stockoutEvents.length,
+              totalDaysOutOfStock: totalStockoutDays,
+              // Lifecycle-aware metrics (only while actively selling)
+              stockoutEventsSinceSelling: sellingStartDate ? stockoutEventsSinceSelling : null,
+              daysOOSWhileSelling: sellingStartDate ? daysOOSWhileSelling : null,
+              firstStockoutAfterSelling: firstStockoutAfterSelling,
+              // Other metrics
+              oosLast60Days: variant.oos_last_60_days ?? null,
+              meanStockoutDuration: variant.cur_mean_oos ?? null,
+              currentlyOutOfStock: currentlyOOS,
+              forecastedLostSales: variant.forecasted_lost_sales_lead_time ?? null,
+              forecastedLostRevenue: variant.forecasted_lost_revenue_lead_time ?? null,
+            },
+            events: stockoutEvents.slice(-10), // Last 10 stockout events
+          },
+
+          // Sales lifecycle (when product started selling)
+          lifecycle: {
+            createdAt: variant.created_at ?? null,
+            published: variant.published ?? null,
+            publishedAt: variant.published_at_time?.split('T')[0] ?? null,
+            firstOrderDate: variant.first_order_date ?? null,
+            lastOrderDate: variant.last_order_date ?? null,
+            firstStockReceivedAt: variant.first_received_at_time ?? null,
+            firstStockReceivedQty: variant.first_received_qty ?? null,
+          },
+
           // Vendor
           vendor: variant.vendors?.[0] ?? {
             id: variant.vendor_id,
@@ -244,14 +359,14 @@ export function registerVariantTools(
           ],
         };
       } catch (error) {
-        return handleToolError(error, 'ip_get_variant');
+        return handleToolError(error, 'get_variant');
       }
     }
   );
 
   // get_replenishment - Get items needing reorder
   server.tool(
-    'ip_get_replenishment',
+    'get_replenishment',
     'Get variants that need replenishment (reorder quantity > 0). Essential for identifying items that need to be ordered. Returns SKU, current stock, recommended order quantity, and days until stockout.',
     {
       warehouse_id: z
@@ -288,7 +403,7 @@ export function registerVariantTools(
           warehouse_id: params.warehouse_id,
           vendor_id: params.vendor_id,
           sort_desc: params.sort_desc,
-          page: params.page - 1, // Convert to 0-indexed (API uses 0-indexed pagination)
+          page: params.page,
           limit: params.limit,
         });
 
@@ -355,7 +470,7 @@ export function registerVariantTools(
           ],
         };
       } catch (error) {
-        return handleToolError(error, 'ip_get_replenishment');
+        return handleToolError(error, 'get_replenishment');
       }
     }
   );

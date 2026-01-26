@@ -22,7 +22,7 @@ export function registerMutationTools(
 ): void {
   // update_variant
   server.tool(
-    'ip_update_variant',
+    'update_variant',
     'Update a variant\'s planning parameters such as lead time, review period, safety stock, or reorder point. Use confirm=true to execute, otherwise returns preview.',
     {
       id: z.string().describe('Variant ID'),
@@ -117,7 +117,7 @@ export function registerMutationTools(
           ],
         };
       } catch (error) {
-        return handleToolError(error, 'ip_update_variant');
+        return handleToolError(error, 'update_variant');
       }
     }
   );
