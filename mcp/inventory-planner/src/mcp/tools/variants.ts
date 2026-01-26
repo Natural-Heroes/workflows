@@ -213,6 +213,44 @@ export function registerVariantTools(
           .reduce((sum, e) => sum + (e.durationDays ?? 0), 0);
         const currentlyOOS = stockoutEvents.some((e) => e.endDate === null);
 
+        // Calculate lifecycle-aware stockout metrics (only count stockouts while actively selling)
+        // Use first_order_date as the "selling start" - this is when sales actually began
+        const sellingStartDate = variant.first_order_date
+          ? new Date(variant.first_order_date)
+          : variant.published_at_time
+            ? new Date(variant.published_at_time)
+            : null;
+
+        let stockoutEventsSinceSelling = 0;
+        let daysOOSWhileSelling = 0;
+        let firstStockoutAfterSelling: string | null = null;
+
+        if (sellingStartDate) {
+          for (const event of stockoutEvents) {
+            const eventStart = new Date(event.startDate);
+            const eventEnd = event.endDate ? new Date(event.endDate) : new Date();
+
+            // Check if stockout overlaps with selling period
+            if (eventEnd >= sellingStartDate) {
+              // This stockout affected sales
+              stockoutEventsSinceSelling++;
+
+              // Calculate days of this stockout that were while selling
+              const effectiveStart =
+                eventStart > sellingStartDate ? eventStart : sellingStartDate;
+              const daysWhileSelling = Math.round(
+                (eventEnd.getTime() - effectiveStart.getTime()) / (1000 * 60 * 60 * 24)
+              );
+              daysOOSWhileSelling += Math.max(0, daysWhileSelling);
+
+              // Track first stockout after selling started
+              if (!firstStockoutAfterSelling && eventStart >= sellingStartDate) {
+                firstStockoutAfterSelling = event.startDate;
+              }
+            }
+          }
+        }
+
         const result = {
           id: variant.id,
           sku: variant.sku,
@@ -263,8 +301,14 @@ export function registerVariantTools(
           // Stockout history and analysis
           stockoutHistory: {
             summary: {
+              // Raw totals (all time, including before product was selling)
               totalStockoutEvents: stockoutEvents.length,
               totalDaysOutOfStock: totalStockoutDays,
+              // Lifecycle-aware metrics (only while actively selling)
+              stockoutEventsSinceSelling: sellingStartDate ? stockoutEventsSinceSelling : null,
+              daysOOSWhileSelling: sellingStartDate ? daysOOSWhileSelling : null,
+              firstStockoutAfterSelling: firstStockoutAfterSelling,
+              // Other metrics
               oosLast60Days: variant.oos_last_60_days ?? null,
               meanStockoutDuration: variant.cur_mean_oos ?? null,
               currentlyOutOfStock: currentlyOOS,
