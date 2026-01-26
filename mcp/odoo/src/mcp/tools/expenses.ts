@@ -42,7 +42,7 @@ export function registerExpenseTools(
 
   // --- read_expenses ---
   server.tool(
-    'read_expenses',
+    'odoo_read_expenses',
     'Read expense reports with optional state/employee filters.',
     {
       state: z.enum(['draft', 'reported', 'approved', 'done', 'refused']).optional().describe('Expense sheet state'),
@@ -75,7 +75,7 @@ export function registerExpenseTools(
 
   // --- upload_receipt ---
   server.tool(
-    'upload_receipt',
+    'odoo_upload_receipt',
     'Upload a receipt image/PDF to an expense line for OCR processing.',
     {
       expense_id: z.number().describe('Expense line ID (hr.expense) to attach receipt to'),
@@ -103,7 +103,7 @@ export function registerExpenseTools(
 
   // --- expense_analysis ---
   server.tool(
-    'expense_analysis',
+    'odoo_expense_analysis',
     'Analyze expenses grouped by employee or product category for a date range.',
     {
       date_from: z.string().describe('Start date (YYYY-MM-DD)'),

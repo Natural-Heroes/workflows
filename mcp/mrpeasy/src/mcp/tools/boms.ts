@@ -98,7 +98,7 @@ export function registerBomTools(
   // get_boms
   // -------------------------------------------------------------------------
   server.tool(
-    'get_boms',
+    'mrp_get_boms',
     'List Bills of Materials (BOMs). Optionally filter by product_id or item_code.',
     {
       product_id: GetBomsSchema.shape.product_id,
@@ -134,7 +134,7 @@ export function registerBomTools(
           content: [{ type: 'text', text: JSON.stringify(response) }],
         };
       } catch (error) {
-        return handleToolError(error, 'get_boms');
+        return handleToolError(error, 'mrp_get_boms');
       }
     }
   );
@@ -143,7 +143,7 @@ export function registerBomTools(
   // get_bom_details
   // -------------------------------------------------------------------------
   server.tool(
-    'get_bom_details',
+    'mrp_get_bom_details',
     'Get full details of a specific BOM by ID, including components and linked routings.',
     {
       bom_id: GetBomDetailsSchema.shape.bom_id,
@@ -190,7 +190,7 @@ export function registerBomTools(
           content: [{ type: 'text', text: JSON.stringify(response) }],
         };
       } catch (error) {
-        return handleToolError(error, 'get_bom_details');
+        return handleToolError(error, 'mrp_get_bom_details');
       }
     }
   );
@@ -199,7 +199,7 @@ export function registerBomTools(
   // create_bom
   // -------------------------------------------------------------------------
   server.tool(
-    'create_bom',
+    'mrp_create_bom',
     'Create a new Bill of Materials (BOM). Requires product_id and at least one component with article_id and quantity. Set confirm=true to execute.',
     {
       product_id: CreateBomSchema.shape.product_id,
@@ -247,7 +247,7 @@ export function registerBomTools(
           }],
         };
       } catch (error) {
-        return handleToolError(error, 'create_bom');
+        return handleToolError(error, 'mrp_create_bom');
       }
     }
   );
@@ -256,7 +256,7 @@ export function registerBomTools(
   // update_bom
   // -------------------------------------------------------------------------
   server.tool(
-    'update_bom',
+    'mrp_update_bom',
     'Update an existing BOM. Can change title, code, or replace components list. Set confirm=true to execute.',
     {
       bom_id: UpdateBomSchema.shape.bom_id,
@@ -318,7 +318,7 @@ export function registerBomTools(
           }],
         };
       } catch (error) {
-        return handleToolError(error, 'update_bom');
+        return handleToolError(error, 'mrp_update_bom');
       }
     }
   );

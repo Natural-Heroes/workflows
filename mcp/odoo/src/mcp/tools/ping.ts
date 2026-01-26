@@ -8,12 +8,12 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
 /**
- * Registers the 'ping' tool on the MCP server.
+ * Registers the 'odoo_ping' tool on the MCP server.
  *
  * @param server - McpServer instance to register the tool on
  */
 export function registerPingTool(server: McpServer): void {
-  server.tool('ping', 'Test MCP connectivity. Returns pong.', {}, async () => {
+  server.tool('odoo_ping', 'Test MCP connectivity. Returns pong.', {}, async () => {
     return {
       content: [{ type: 'text', text: 'pong' }],
     };

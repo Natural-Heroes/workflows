@@ -117,7 +117,7 @@ export function registerPurchaseOrderTools(
   // get_purchase_orders
   // -------------------------------------------------------------------------
   server.tool(
-    'get_purchase_orders',
+    'mrp_get_purchase_orders',
     'List purchase orders (POs) with optional filtering by code, vendor, status, or date range. POs are read-only.',
     {
       code: GetPurchaseOrdersSchema.shape.code,
@@ -178,7 +178,7 @@ export function registerPurchaseOrderTools(
           content: [{ type: 'text', text: JSON.stringify(response) }],
         };
       } catch (error) {
-        return handleToolError(error, 'get_purchase_orders');
+        return handleToolError(error, 'mrp_get_purchase_orders');
       }
     }
   );
@@ -187,7 +187,7 @@ export function registerPurchaseOrderTools(
   // get_purchase_order_details
   // -------------------------------------------------------------------------
   server.tool(
-    'get_purchase_order_details',
+    'mrp_get_purchase_order_details',
     'Get full details of a specific purchase order by ID or code. Returns header info, products/line items, invoices, and payment info.',
     {
       po_id: GetPurchaseOrderDetailsSchema.shape.po_id,
@@ -276,7 +276,7 @@ export function registerPurchaseOrderTools(
           content: [{ type: 'text', text: JSON.stringify(response) }],
         };
       } catch (error) {
-        return handleToolError(error, 'get_purchase_order_details');
+        return handleToolError(error, 'mrp_get_purchase_order_details');
       }
     }
   );

@@ -23,7 +23,7 @@ export function registerPurchaseOrderTools(
 ): void {
   // get_purchase_orders - List purchase orders
   server.tool(
-    'get_purchase_orders',
+    'ip_get_purchase_orders',
     'Get purchase orders, transfers, and assembly orders. Filter by status, vendor, warehouse, or date range. Returns order details including status, vendor, expected date, and totals.',
     {
       status: z
@@ -148,14 +148,14 @@ export function registerPurchaseOrderTools(
           ],
         };
       } catch (error) {
-        return handleToolError(error, 'get_purchase_orders');
+        return handleToolError(error, 'ip_get_purchase_orders');
       }
     }
   );
 
   // get_purchase_order - Get single PO by ID
   server.tool(
-    'get_purchase_order',
+    'ip_get_purchase_order',
     'Get detailed information for a single purchase order by ID. Returns full order details including all line items with quantities ordered and received.',
     {
       id: z.string().describe('Purchase order ID'),
@@ -226,7 +226,7 @@ export function registerPurchaseOrderTools(
           ],
         };
       } catch (error) {
-        return handleToolError(error, 'get_purchase_order');
+        return handleToolError(error, 'ip_get_purchase_order');
       }
     }
   );
@@ -237,7 +237,7 @@ export function registerPurchaseOrderTools(
 
   // create_purchase_order
   server.tool(
-    'create_purchase_order',
+    'ip_create_purchase_order',
     'Create a new purchase order from replenishment recommendations. Requires vendor_id, warehouse_id, and items with variant_id and quantity. Use confirm=true to execute, otherwise returns preview.',
     {
       vendor_id: z.string().describe('Vendor/supplier ID'),
@@ -333,14 +333,14 @@ export function registerPurchaseOrderTools(
           ],
         };
       } catch (error) {
-        return handleToolError(error, 'create_purchase_order');
+        return handleToolError(error, 'ip_create_purchase_order');
       }
     }
   );
 
   // update_purchase_order
   server.tool(
-    'update_purchase_order',
+    'ip_update_purchase_order',
     'Update an existing purchase order status, dates, or notes. Use confirm=true to execute, otherwise returns preview.',
     {
       id: z.string().describe('Purchase order ID'),
@@ -415,14 +415,14 @@ export function registerPurchaseOrderTools(
           ],
         };
       } catch (error) {
-        return handleToolError(error, 'update_purchase_order');
+        return handleToolError(error, 'ip_update_purchase_order');
       }
     }
   );
 
   // update_received_qty
   server.tool(
-    'update_received_qty',
+    'ip_update_received_qty',
     'Record received quantities for purchase order line items. Use confirm=true to execute, otherwise returns preview.',
     {
       order_id: z.string().describe('Purchase order ID'),
@@ -488,7 +488,7 @@ export function registerPurchaseOrderTools(
           ],
         };
       } catch (error) {
-        return handleToolError(error, 'update_received_qty');
+        return handleToolError(error, 'ip_update_received_qty');
       }
     }
   );

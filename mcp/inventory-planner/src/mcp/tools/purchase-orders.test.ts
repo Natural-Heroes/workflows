@@ -213,7 +213,7 @@ describe('Purchase Order Tools', () => {
       );
 
       const sessionId = await initializeSession();
-      const { result } = await callTool(sessionId, 'get_purchase_orders', {});
+      const { result } = await callTool(sessionId, 'ip_get_purchase_orders', {});
 
       expect(result).toBeDefined();
       const data = result as Record<string, unknown>;
@@ -250,7 +250,7 @@ describe('Purchase Order Tools', () => {
       );
 
       const sessionId = await initializeSession();
-      const { result } = await callTool(sessionId, 'get_purchase_orders', {
+      const { result } = await callTool(sessionId, 'ip_get_purchase_orders', {
         status: 'open',
       });
 
@@ -272,7 +272,7 @@ describe('Purchase Order Tools', () => {
       );
 
       const sessionId = await initializeSession();
-      await callTool(sessionId, 'get_purchase_orders', {
+      await callTool(sessionId, 'ip_get_purchase_orders', {
         vendor_id: 'v-123',
       });
 
@@ -292,7 +292,7 @@ describe('Purchase Order Tools', () => {
       );
 
       const sessionId = await initializeSession();
-      await callTool(sessionId, 'get_purchase_orders', {
+      await callTool(sessionId, 'ip_get_purchase_orders', {
         warehouse_id: 'wh-specific',
       });
 
@@ -312,7 +312,7 @@ describe('Purchase Order Tools', () => {
       );
 
       const sessionId = await initializeSession();
-      await callTool(sessionId, 'get_purchase_orders', {
+      await callTool(sessionId, 'ip_get_purchase_orders', {
         expected_date_gt: '2026-01-25',
         expected_date_lt: '2026-01-31',
       });
@@ -334,7 +334,7 @@ describe('Purchase Order Tools', () => {
       );
 
       const sessionId = await initializeSession();
-      await callTool(sessionId, 'get_purchase_orders', {
+      await callTool(sessionId, 'ip_get_purchase_orders', {
         type: 'transfer',
       });
 
@@ -352,7 +352,7 @@ describe('Purchase Order Tools', () => {
       );
 
       const sessionId = await initializeSession();
-      const { result } = await callTool(sessionId, 'get_purchase_orders', {
+      const { result } = await callTool(sessionId, 'ip_get_purchase_orders', {
         status: 'cancelled',
       });
 
@@ -374,7 +374,7 @@ describe('Purchase Order Tools', () => {
       const sessionId = await initializeSession();
       const { result, isError } = await callTool(
         sessionId,
-        'get_purchase_orders',
+        'ip_get_purchase_orders',
         {}
       );
 
@@ -437,7 +437,7 @@ describe('Purchase Order Tools', () => {
       );
 
       const sessionId = await initializeSession();
-      const { result } = await callTool(sessionId, 'get_purchase_order', {
+      const { result } = await callTool(sessionId, 'ip_get_purchase_order', {
         id: 'po-1',
       });
 
@@ -465,7 +465,7 @@ describe('Purchase Order Tools', () => {
       );
 
       const sessionId = await initializeSession();
-      const { result } = await callTool(sessionId, 'get_purchase_order', {
+      const { result } = await callTool(sessionId, 'ip_get_purchase_order', {
         id: 'po-1',
       });
 
@@ -496,7 +496,7 @@ describe('Purchase Order Tools', () => {
       );
 
       const sessionId = await initializeSession();
-      const { result } = await callTool(sessionId, 'get_purchase_order', {
+      const { result } = await callTool(sessionId, 'ip_get_purchase_order', {
         id: 'po-1',
       });
 
@@ -525,7 +525,7 @@ describe('Purchase Order Tools', () => {
       );
 
       const sessionId = await initializeSession();
-      const { result } = await callTool(sessionId, 'get_purchase_order', {
+      const { result } = await callTool(sessionId, 'ip_get_purchase_order', {
         id: 'po-1',
       });
 
@@ -560,7 +560,7 @@ describe('Purchase Order Tools', () => {
       );
 
       const sessionId = await initializeSession();
-      const { result } = await callTool(sessionId, 'get_purchase_order', {
+      const { result } = await callTool(sessionId, 'ip_get_purchase_order', {
         id: 'po-1',
       });
 
@@ -580,7 +580,7 @@ describe('Purchase Order Tools', () => {
       );
 
       const sessionId = await initializeSession();
-      const { result, isError } = await callTool(sessionId, 'get_purchase_order', {
+      const { result, isError } = await callTool(sessionId, 'ip_get_purchase_order', {
         id: 'nonexistent',
       });
 
@@ -597,7 +597,7 @@ describe('Purchase Order Tools', () => {
     it('preview mode returns preview object without API call (PO-03)', async () => {
       // Do NOT mock API - preview should not call it
       const sessionId = await initializeSession();
-      const { result } = await callTool(sessionId, 'create_purchase_order', {
+      const { result } = await callTool(sessionId, 'ip_create_purchase_order', {
         vendor_id: 'v-1',
         warehouse_id: 'wh-1',
         items: [
@@ -618,7 +618,7 @@ describe('Purchase Order Tools', () => {
 
     it('preview shows itemCount and totalQuantity (PO-03)', async () => {
       const sessionId = await initializeSession();
-      const { result } = await callTool(sessionId, 'create_purchase_order', {
+      const { result } = await callTool(sessionId, 'ip_create_purchase_order', {
         vendor_id: 'v-1',
         warehouse_id: 'wh-1',
         items: [
@@ -656,7 +656,7 @@ describe('Purchase Order Tools', () => {
       );
 
       const sessionId = await initializeSession();
-      const { result } = await callTool(sessionId, 'create_purchase_order', {
+      const { result } = await callTool(sessionId, 'ip_create_purchase_order', {
         vendor_id: 'v-1',
         warehouse_id: 'wh-1',
         items: [
@@ -691,7 +691,7 @@ describe('Purchase Order Tools', () => {
       );
 
       const sessionId = await initializeSession();
-      await callTool(sessionId, 'create_purchase_order', {
+      await callTool(sessionId, 'ip_create_purchase_order', {
         vendor_id: 'v-specific',
         warehouse_id: 'wh-specific',
         items: [{ variant_id: 'var-1', quantity: 100 }],
@@ -718,7 +718,7 @@ describe('Purchase Order Tools', () => {
       const sessionId = await initializeSession();
       const { result, isError } = await callTool(
         sessionId,
-        'create_purchase_order',
+        'ip_create_purchase_order',
         {
           vendor_id: 'invalid-vendor',
           warehouse_id: 'wh-1',
@@ -739,7 +739,7 @@ describe('Purchase Order Tools', () => {
   describe('update_purchase_order tool', () => {
     it('preview mode returns preview of changes without API call (PO-04)', async () => {
       const sessionId = await initializeSession();
-      const { result } = await callTool(sessionId, 'update_purchase_order', {
+      const { result } = await callTool(sessionId, 'ip_update_purchase_order', {
         id: 'po-1',
         status: 'sent',
         confirm: false,
@@ -772,7 +772,7 @@ describe('Purchase Order Tools', () => {
       );
 
       const sessionId = await initializeSession();
-      const { result } = await callTool(sessionId, 'update_purchase_order', {
+      const { result } = await callTool(sessionId, 'ip_update_purchase_order', {
         id: 'po-1',
         status: 'sent',
         confirm: true,
@@ -798,7 +798,7 @@ describe('Purchase Order Tools', () => {
       );
 
       const sessionId = await initializeSession();
-      await callTool(sessionId, 'update_purchase_order', {
+      await callTool(sessionId, 'ip_update_purchase_order', {
         id: 'po-1',
         status: 'received',
         confirm: true,
@@ -822,7 +822,7 @@ describe('Purchase Order Tools', () => {
       );
 
       const sessionId = await initializeSession();
-      await callTool(sessionId, 'update_purchase_order', {
+      await callTool(sessionId, 'ip_update_purchase_order', {
         id: 'po-1',
         expected_date: '2026-02-15',
         confirm: true,
@@ -845,7 +845,7 @@ describe('Purchase Order Tools', () => {
       );
 
       const sessionId = await initializeSession();
-      await callTool(sessionId, 'update_purchase_order', {
+      await callTool(sessionId, 'ip_update_purchase_order', {
         id: 'po-1',
         notes: 'Updated notes',
         reference: 'NEW-REF-456',
@@ -867,7 +867,7 @@ describe('Purchase Order Tools', () => {
       const sessionId = await initializeSession();
       const { result, isError } = await callTool(
         sessionId,
-        'update_purchase_order',
+        'ip_update_purchase_order',
         {
           id: 'nonexistent',
           status: 'sent',
@@ -887,7 +887,7 @@ describe('Purchase Order Tools', () => {
   describe('update_received_qty tool', () => {
     it('preview mode returns preview without API call (PO-05)', async () => {
       const sessionId = await initializeSession();
-      const { result } = await callTool(sessionId, 'update_received_qty', {
+      const { result } = await callTool(sessionId, 'ip_update_received_qty', {
         order_id: 'po-1',
         items: [
           { id: 'item-1', received_quantity: 50 },
@@ -932,7 +932,7 @@ describe('Purchase Order Tools', () => {
       );
 
       const sessionId = await initializeSession();
-      const { result } = await callTool(sessionId, 'update_received_qty', {
+      const { result } = await callTool(sessionId, 'ip_update_received_qty', {
         order_id: 'po-1',
         items: [
           { id: 'item-1', received_quantity: 75 },
@@ -963,7 +963,7 @@ describe('Purchase Order Tools', () => {
       );
 
       const sessionId = await initializeSession();
-      const { result } = await callTool(sessionId, 'update_received_qty', {
+      const { result } = await callTool(sessionId, 'ip_update_received_qty', {
         order_id: 'po-1',
         items: [{ id: 'item-1', received_quantity: 80 }],
         confirm: true,
@@ -984,7 +984,7 @@ describe('Purchase Order Tools', () => {
       );
 
       const sessionId = await initializeSession();
-      const { result, isError } = await callTool(sessionId, 'update_received_qty', {
+      const { result, isError } = await callTool(sessionId, 'ip_update_received_qty', {
         order_id: 'nonexistent',
         items: [{ id: 'item-1', received_quantity: 50 }],
         confirm: true,
@@ -1002,7 +1002,7 @@ describe('Purchase Order Tools', () => {
       );
 
       const sessionId = await initializeSession();
-      const { result, isError } = await callTool(sessionId, 'update_received_qty', {
+      const { result, isError } = await callTool(sessionId, 'ip_update_received_qty', {
         order_id: 'po-1',
         items: [{ id: 'nonexistent-item', received_quantity: 50 }],
         confirm: true,

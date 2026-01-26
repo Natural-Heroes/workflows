@@ -40,7 +40,7 @@ export function registerKpiTools(
   // list_kpis
   // ===========================================================================
   server.tool(
-    'list_kpis',
+    'perdoo_list_kpis',
     'List Perdoo KPIs with pagination and filters. Can filter by name, lead, group, status, company goal flag. Returns flattened list.',
     {
       limit: z
@@ -146,7 +146,7 @@ export function registerKpiTools(
           ],
         };
       } catch (error) {
-        return handleToolError(error, 'list_kpis');
+        return handleToolError(error, 'perdoo_list_kpis');
       }
     }
   );
@@ -155,7 +155,7 @@ export function registerKpiTools(
   // get_kpi
   // ===========================================================================
   server.tool(
-    'get_kpi',
+    'perdoo_get_kpi',
     'Get a single Perdoo KPI by UUID with full details including value, target, and status.',
     {
       id: z
@@ -219,7 +219,7 @@ export function registerKpiTools(
           ],
         };
       } catch (error) {
-        return handleToolError(error, 'get_kpi');
+        return handleToolError(error, 'perdoo_get_kpi');
       }
     }
   );
@@ -228,7 +228,7 @@ export function registerKpiTools(
   // create_kpi
   // ===========================================================================
   server.tool(
-    'create_kpi',
+    'perdoo_create_kpi',
     `Create a new KPI in Perdoo.
 
 Required fields:
@@ -361,7 +361,7 @@ Fields via additional_fields parameter:
           ],
         };
       } catch (error) {
-        return handleToolError(error, 'create_kpi');
+        return handleToolError(error, 'perdoo_create_kpi');
       }
     }
   );
@@ -370,7 +370,7 @@ Fields via additional_fields parameter:
   // update_kpi
   // ===========================================================================
   server.tool(
-    'update_kpi',
+    'perdoo_update_kpi',
     'Update an existing Perdoo KPI by UUID.',
     {
       id: z
@@ -496,7 +496,7 @@ Fields via additional_fields parameter:
           ],
         };
       } catch (error) {
-        return handleToolError(error, 'update_kpi');
+        return handleToolError(error, 'perdoo_update_kpi');
       }
     }
   );

@@ -37,7 +37,7 @@ export function registerKnowledgeTools(
 
   // --- read_articles ---
   server.tool(
-    'read_articles',
+    'odoo_read_articles',
     'Search and read knowledge articles. Body is returned as Markdown.',
     {
       query: z.string().optional().describe('Search articles by name'),
@@ -74,7 +74,7 @@ export function registerKnowledgeTools(
 
   // --- create_article ---
   server.tool(
-    'create_article',
+    'odoo_create_article',
     'Create a new knowledge article. Provide body as Markdown.',
     {
       name: z.string().describe('Article title'),
@@ -101,7 +101,7 @@ export function registerKnowledgeTools(
 
   // --- update_article ---
   server.tool(
-    'update_article',
+    'odoo_update_article',
     'Update an existing knowledge article. Provide body as Markdown.',
     {
       article_id: z.number().describe('Article ID to update'),
@@ -130,7 +130,7 @@ export function registerKnowledgeTools(
 
   // --- delete_article ---
   server.tool(
-    'delete_article',
+    'odoo_delete_article',
     'Delete a knowledge article by ID.',
     {
       article_id: z.number().describe('Article ID to delete'),

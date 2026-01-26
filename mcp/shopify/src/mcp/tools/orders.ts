@@ -176,7 +176,7 @@ export function registerOrderTools(
   client: ShopifyClient
 ): void {
   server.tool(
-    'get_orders',
+    'shop_get_orders',
     'Search and list Shopify orders. Filter by status, date, customer, fulfillment status, etc. Uses Shopify query syntax.',
     {
       store: z
@@ -255,13 +255,13 @@ export function registerOrderTools(
           content: [{ type: 'text', text: JSON.stringify(response) }],
         };
       } catch (error) {
-        return handleToolError(error, 'get_orders', client.getStoreIds());
+        return handleToolError(error, 'shop_get_orders', client.getStoreIds());
       }
     }
   );
 
   server.tool(
-    'get_order',
+    'shop_get_order',
     'Get a single Shopify order by ID with full details including line items, addresses, fulfillments, and tracking.',
     {
       store: z
@@ -326,7 +326,7 @@ export function registerOrderTools(
           content: [{ type: 'text', text: JSON.stringify(response) }],
         };
       } catch (error) {
-        return handleToolError(error, 'get_order', client.getStoreIds());
+        return handleToolError(error, 'shop_get_order', client.getStoreIds());
       }
     }
   );

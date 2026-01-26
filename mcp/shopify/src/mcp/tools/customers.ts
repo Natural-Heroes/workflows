@@ -70,7 +70,7 @@ export function registerCustomerTools(
   client: ShopifyClient
 ): void {
   server.tool(
-    'get_customers',
+    'shop_get_customers',
     'Search and list Shopify customers. Filter by name, email, tag, order count, etc.',
     {
       store: z
@@ -136,13 +136,13 @@ export function registerCustomerTools(
           content: [{ type: 'text', text: JSON.stringify(response) }],
         };
       } catch (error) {
-        return handleToolError(error, 'get_customers', client.getStoreIds());
+        return handleToolError(error, 'shop_get_customers', client.getStoreIds());
       }
     }
   );
 
   server.tool(
-    'tag_customer',
+    'shop_tag_customer',
     'Add tags to a Shopify customer. Tags are additive (existing tags are preserved).',
     {
       store: z
@@ -187,7 +187,7 @@ export function registerCustomerTools(
           }) }],
         };
       } catch (error) {
-        return handleToolError(error, 'tag_customer', client.getStoreIds());
+        return handleToolError(error, 'shop_tag_customer', client.getStoreIds());
       }
     }
   );

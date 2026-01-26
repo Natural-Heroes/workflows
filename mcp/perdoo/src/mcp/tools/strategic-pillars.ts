@@ -38,7 +38,7 @@ export function registerStrategicPillarTools(
   // list_strategic_pillars
   // ===========================================================================
   server.tool(
-    'list_strategic_pillars',
+    'perdoo_list_strategic_pillars',
     'List Perdoo strategic pillars with pagination and filters. Strategic pillars define long-term focus areas that objectives align to. Can filter by status, lead, archived. Returns flattened list.',
     {
       limit: z
@@ -121,7 +121,7 @@ export function registerStrategicPillarTools(
           ],
         };
       } catch (error) {
-        return handleToolError(error, 'list_strategic_pillars');
+        return handleToolError(error, 'perdoo_list_strategic_pillars');
       }
     }
   );
@@ -130,7 +130,7 @@ export function registerStrategicPillarTools(
   // get_strategic_pillar
   // ===========================================================================
   server.tool(
-    'get_strategic_pillar',
+    'perdoo_get_strategic_pillar',
     'Get a single Perdoo strategic pillar by UUID with full details including description, lead, and aligned objectives/KPIs.',
     {
       id: z
@@ -184,7 +184,7 @@ export function registerStrategicPillarTools(
           ],
         };
       } catch (error) {
-        return handleToolError(error, 'get_strategic_pillar');
+        return handleToolError(error, 'perdoo_get_strategic_pillar');
       }
     }
   );
@@ -193,7 +193,7 @@ export function registerStrategicPillarTools(
   // create_strategic_pillar
   // ===========================================================================
   server.tool(
-    'create_strategic_pillar',
+    'perdoo_create_strategic_pillar',
     'Create a new strategic pillar in Perdoo. Name is required. Strategic pillars define long-term organizational focus areas.',
     {
       name: z
@@ -277,7 +277,7 @@ export function registerStrategicPillarTools(
           ],
         };
       } catch (error) {
-        return handleToolError(error, 'create_strategic_pillar');
+        return handleToolError(error, 'perdoo_create_strategic_pillar');
       }
     }
   );
@@ -286,7 +286,7 @@ export function registerStrategicPillarTools(
   // update_strategic_pillar
   // ===========================================================================
   server.tool(
-    'update_strategic_pillar',
+    'perdoo_update_strategic_pillar',
     'Update an existing Perdoo strategic pillar by UUID.',
     {
       id: z
@@ -378,7 +378,7 @@ export function registerStrategicPillarTools(
           ],
         };
       } catch (error) {
-        return handleToolError(error, 'update_strategic_pillar');
+        return handleToolError(error, 'perdoo_update_strategic_pillar');
       }
     }
   );

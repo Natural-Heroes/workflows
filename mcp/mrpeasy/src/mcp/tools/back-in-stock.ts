@@ -156,8 +156,8 @@ export function registerBackInStockTools(
   logger.info('Registering back-in-stock tools');
 
   server.tool(
-    'get_back_in_stock_date',
-    'Get expected back-in-stock dates for products by SKU. Finds open customer orders (with planned ship date + 7 days) and open manufacturing orders (scheduled/in-progress). Use search_items first to find SKUs if you only have a product name.',
+    'mrp_get_back_in_stock_date',
+    'Get expected back-in-stock dates for products by SKU from MRPeasy. Finds open customer orders (with planned ship date + 7 days) and open manufacturing orders (scheduled/in-progress). Use mrp_search_items first to find SKUs if you only have a product name.',
     {
       skus: z
         .array(z.string())
@@ -465,10 +465,10 @@ export function registerBackInStockTools(
           ],
         };
       } catch (error) {
-        return handleToolError(error, 'get_back_in_stock_date');
+        return handleToolError(error, 'mrp_get_back_in_stock_date');
       }
     }
   );
 
-  logger.info('Back-in-stock tools registered: get_back_in_stock_date');
+  logger.info('Back-in-stock tools registered: mrp_get_back_in_stock_date');
 }

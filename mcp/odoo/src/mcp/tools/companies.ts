@@ -35,7 +35,7 @@ export function registerCompanyTools(
 
   // --- list_companies ---
   server.tool(
-    'list_companies',
+    'odoo_list_companies',
     'List all companies the current user has access to. Use the returned IDs to filter other tools by company.',
     {},
     async (_params, extra) => {

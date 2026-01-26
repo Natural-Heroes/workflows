@@ -24,7 +24,7 @@ export function registerReferenceTools(
 ): void {
   // list_warehouses - Get available warehouses
   server.tool(
-    'list_warehouses',
+    'ip_list_warehouses',
     'Get available warehouses/locations. Use this to understand filtering options for variants and purchase orders. Warehouses are extracted from variant data.',
     {
       limit: z
@@ -74,14 +74,14 @@ export function registerReferenceTools(
           ],
         };
       } catch (error) {
-        return handleToolError(error, 'list_warehouses');
+        return handleToolError(error, 'ip_list_warehouses');
       }
     }
   );
 
   // list_vendors - Get available vendors
   server.tool(
-    'list_vendors',
+    'ip_list_vendors',
     'Get available vendors/suppliers. Use this to understand options for filtering variants or creating purchase orders. Vendors are extracted from variant data.',
     {
       limit: z
@@ -139,7 +139,7 @@ export function registerReferenceTools(
           ],
         };
       } catch (error) {
-        return handleToolError(error, 'list_vendors');
+        return handleToolError(error, 'ip_list_vendors');
       }
     }
   );

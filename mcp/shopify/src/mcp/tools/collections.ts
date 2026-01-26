@@ -77,7 +77,7 @@ export function registerCollectionTools(
   client: ShopifyClient
 ): void {
   server.tool(
-    'get_collections',
+    'shop_get_collections',
     'List or search Shopify collections. Filter by title or other attributes.',
     {
       store: z
@@ -137,13 +137,13 @@ export function registerCollectionTools(
           content: [{ type: 'text', text: JSON.stringify(response) }],
         };
       } catch (error) {
-        return handleToolError(error, 'get_collections', client.getStoreIds());
+        return handleToolError(error, 'shop_get_collections', client.getStoreIds());
       }
     }
   );
 
   server.tool(
-    'get_collection_products',
+    'shop_get_collection_products',
     'Get products within a specific Shopify collection. Useful for checking inventory by collection.',
     {
       store: z
@@ -221,7 +221,7 @@ export function registerCollectionTools(
           content: [{ type: 'text', text: JSON.stringify(response) }],
         };
       } catch (error) {
-        return handleToolError(error, 'get_collection_products', client.getStoreIds());
+        return handleToolError(error, 'shop_get_collection_products', client.getStoreIds());
       }
     }
   );

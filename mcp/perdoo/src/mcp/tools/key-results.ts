@@ -39,7 +39,7 @@ export function registerKeyResultTools(
   // list_key_results
   // ===========================================================================
   server.tool(
-    'list_key_results',
+    'perdoo_list_key_results',
     `List Perdoo key results with pagination and filters.
 
 Filter examples:
@@ -181,7 +181,7 @@ Returns flattened list with pagination info. Use cursor for subsequent pages.`,
           ],
         };
       } catch (error) {
-        return handleToolError(error, 'list_key_results');
+        return handleToolError(error, 'perdoo_list_key_results');
       }
     }
   );
@@ -190,7 +190,7 @@ Returns flattened list with pagination info. Use cursor for subsequent pages.`,
   // get_key_result
   // ===========================================================================
   server.tool(
-    'get_key_result',
+    'perdoo_get_key_result',
     'Get a single Perdoo key result by UUID with full details including objective reference, progress, metric values, and status.',
     {
       id: z
@@ -244,7 +244,7 @@ Returns flattened list with pagination info. Use cursor for subsequent pages.`,
           ],
         };
       } catch (error) {
-        return handleToolError(error, 'get_key_result');
+        return handleToolError(error, 'perdoo_get_key_result');
       }
     }
   );
@@ -253,7 +253,7 @@ Returns flattened list with pagination info. Use cursor for subsequent pages.`,
   // create_key_result
   // ===========================================================================
   server.tool(
-    'create_key_result',
+    'perdoo_create_key_result',
     `Create a new key result under a Perdoo objective.
 
 Required fields:
@@ -383,7 +383,7 @@ Fields via additional_fields parameter:
           ],
         };
       } catch (error) {
-        return handleToolError(error, 'create_key_result');
+        return handleToolError(error, 'perdoo_create_key_result');
       }
     }
   );
@@ -392,7 +392,7 @@ Fields via additional_fields parameter:
   // update_key_result
   // ===========================================================================
   server.tool(
-    'update_key_result',
+    'perdoo_update_key_result',
     'Update an existing Perdoo key result by UUID. Uses the upsertResult mutation with the ID included.',
     {
       id: z
@@ -507,7 +507,7 @@ Fields via additional_fields parameter:
           ],
         };
       } catch (error) {
-        return handleToolError(error, 'update_key_result');
+        return handleToolError(error, 'perdoo_update_key_result');
       }
     }
   );

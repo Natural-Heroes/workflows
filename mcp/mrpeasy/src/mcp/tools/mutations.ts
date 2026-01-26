@@ -102,7 +102,7 @@ export function registerMutationTools(
   // create_customer_order
   // -------------------------------------------------------------------------
   server.tool(
-    'create_customer_order',
+    'mrp_create_customer_order',
     'Create a new customer order (sales order). Use get_customers first to find valid customer_id. Requires customer_id and at least one product with article_id, quantity, and total_price_cur. Set confirm=true to execute.',
     {
       customer_id: CreateCustomerOrderSchema.shape.customer_id,
@@ -149,7 +149,7 @@ export function registerMutationTools(
           }],
         };
       } catch (error) {
-        return handleToolError(error, 'create_customer_order');
+        return handleToolError(error, 'mrp_create_customer_order');
       }
     }
   );
@@ -158,7 +158,7 @@ export function registerMutationTools(
   // update_customer_order
   // -------------------------------------------------------------------------
   server.tool(
-    'update_customer_order',
+    'mrp_update_customer_order',
     'Update an existing customer order. Can change status, delivery_date, reference, or notes. Set confirm=true to execute.',
     {
       order_id: UpdateCustomerOrderSchema.shape.order_id,
@@ -214,7 +214,7 @@ export function registerMutationTools(
           }],
         };
       } catch (error) {
-        return handleToolError(error, 'update_customer_order');
+        return handleToolError(error, 'mrp_update_customer_order');
       }
     }
   );
@@ -223,7 +223,7 @@ export function registerMutationTools(
   // create_manufacturing_order
   // -------------------------------------------------------------------------
   server.tool(
-    'create_manufacturing_order',
+    'mrp_create_manufacturing_order',
     'Create a new manufacturing order (production order). Requires article_id, quantity, assigned_id, and site_id. Use get_users to find valid assigned_id and get_sites for valid site_id. Set confirm=true to execute.',
     {
       article_id: CreateManufacturingOrderSchema.shape.article_id,
@@ -274,7 +274,7 @@ export function registerMutationTools(
           }],
         };
       } catch (error) {
-        return handleToolError(error, 'create_manufacturing_order');
+        return handleToolError(error, 'mrp_create_manufacturing_order');
       }
     }
   );
@@ -283,7 +283,7 @@ export function registerMutationTools(
   // update_manufacturing_order
   // -------------------------------------------------------------------------
   server.tool(
-    'update_manufacturing_order',
+    'mrp_update_manufacturing_order',
     'Update an existing manufacturing order. Can change code, quantity, due_date, start_date, assigned_id, or notes. Set confirm=true to execute.',
     {
       mo_id: UpdateManufacturingOrderSchema.shape.mo_id,
@@ -340,7 +340,7 @@ export function registerMutationTools(
           }],
         };
       } catch (error) {
-        return handleToolError(error, 'update_manufacturing_order');
+        return handleToolError(error, 'mrp_update_manufacturing_order');
       }
     }
   );
@@ -349,7 +349,7 @@ export function registerMutationTools(
   // create_item
   // -------------------------------------------------------------------------
   server.tool(
-    'create_item',
+    'mrp_create_item',
     'Create a new item (product or raw material). Use get_units to find valid unit_id and get_product_groups to find valid group_id. Requires title, unit_id, group_id, and is_raw. Set confirm=true to execute.',
     {
       title: CreateItemSchema.shape.title,
@@ -403,7 +403,7 @@ export function registerMutationTools(
           }],
         };
       } catch (error) {
-        return handleToolError(error, 'create_item');
+        return handleToolError(error, 'mrp_create_item');
       }
     }
   );
@@ -412,7 +412,7 @@ export function registerMutationTools(
   // update_item
   // -------------------------------------------------------------------------
   server.tool(
-    'update_item',
+    'mrp_update_item',
     'Update an existing item. Can change title, code, selling_price, min_quantity, group_id, unit_id, or description. Set confirm=true to execute.',
     {
       item_id: UpdateItemSchema.shape.item_id,
@@ -470,7 +470,7 @@ export function registerMutationTools(
           }],
         };
       } catch (error) {
-        return handleToolError(error, 'update_item');
+        return handleToolError(error, 'mrp_update_item');
       }
     }
   );

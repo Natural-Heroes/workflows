@@ -22,8 +22,8 @@ export function registerInventoryTools(
   client: MrpEasyClient
 ): void {
   server.tool(
-    'get_inventory',
-    'Get current stock levels and inventory costs. Filter by code (SKU), item_id, or warehouse_id. Returns quantity on hand, reserved, available, and unit costs.',
+    'mrp_get_inventory',
+    'Get current stock levels and inventory costs from MRPeasy. Filter by code (SKU), item_id, or warehouse_id. Returns quantity on hand, reserved, available, and unit costs.',
     {
       code: z
         .string()
@@ -148,7 +148,7 @@ export function registerInventoryTools(
           ],
         };
       } catch (error) {
-        return handleToolError(error, 'get_inventory');
+        return handleToolError(error, 'mrp_get_inventory');
       }
     }
   );

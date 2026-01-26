@@ -253,7 +253,7 @@ export function registerLookupTools(
   // get_units
   // -------------------------------------------------------------------------
   server.tool(
-    'get_units',
+    'mrp_get_units',
     'Get all units of measurement. Use this to find valid unit_id values for create_item.',
     {},
     async () => {
@@ -269,7 +269,7 @@ export function registerLookupTools(
           content: [{ type: 'text', text: formattedResponse }],
         };
       } catch (error) {
-        return handleToolError(error, 'get_units');
+        return handleToolError(error, 'mrp_get_units');
       }
     }
   );
@@ -278,7 +278,7 @@ export function registerLookupTools(
   // get_product_groups
   // -------------------------------------------------------------------------
   server.tool(
-    'get_product_groups',
+    'mrp_get_product_groups',
     'Get all product/item groups. Use this to find valid group_id values for create_item.',
     {
       code: GetProductGroupsInputSchema.shape.code,
@@ -301,7 +301,7 @@ export function registerLookupTools(
           content: [{ type: 'text', text: formattedResponse }],
         };
       } catch (error) {
-        return handleToolError(error, 'get_product_groups');
+        return handleToolError(error, 'mrp_get_product_groups');
       }
     }
   );
@@ -310,7 +310,7 @@ export function registerLookupTools(
   // get_operation_types
   // -------------------------------------------------------------------------
   server.tool(
-    'get_operation_types',
+    'mrp_get_operation_types',
     'Get all operation types (work center types). Use this to find valid type_id values for create_routing operations.',
     {},
     async () => {
@@ -326,7 +326,7 @@ export function registerLookupTools(
           content: [{ type: 'text', text: formattedResponse }],
         };
       } catch (error) {
-        return handleToolError(error, 'get_operation_types');
+        return handleToolError(error, 'mrp_get_operation_types');
       }
     }
   );
@@ -335,7 +335,7 @@ export function registerLookupTools(
   // get_workstations
   // -------------------------------------------------------------------------
   server.tool(
-    'get_workstations',
+    'mrp_get_workstations',
     'Get all workstations (work centers). Use this to find valid workstation_id values for create_routing operations.',
     {},
     async () => {
@@ -351,7 +351,7 @@ export function registerLookupTools(
           content: [{ type: 'text', text: formattedResponse }],
         };
       } catch (error) {
-        return handleToolError(error, 'get_workstations');
+        return handleToolError(error, 'mrp_get_workstations');
       }
     }
   );
@@ -360,7 +360,7 @@ export function registerLookupTools(
   // get_customers
   // -------------------------------------------------------------------------
   server.tool(
-    'get_customers',
+    'mrp_get_customers',
     'Get customers. Use this to find valid customer_id values for create_customer_order.',
     {
       code: GetCustomersInputSchema.shape.code,
@@ -389,7 +389,7 @@ export function registerLookupTools(
           content: [{ type: 'text', text: formattedResponse }],
         };
       } catch (error) {
-        return handleToolError(error, 'get_customers');
+        return handleToolError(error, 'mrp_get_customers');
       }
     }
   );
@@ -398,7 +398,7 @@ export function registerLookupTools(
   // get_sites
   // -------------------------------------------------------------------------
   server.tool(
-    'get_sites',
+    'mrp_get_sites',
     'Get all manufacturing sites. Use this to find valid site_id values for create_manufacturing_order. Extracts unique sites from work stations.',
     {},
     async () => {
@@ -450,7 +450,7 @@ export function registerLookupTools(
           content: [{ type: 'text', text: JSON.stringify(response) }],
         };
       } catch (error) {
-        return handleToolError(error, 'get_sites');
+        return handleToolError(error, 'mrp_get_sites');
       }
     }
   );
@@ -459,7 +459,7 @@ export function registerLookupTools(
   // get_users
   // -------------------------------------------------------------------------
   server.tool(
-    'get_users',
+    'mrp_get_users',
     'Get users/workers for manufacturing order assignments. Extracts unique assigned users from recent manufacturing orders.',
     {},
     async () => {
@@ -513,7 +513,7 @@ export function registerLookupTools(
           content: [{ type: 'text', text: JSON.stringify(response) }],
         };
       } catch (error) {
-        return handleToolError(error, 'get_users');
+        return handleToolError(error, 'mrp_get_users');
       }
     }
   );

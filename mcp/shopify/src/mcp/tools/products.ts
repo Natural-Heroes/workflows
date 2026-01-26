@@ -142,7 +142,7 @@ export function registerProductTools(
   client: ShopifyClient
 ): void {
   server.tool(
-    'get_products',
+    'shop_get_products',
     'Search and list Shopify products. Filter by title, status, vendor, product_type, or tag. Returns product details with variants and inventory.',
     {
       store: z
@@ -212,13 +212,13 @@ export function registerProductTools(
           content: [{ type: 'text', text: JSON.stringify(response) }],
         };
       } catch (error) {
-        return handleToolError(error, 'get_products', client.getStoreIds());
+        return handleToolError(error, 'shop_get_products', client.getStoreIds());
       }
     }
   );
 
   server.tool(
-    'get_product',
+    'shop_get_product',
     'Get a single Shopify product by ID with full details including all variants and images.',
     {
       store: z
@@ -278,13 +278,13 @@ export function registerProductTools(
           content: [{ type: 'text', text: JSON.stringify(response) }],
         };
       } catch (error) {
-        return handleToolError(error, 'get_product', client.getStoreIds());
+        return handleToolError(error, 'shop_get_product', client.getStoreIds());
       }
     }
   );
 
   server.tool(
-    'get_variants',
+    'shop_get_variants',
     'Get product variants by their IDs. Useful for checking inventory and pricing of specific variants.',
     {
       store: z
@@ -335,7 +335,7 @@ export function registerProductTools(
           content: [{ type: 'text', text: JSON.stringify({ count: variants.length, variants }) }],
         };
       } catch (error) {
-        return handleToolError(error, 'get_variants', client.getStoreIds());
+        return handleToolError(error, 'shop_get_variants', client.getStoreIds());
       }
     }
   );

@@ -285,7 +285,7 @@ export function registerShipmentTools(
   // get_shipments
   // -------------------------------------------------------------------------
   server.tool(
-    'get_shipments',
+    'mrp_get_shipments',
     'Get shipments with optional filtering. Use pending_only=true to get shipments awaiting dispatch (New + Ready). Filter by customer_order_id to get shipments for a specific CO.',
     {
       customer_order_id: GetShipmentsInputSchema.shape.customer_order_id,
@@ -334,7 +334,7 @@ export function registerShipmentTools(
           ],
         };
       } catch (error) {
-        return handleToolError(error, 'get_shipments');
+        return handleToolError(error, 'mrp_get_shipments');
       }
     }
   );
@@ -343,7 +343,7 @@ export function registerShipmentTools(
   // get_shipment_details
   // -------------------------------------------------------------------------
   server.tool(
-    'get_shipment_details',
+    'mrp_get_shipment_details',
     'Get full details of a specific shipment. Can lookup by internal ID (shipment_id) or by code (shipment_code like "SH-00123"). Returns tracking info, products shipped, and shipping address.',
     {
       shipment_id: GetShipmentDetailsInputSchema.shape.shipment_id,
@@ -411,7 +411,7 @@ export function registerShipmentTools(
           ],
         };
       } catch (error) {
-        return handleToolError(error, 'get_shipment_details');
+        return handleToolError(error, 'mrp_get_shipment_details');
       }
     }
   );
