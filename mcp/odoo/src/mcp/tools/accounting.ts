@@ -64,7 +64,7 @@ export function registerAccountingTools(
 
   // --- list_invoices ---
   server.tool(
-    'list_invoices',
+    'odoo_list_invoices',
     'List customer and vendor invoices with optional filters.',
     {
       limit: z.number().min(1).max(200).default(50).describe('Max records to return'),
@@ -98,7 +98,7 @@ export function registerAccountingTools(
 
   // --- read_invoice ---
   server.tool(
-    'read_invoice',
+    'odoo_read_invoice',
     'Read a single invoice/bill by ID with full details.',
     {
       invoice_id: z.number().describe('The invoice ID to read'),
@@ -138,7 +138,7 @@ export function registerAccountingTools(
 
   // --- read_transactions ---
   server.tool(
-    'read_transactions',
+    'odoo_read_transactions',
     'Read bank statement transactions with optional date/journal filters.',
     {
       limit: z.number().min(1).max(200).default(50).describe('Max records'),
@@ -173,7 +173,7 @@ export function registerAccountingTools(
 
   // --- upload_invoice_attachment ---
   server.tool(
-    'upload_invoice_attachment',
+    'odoo_upload_invoice_attachment',
     'Upload a file attachment (photo/PDF) to an invoice for OCR processing.',
     {
       invoice_id: z.number().describe('Invoice ID to attach to'),
@@ -201,7 +201,7 @@ export function registerAccountingTools(
 
   // --- bank_sync_status ---
   server.tool(
-    'bank_sync_status',
+    'odoo_bank_sync_status',
     'Check bank synchronization provider connection status.',
     {
       company_id: z.number().optional().describe('Filter by company ID (use list_companies to see available companies)'),
@@ -228,7 +228,7 @@ export function registerAccountingTools(
 
   // --- pl_summary ---
   server.tool(
-    'pl_summary',
+    'odoo_pl_summary',
     'Get Profit & Loss summary grouped by account for a date range.',
     {
       date_from: z.string().describe('Start date (YYYY-MM-DD)'),
@@ -263,7 +263,7 @@ export function registerAccountingTools(
 
   // --- balance_sheet ---
   server.tool(
-    'balance_sheet',
+    'odoo_balance_sheet',
     'Get balance sheet summary grouped by account type as of a given date.',
     {
       date_to: z.string().describe('As-of date (YYYY-MM-DD)'),

@@ -40,8 +40,8 @@ export function registerSearchTools(
   client: MrpEasyClient
 ): void {
   server.tool(
-    'search_items',
-    'Search for items by name or code (part number/SKU). Searches both inventory items AND manufactured products. Use get_product with code parameter for exact code lookup.',
+    'mrp_search_items',
+    'Search for items by name or code (part number/SKU) in MRPeasy. Searches both inventory items AND manufactured products. Use mrp_get_product with code parameter for exact code lookup.',
     {
       query: z
         .string()
@@ -319,7 +319,7 @@ export function registerSearchTools(
           ],
         };
       } catch (error) {
-        return handleToolError(error, 'search_items');
+        return handleToolError(error, 'mrp_search_items');
       }
     }
   );

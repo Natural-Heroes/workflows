@@ -569,7 +569,7 @@ export function registerOrderTools(
   // get_customer_orders
   // -------------------------------------------------------------------------
   server.tool(
-    'get_customer_orders',
+    'mrp_get_customer_orders',
     'Get customer orders with optional filtering. Use open_only=true to get only active orders (excludes Delivered/Cancelled). Can also filter by status, customer, or date range.',
     {
       open_only: GetCustomerOrdersInputSchema.shape.open_only,
@@ -634,7 +634,7 @@ export function registerOrderTools(
           ],
         };
       } catch (error) {
-        return handleToolError(error, 'get_customer_orders');
+        return handleToolError(error, 'mrp_get_customer_orders');
       }
     }
   );
@@ -643,7 +643,7 @@ export function registerOrderTools(
   // get_manufacturing_orders
   // -------------------------------------------------------------------------
   server.tool(
-    'get_manufacturing_orders',
+    'mrp_get_manufacturing_orders',
     'Get manufacturing orders (MOs) showing production status. Use open_only=true to get only active MOs (excludes Completed/Cancelled). Can also filter by status, SKU (item_code), product ID, or date range.',
     {
       open_only: GetManufacturingOrdersInputSchema.shape.open_only,
@@ -711,7 +711,7 @@ export function registerOrderTools(
           ],
         };
       } catch (error) {
-        return handleToolError(error, 'get_manufacturing_orders');
+        return handleToolError(error, 'mrp_get_manufacturing_orders');
       }
     }
   );
@@ -720,7 +720,7 @@ export function registerOrderTools(
   // get_customer_order_details
   // -------------------------------------------------------------------------
   server.tool(
-    'get_customer_order_details',
+    'mrp_get_customer_order_details',
     'Get full details of a specific customer order. Can lookup by internal ID (order_id) or by code (order_code like "CO-01263"). Returns header info plus line items with products, quantities, prices.',
     {
       order_id: GetCustomerOrderDetailsInputSchema.shape.order_id,
@@ -783,7 +783,7 @@ export function registerOrderTools(
           ],
         };
       } catch (error) {
-        return handleToolError(error, 'get_customer_order_details');
+        return handleToolError(error, 'mrp_get_customer_order_details');
       }
     }
   );
@@ -792,7 +792,7 @@ export function registerOrderTools(
   // get_manufacturing_order_details
   // -------------------------------------------------------------------------
   server.tool(
-    'get_manufacturing_order_details',
+    'mrp_get_manufacturing_order_details',
     'Get full details of a specific manufacturing order (MO). Can lookup by internal ID (mo_id) or by code (mo_code like "MO-39509"). Returns header info, operations/routing, and BOM parts/materials.',
     {
       mo_id: GetManufacturingOrderDetailsInputSchema.shape.mo_id,
@@ -855,7 +855,7 @@ export function registerOrderTools(
           ],
         };
       } catch (error) {
-        return handleToolError(error, 'get_manufacturing_order_details');
+        return handleToolError(error, 'mrp_get_manufacturing_order_details');
       }
     }
   );

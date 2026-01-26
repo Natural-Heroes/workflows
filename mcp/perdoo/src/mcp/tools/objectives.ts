@@ -38,7 +38,7 @@ export function registerObjectiveTools(
   // list_objectives
   // ===========================================================================
   server.tool(
-    'list_objectives',
+    'perdoo_list_objectives',
     `List Perdoo objectives with pagination and optional filters.
 
 Filter examples:
@@ -156,7 +156,7 @@ Returns flattened list with pagination info. Use cursor for subsequent pages.`,
           ],
         };
       } catch (error) {
-        return handleToolError(error, 'list_objectives');
+        return handleToolError(error, 'perdoo_list_objectives');
       }
     }
   );
@@ -165,7 +165,7 @@ Returns flattened list with pagination info. Use cursor for subsequent pages.`,
   // get_objective
   // ===========================================================================
   server.tool(
-    'get_objective',
+    'perdoo_get_objective',
     'Get a single Perdoo objective by UUID with full details including description, lead, groups, key results, children, and contributors.',
     {
       id: z
@@ -230,7 +230,7 @@ Returns flattened list with pagination info. Use cursor for subsequent pages.`,
           ],
         };
       } catch (error) {
-        return handleToolError(error, 'get_objective');
+        return handleToolError(error, 'perdoo_get_objective');
       }
     }
   );
@@ -239,7 +239,7 @@ Returns flattened list with pagination info. Use cursor for subsequent pages.`,
   // create_objective
   // ===========================================================================
   server.tool(
-    'create_objective',
+    'perdoo_create_objective',
     `Create a new Perdoo objective.
 
 Required fields:
@@ -343,7 +343,7 @@ Uses the upsertObjective mutation without an ID.`,
           ],
         };
       } catch (error) {
-        return handleToolError(error, 'create_objective');
+        return handleToolError(error, 'perdoo_create_objective');
       }
     }
   );
@@ -352,7 +352,7 @@ Uses the upsertObjective mutation without an ID.`,
   // update_objective
   // ===========================================================================
   server.tool(
-    'update_objective',
+    'perdoo_update_objective',
     'Update an existing Perdoo objective by UUID. Uses the upsertObjective mutation with the ID included.',
     {
       id: z
@@ -446,7 +446,7 @@ Uses the upsertObjective mutation without an ID.`,
           ],
         };
       } catch (error) {
-        return handleToolError(error, 'update_objective');
+        return handleToolError(error, 'perdoo_update_objective');
       }
     }
   );

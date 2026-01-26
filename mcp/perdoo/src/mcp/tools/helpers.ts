@@ -21,7 +21,7 @@ export function registerHelperTools(server: McpServer, client: PerdooClient): vo
   // list_timeframes
   // ===========================================================================
   server.tool(
-    'list_timeframes',
+    'perdoo_list_timeframes',
     `List available timeframes (quarters, years) in Perdoo. Returns timeframe IDs needed for create_objective.
 
 Filters:
@@ -80,7 +80,7 @@ Response includes id, name, startDate, endDate for each timeframe.`,
           ],
         };
       } catch (error) {
-        return handleToolError(error, 'list_timeframes');
+        return handleToolError(error, 'perdoo_list_timeframes');
       }
     }
   );
@@ -89,7 +89,7 @@ Response includes id, name, startDate, endDate for each timeframe.`,
   // list_users
   // ===========================================================================
   server.tool(
-    'list_users',
+    'perdoo_list_users',
     `List users in the Perdoo workspace. Returns user IDs needed for assigning leads and contributors to objectives, key results, and KPIs.
 
 Filters:
@@ -141,7 +141,7 @@ Response includes id, name, email, role for each user.`,
           ],
         };
       } catch (error) {
-        return handleToolError(error, 'list_users');
+        return handleToolError(error, 'perdoo_list_users');
       }
     }
   );
@@ -150,7 +150,7 @@ Response includes id, name, email, role for each user.`,
   // list_groups
   // ===========================================================================
   server.tool(
-    'list_groups',
+    'perdoo_list_groups',
     `List groups/teams in the Perdoo workspace. Returns group IDs needed for assigning objectives to teams.
 
 Filters:
@@ -199,7 +199,7 @@ Response includes id and name for each group.`,
           ],
         };
       } catch (error) {
-        return handleToolError(error, 'list_groups');
+        return handleToolError(error, 'perdoo_list_groups');
       }
     }
   );

@@ -43,7 +43,7 @@ export function registerReportTools(
   logger.info('Registering report tools');
 
   server.tool(
-    'get_report',
+    'mrp_get_report',
     'Fetch a report from MRPeasy. Requires report type and date range (from/to in YYYY-MM-DD format). Types: inventory_summary, inventory_movements, procurement, production.',
     {
       type: GetReportSchema.shape.type,
@@ -80,10 +80,10 @@ export function registerReportTools(
           content: [{ type: 'text', text: JSON.stringify(response) }],
         };
       } catch (error) {
-        return handleToolError(error, 'get_report');
+        return handleToolError(error, 'mrp_get_report');
       }
     }
   );
 
-  logger.info('Report tools registered: get_report');
+  logger.info('Report tools registered: mrp_get_report');
 }

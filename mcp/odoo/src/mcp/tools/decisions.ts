@@ -35,7 +35,7 @@ export function registerDecisionTools(
 
   // --- log_decision ---
   server.tool(
-    'log_decision',
+    'odoo_log_decision',
     'Log a new business decision in the nh.decision model.',
     {
       title: z.string().describe('Decision title'),
@@ -69,7 +69,7 @@ export function registerDecisionTools(
 
   // --- read_decisions ---
   server.tool(
-    'read_decisions',
+    'odoo_read_decisions',
     'Read business decisions with optional filters.',
     {
       status: z.string().optional().describe('Decision status filter'),

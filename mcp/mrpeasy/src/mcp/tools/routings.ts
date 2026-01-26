@@ -99,7 +99,7 @@ export function registerRoutingTools(
   // get_routings
   // -------------------------------------------------------------------------
   server.tool(
-    'get_routings',
+    'mrp_get_routings',
     'List routings (manufacturing process steps). Optionally filter by product_id or item_code.',
     {
       product_id: GetRoutingsSchema.shape.product_id,
@@ -135,7 +135,7 @@ export function registerRoutingTools(
           content: [{ type: 'text', text: JSON.stringify(response) }],
         };
       } catch (error) {
-        return handleToolError(error, 'get_routings');
+        return handleToolError(error, 'mrp_get_routings');
       }
     }
   );
@@ -144,7 +144,7 @@ export function registerRoutingTools(
   // get_routing_details
   // -------------------------------------------------------------------------
   server.tool(
-    'get_routing_details',
+    'mrp_get_routing_details',
     'Get full details of a specific routing by ID, including all operations with times and workstations.',
     {
       routing_id: GetRoutingDetailsSchema.shape.routing_id,
@@ -194,7 +194,7 @@ export function registerRoutingTools(
           content: [{ type: 'text', text: JSON.stringify(response) }],
         };
       } catch (error) {
-        return handleToolError(error, 'get_routing_details');
+        return handleToolError(error, 'mrp_get_routing_details');
       }
     }
   );
@@ -203,7 +203,7 @@ export function registerRoutingTools(
   // create_routing
   // -------------------------------------------------------------------------
   server.tool(
-    'create_routing',
+    'mrp_create_routing',
     'Create a new routing (manufacturing process). Use get_operation_types to find valid type_id and get_workstations for workstation_id. Requires product_id and at least one operation with type_id, ord, and variable_time. Set confirm=true to execute.',
     {
       product_id: CreateRoutingSchema.shape.product_id,
@@ -248,7 +248,7 @@ export function registerRoutingTools(
           }],
         };
       } catch (error) {
-        return handleToolError(error, 'create_routing');
+        return handleToolError(error, 'mrp_create_routing');
       }
     }
   );
@@ -257,7 +257,7 @@ export function registerRoutingTools(
   // update_routing
   // -------------------------------------------------------------------------
   server.tool(
-    'update_routing',
+    'mrp_update_routing',
     'Update an existing routing. Can change title, code, or replace operations list. Set confirm=true to execute.',
     {
       routing_id: UpdateRoutingSchema.shape.routing_id,
@@ -311,7 +311,7 @@ export function registerRoutingTools(
           }],
         };
       } catch (error) {
-        return handleToolError(error, 'update_routing');
+        return handleToolError(error, 'mrp_update_routing');
       }
     }
   );

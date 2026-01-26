@@ -24,8 +24,8 @@ export function registerProductTools(
   client: MrpEasyClient
 ): void {
   server.tool(
-    'get_product',
-    'Get detailed product/item information by article_id OR code (part number/SKU). Provide either id or code, not both. The code is the Part No. shown in MRPeasy (e.g., "P-APB-NH-3").',
+    'mrp_get_product',
+    'Get detailed product/item information from MRPeasy by article_id OR code (part number/SKU). Provide either id or code, not both. The code is the Part No. shown in MRPeasy (e.g., "P-APB-NH-3").',
     {
       id: z
         .string()
@@ -166,7 +166,7 @@ export function registerProductTools(
           ],
         };
       } catch (error) {
-        return handleToolError(error, 'get_product');
+        return handleToolError(error, 'mrp_get_product');
       }
     }
   );

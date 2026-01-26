@@ -158,7 +158,7 @@ describe('Mutation Tools', () => {
     describe('preview mode (confirm=false)', () => {
       it('returns preview object without making API call', async () => {
         const sessionId = await initializeSession();
-        const { result } = await callTool(sessionId, 'update_variant', {
+        const { result } = await callTool(sessionId, 'ip_update_variant', {
           id: 'v1',
           lead_time: 14,
           confirm: false,
@@ -176,7 +176,7 @@ describe('Mutation Tools', () => {
 
       it('shows all proposed updates in preview', async () => {
         const sessionId = await initializeSession();
-        const { result } = await callTool(sessionId, 'update_variant', {
+        const { result } = await callTool(sessionId, 'ip_update_variant', {
           id: 'v1',
           lead_time: 14,
           review_period: 30,
@@ -199,7 +199,7 @@ describe('Mutation Tools', () => {
 
       it('preview with confirm=false is the default behavior', async () => {
         const sessionId = await initializeSession();
-        const { result } = await callTool(sessionId, 'update_variant', {
+        const { result } = await callTool(sessionId, 'ip_update_variant', {
           id: 'v1',
           lead_time: 7,
           // confirm not provided, defaults to false
@@ -237,7 +237,7 @@ describe('Mutation Tools', () => {
         );
 
         const sessionId = await initializeSession();
-        const { result } = await callTool(sessionId, 'update_variant', {
+        const { result } = await callTool(sessionId, 'ip_update_variant', {
           id: 'v1',
           lead_time: 14,
           confirm: true,
@@ -267,7 +267,7 @@ describe('Mutation Tools', () => {
         );
 
         const sessionId = await initializeSession();
-        const { result } = await callTool(sessionId, 'update_variant', {
+        const { result } = await callTool(sessionId, 'ip_update_variant', {
           id: 'v1',
           lead_time: 21,
           confirm: true,
@@ -299,7 +299,7 @@ describe('Mutation Tools', () => {
         );
 
         const sessionId = await initializeSession();
-        const { result } = await callTool(sessionId, 'update_variant', {
+        const { result } = await callTool(sessionId, 'ip_update_variant', {
           id: 'v1',
           review_period: 45,
           confirm: true,
@@ -328,7 +328,7 @@ describe('Mutation Tools', () => {
         );
 
         const sessionId = await initializeSession();
-        const { result } = await callTool(sessionId, 'update_variant', {
+        const { result } = await callTool(sessionId, 'ip_update_variant', {
           id: 'v1',
           safety_stock: 75,
           confirm: true,
@@ -357,7 +357,7 @@ describe('Mutation Tools', () => {
         );
 
         const sessionId = await initializeSession();
-        const { result } = await callTool(sessionId, 'update_variant', {
+        const { result } = await callTool(sessionId, 'ip_update_variant', {
           id: 'v1',
           reorder_point: 150,
           confirm: true,
@@ -386,7 +386,7 @@ describe('Mutation Tools', () => {
         );
 
         const sessionId = await initializeSession();
-        const { result } = await callTool(sessionId, 'update_variant', {
+        const { result } = await callTool(sessionId, 'ip_update_variant', {
           id: 'v1',
           active: false,
           confirm: true,
@@ -421,7 +421,7 @@ describe('Mutation Tools', () => {
         );
 
         const sessionId = await initializeSession();
-        const { result } = await callTool(sessionId, 'update_variant', {
+        const { result } = await callTool(sessionId, 'ip_update_variant', {
           id: 'v1',
           lead_time: 10,
           review_period: 20,
@@ -465,7 +465,7 @@ describe('Mutation Tools', () => {
         );
 
         const sessionId = await initializeSession();
-        const { result, isError } = await callTool(sessionId, 'update_variant', {
+        const { result, isError } = await callTool(sessionId, 'ip_update_variant', {
           id: 'nonexistent',
           lead_time: 10,
           confirm: true,
@@ -485,7 +485,7 @@ describe('Mutation Tools', () => {
         );
 
         const sessionId = await initializeSession();
-        const { result, isError } = await callTool(sessionId, 'update_variant', {
+        const { result, isError } = await callTool(sessionId, 'ip_update_variant', {
           id: 'v1',
           lead_time: 10,
           confirm: true,

@@ -205,8 +205,8 @@ export function createMcpServer(): McpServer {
 
   // Register placeholder ping tool for testing
   server.tool(
-    'ping',
-    'Test tool to verify MCP server is working. Returns "pong" to confirm connectivity.',
+    'mrp_ping',
+    'Test tool to verify MRPeasy MCP server is working. Returns "pong" to confirm connectivity.',
     {},
     async () => {
       logger.debug('Ping tool called');

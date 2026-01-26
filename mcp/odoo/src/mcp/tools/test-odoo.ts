@@ -15,7 +15,7 @@ import {
 } from '../../lib/errors.js';
 
 /**
- * Registers the 'test_odoo' tool on the MCP server.
+ * Registers the 'odoo_test_odoo' tool on the MCP server.
  * Uses extra.authInfo.extra.odooApiKey for per-user Odoo access.
  */
 export function registerTestOdooTool(
@@ -23,7 +23,7 @@ export function registerTestOdooTool(
   clientManager: OdooClientManager,
 ): void {
   server.tool(
-    'test_odoo',
+    'odoo_test_odoo',
     'Test Odoo JSON-2 API connectivity. Reads records from a specified model.',
     {
       model: z.string().default('res.users').describe('Odoo model to query'),

@@ -35,7 +35,7 @@ export function registerProjectTools(
 
   // --- list_projects ---
   server.tool(
-    'list_projects',
+    'odoo_list_projects',
     'List projects with optional name search.',
     {
       query: z.string().optional().describe('Search projects by name'),
@@ -65,7 +65,7 @@ export function registerProjectTools(
 
   // --- list_tasks ---
   server.tool(
-    'list_tasks',
+    'odoo_list_tasks',
     'List project tasks with optional project/stage/user filters.',
     {
       project_id: z.number().optional().describe('Filter by project ID'),
@@ -102,7 +102,7 @@ export function registerProjectTools(
 
   // --- create_project ---
   server.tool(
-    'create_project',
+    'odoo_create_project',
     'Create a new project.',
     {
       name: z.string().describe('Project name'),
@@ -131,7 +131,7 @@ export function registerProjectTools(
 
   // --- create_task ---
   server.tool(
-    'create_task',
+    'odoo_create_task',
     'Create a new task in a project.',
     {
       name: z.string().describe('Task name'),
@@ -166,7 +166,7 @@ export function registerProjectTools(
 
   // --- launch_template ---
   server.tool(
-    'launch_template',
+    'odoo_launch_template',
     'Create a new task from a task template (nh_project_task_template).',
     {
       template_id: z.number().describe('Template task ID (is_template=true)'),

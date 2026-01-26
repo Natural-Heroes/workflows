@@ -41,7 +41,7 @@ export function registerInitiativeTools(
   // list_initiatives
   // ===========================================================================
   server.tool(
-    'list_initiatives',
+    'perdoo_list_initiatives',
     'List Perdoo initiatives (projects/tasks that support key results). Can filter by parent objective, lead, status, timeframe. Initiatives do NOT contribute to objective progress. Returns flattened list.',
     {
       limit: z
@@ -135,7 +135,7 @@ export function registerInitiativeTools(
           ],
         };
       } catch (error) {
-        return handleToolError(error, 'list_initiatives');
+        return handleToolError(error, 'perdoo_list_initiatives');
       }
     }
   );
@@ -144,7 +144,7 @@ export function registerInitiativeTools(
   // get_initiative
   // ===========================================================================
   server.tool(
-    'get_initiative',
+    'perdoo_get_initiative',
     'Get a single Perdoo initiative by UUID with full details including objective reference, progress, and status.',
     {
       id: z
@@ -196,7 +196,7 @@ export function registerInitiativeTools(
           ],
         };
       } catch (error) {
-        return handleToolError(error, 'get_initiative');
+        return handleToolError(error, 'perdoo_get_initiative');
       }
     }
   );
@@ -205,7 +205,7 @@ export function registerInitiativeTools(
   // create_initiative
   // ===========================================================================
   server.tool(
-    'create_initiative',
+    'perdoo_create_initiative',
     'Create a new initiative (project/task) under a Perdoo objective. Name and objective are required. Initiatives track work that supports key results but do NOT contribute to objective progress directly.',
     {
       name: z
@@ -305,7 +305,7 @@ export function registerInitiativeTools(
           ],
         };
       } catch (error) {
-        return handleToolError(error, 'create_initiative');
+        return handleToolError(error, 'perdoo_create_initiative');
       }
     }
   );
@@ -314,7 +314,7 @@ export function registerInitiativeTools(
   // update_initiative
   // ===========================================================================
   server.tool(
-    'update_initiative',
+    'perdoo_update_initiative',
     'Update an existing Perdoo initiative by UUID.',
     {
       id: z
@@ -419,7 +419,7 @@ export function registerInitiativeTools(
           ],
         };
       } catch (error) {
-        return handleToolError(error, 'update_initiative');
+        return handleToolError(error, 'perdoo_update_initiative');
       }
     }
   );

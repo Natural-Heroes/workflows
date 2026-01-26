@@ -35,7 +35,7 @@ export function registerHrTools(
 
   // --- search_employees ---
   server.tool(
-    'search_employees',
+    'odoo_search_employees',
     'Search employees by name, department, or job title.',
     {
       query: z.string().optional().describe('Name search query'),
@@ -67,7 +67,7 @@ export function registerHrTools(
 
   // --- read_employee ---
   server.tool(
-    'read_employee',
+    'odoo_read_employee',
     'Read detailed employee information by ID.',
     {
       employee_id: z.number().describe('Employee ID'),
@@ -93,7 +93,7 @@ export function registerHrTools(
 
   // --- read_payslips ---
   server.tool(
-    'read_payslips',
+    'odoo_read_payslips',
     'Read payslips with optional employee/date filters.',
     {
       employee_id: z.number().optional().describe('Filter by employee ID'),
@@ -127,7 +127,7 @@ export function registerHrTools(
 
   // --- read_time_off ---
   server.tool(
-    'read_time_off',
+    'odoo_read_time_off',
     'Read time-off/leave requests with optional filters.',
     {
       employee_id: z.number().optional().describe('Filter by employee ID'),

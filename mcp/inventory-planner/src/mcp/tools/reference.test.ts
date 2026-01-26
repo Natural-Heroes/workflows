@@ -141,7 +141,7 @@ describe('Reference Data Tools', () => {
       );
 
       const sessionId = await initializeSession();
-      const result = await callTool(sessionId, 'list_warehouses', {});
+      const result = await callTool(sessionId, 'ip_list_warehouses', {});
 
       expect(result.result).toBeDefined();
       const toolResult = result.result as Record<string, unknown>;
@@ -169,7 +169,7 @@ describe('Reference Data Tools', () => {
       );
 
       const sessionId = await initializeSession();
-      const result = await callTool(sessionId, 'list_warehouses', {});
+      const result = await callTool(sessionId, 'ip_list_warehouses', {});
 
       const toolResult = result.result as Record<string, unknown>;
       const content = toolResult.content as Array<{ text: string }>;
@@ -194,7 +194,7 @@ describe('Reference Data Tools', () => {
       );
 
       const sessionId = await initializeSession();
-      const result = await callTool(sessionId, 'list_warehouses', { limit: 2 });
+      const result = await callTool(sessionId, 'ip_list_warehouses', { limit: 2 });
 
       const toolResult = result.result as Record<string, unknown>;
       const content = toolResult.content as Array<{ text: string }>;
@@ -217,7 +217,7 @@ describe('Reference Data Tools', () => {
       );
 
       const sessionId = await initializeSession();
-      const result = await callTool(sessionId, 'list_warehouses', {});
+      const result = await callTool(sessionId, 'ip_list_warehouses', {});
 
       const toolResult = result.result as Record<string, unknown>;
       const content = toolResult.content as Array<{ text: string }>;
@@ -239,7 +239,7 @@ describe('Reference Data Tools', () => {
       );
 
       const sessionId = await initializeSession();
-      const result = await callTool(sessionId, 'list_warehouses', { limit: 50 });
+      const result = await callTool(sessionId, 'ip_list_warehouses', { limit: 50 });
 
       const toolResult = result.result as Record<string, unknown>;
       const content = toolResult.content as Array<{ text: string }>;
@@ -258,7 +258,7 @@ describe('Reference Data Tools', () => {
       );
 
       const sessionId = await initializeSession();
-      const result = await callTool(sessionId, 'list_warehouses', {});
+      const result = await callTool(sessionId, 'ip_list_warehouses', {});
 
       const toolResult = result.result as Record<string, unknown>;
       const content = toolResult.content as Array<{ text: string }>;
@@ -275,7 +275,7 @@ describe('Reference Data Tools', () => {
       });
 
       const sessionId = await initializeSession();
-      const result = await callTool(sessionId, 'list_warehouses', {});
+      const result = await callTool(sessionId, 'ip_list_warehouses', {});
 
       const toolResult = result.result as Record<string, unknown>;
       expect(toolResult.isError).toBe(true);
@@ -300,7 +300,7 @@ describe('Reference Data Tools', () => {
       );
 
       const sessionId = await initializeSession();
-      const result = await callTool(sessionId, 'list_vendors', {});
+      const result = await callTool(sessionId, 'ip_list_vendors', {});
 
       const toolResult = result.result as Record<string, unknown>;
       const content = toolResult.content as Array<{ text: string }>;
@@ -332,7 +332,7 @@ describe('Reference Data Tools', () => {
       );
 
       const sessionId = await initializeSession();
-      const result = await callTool(sessionId, 'list_vendors', {});
+      const result = await callTool(sessionId, 'ip_list_vendors', {});
 
       const toolResult = result.result as Record<string, unknown>;
       const content = toolResult.content as Array<{ text: string }>;
@@ -370,7 +370,7 @@ describe('Reference Data Tools', () => {
       );
 
       const sessionId = await initializeSession();
-      const result = await callTool(sessionId, 'list_vendors', {});
+      const result = await callTool(sessionId, 'ip_list_vendors', {});
 
       const toolResult = result.result as Record<string, unknown>;
       const content = toolResult.content as Array<{ text: string }>;
@@ -396,7 +396,7 @@ describe('Reference Data Tools', () => {
       );
 
       const sessionId = await initializeSession();
-      const result = await callTool(sessionId, 'list_vendors', { limit: 3 });
+      const result = await callTool(sessionId, 'ip_list_vendors', { limit: 3 });
 
       const toolResult = result.result as Record<string, unknown>;
       const content = toolResult.content as Array<{ text: string }>;
@@ -419,7 +419,7 @@ describe('Reference Data Tools', () => {
       );
 
       const sessionId = await initializeSession();
-      const result = await callTool(sessionId, 'list_vendors', {});
+      const result = await callTool(sessionId, 'ip_list_vendors', {});
 
       const toolResult = result.result as Record<string, unknown>;
       const content = toolResult.content as Array<{ text: string }>;
@@ -438,7 +438,7 @@ describe('Reference Data Tools', () => {
       );
 
       const sessionId = await initializeSession();
-      const result = await callTool(sessionId, 'list_vendors', {});
+      const result = await callTool(sessionId, 'ip_list_vendors', {});
 
       const toolResult = result.result as Record<string, unknown>;
       const content = toolResult.content as Array<{ text: string }>;
@@ -455,7 +455,7 @@ describe('Reference Data Tools', () => {
       });
 
       const sessionId = await initializeSession();
-      const result = await callTool(sessionId, 'list_vendors', {});
+      const result = await callTool(sessionId, 'ip_list_vendors', {});
 
       const toolResult = result.result as Record<string, unknown>;
       expect(toolResult.isError).toBe(true);
@@ -479,7 +479,7 @@ describe('Reference Data Tools', () => {
       );
 
       const sessionId = await initializeSession();
-      const result = await callTool(sessionId, 'list_vendors', {});
+      const result = await callTool(sessionId, 'ip_list_vendors', {});
 
       const toolResult = result.result as Record<string, unknown>;
       const content = toolResult.content as Array<{ text: string }>;
@@ -502,7 +502,7 @@ describe('Reference Data Tools', () => {
       );
 
       const sessionId = await initializeSession();
-      await callTool(sessionId, 'list_warehouses', {});
+      await callTool(sessionId, 'ip_list_warehouses', {});
 
       // Check the fetch was called with correct parameters
       const calls = fetchMocker.mock.calls;
@@ -526,7 +526,7 @@ describe('Reference Data Tools', () => {
       );
 
       const sessionId = await initializeSession();
-      await callTool(sessionId, 'list_vendors', {});
+      await callTool(sessionId, 'ip_list_vendors', {});
 
       // Check the fetch was called with correct parameters
       const calls = fetchMocker.mock.calls;

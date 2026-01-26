@@ -46,7 +46,7 @@ export function registerShopTools(
   client: ShopifyClient
 ): void {
   server.tool(
-    'get_shop',
+    'shop_get_shop',
     'Get Shopify shop information including name, domain, currency, plan, shipping countries, and billing address.',
     {
       store: z
@@ -83,13 +83,13 @@ export function registerShopTools(
           content: [{ type: 'text', text: JSON.stringify(response) }],
         };
       } catch (error) {
-        return handleToolError(error, 'get_shop', client.getStoreIds());
+        return handleToolError(error, 'shop_get_shop', client.getStoreIds());
       }
     }
   );
 
   server.tool(
-    'list_stores',
+    'shop_list_stores',
     'List all configured Shopify stores and their identifiers. Shows which store is the default.',
     {},
     async () => {

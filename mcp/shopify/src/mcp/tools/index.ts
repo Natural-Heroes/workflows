@@ -110,7 +110,7 @@ export function createMcpServer(): McpServer {
 
   // Ping tool for connectivity testing
   server.tool(
-    'ping',
+    'shop_ping',
     'Test tool to verify the Shopify MCP server is working. Returns "pong".',
     {},
     async () => {

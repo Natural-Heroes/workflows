@@ -42,7 +42,7 @@ export function registerApprovalTools(
 
   // --- approve_expense ---
   server.tool(
-    'approve_expense',
+    'odoo_approve_expense',
     'Approve an expense report. Only works on sheets in "reported" state.',
     {
       expense_sheet_id: z.number().describe('Expense sheet ID to approve'),
@@ -76,7 +76,7 @@ export function registerApprovalTools(
 
   // --- approve_decision ---
   server.tool(
-    'approve_decision',
+    'odoo_approve_decision',
     'Approve a decision via its linked approval request.',
     {
       decision_id: z.number().describe('Decision ID (nh.decision) to approve'),
@@ -107,7 +107,7 @@ export function registerApprovalTools(
 
   // --- validate_payment ---
   server.tool(
-    'validate_payment',
+    'odoo_validate_payment',
     'Validate (post) a payment to confirm it.',
     {
       payment_id: z.number().describe('Payment ID to validate'),

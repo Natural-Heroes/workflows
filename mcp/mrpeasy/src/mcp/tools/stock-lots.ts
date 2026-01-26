@@ -100,8 +100,8 @@ export function registerStockLotTools(
   // get_stock_lots
   // -------------------------------------------------------------------------
   server.tool(
-    'get_stock_lots',
-    'List stock lots with location data. Filter by article_id, item_code, lot_number, or warehouse_id. Includes stock location information.',
+    'mrp_get_stock_lots',
+    'List stock lots with location data from MRPeasy. Filter by article_id, item_code, lot_number, or warehouse_id. Includes stock location information.',
     {
       article_id: GetStockLotsSchema.shape.article_id,
       item_code: GetStockLotsSchema.shape.item_code,
@@ -145,7 +145,7 @@ export function registerStockLotTools(
           content: [{ type: 'text', text: JSON.stringify(response) }],
         };
       } catch (error) {
-        return handleToolError(error, 'get_stock_lots');
+        return handleToolError(error, 'mrp_get_stock_lots');
       }
     }
   );
@@ -154,8 +154,8 @@ export function registerStockLotTools(
   // get_stock_lot_details
   // -------------------------------------------------------------------------
   server.tool(
-    'get_stock_lot_details',
-    'Get full details of a specific stock lot by ID, including all storage locations and quantities.',
+    'mrp_get_stock_lot_details',
+    'Get full details of a specific stock lot by ID from MRPeasy, including all storage locations and quantities.',
     {
       lot_id: GetStockLotDetailsSchema.shape.lot_id,
     },
@@ -201,10 +201,10 @@ export function registerStockLotTools(
           content: [{ type: 'text', text: JSON.stringify(response) }],
         };
       } catch (error) {
-        return handleToolError(error, 'get_stock_lot_details');
+        return handleToolError(error, 'mrp_get_stock_lot_details');
       }
     }
   );
 
-  logger.info('Stock lot tools registered: get_stock_lots, get_stock_lot_details');
+  logger.info('Stock lot tools registered: mrp_get_stock_lots, mrp_get_stock_lot_details');
 }

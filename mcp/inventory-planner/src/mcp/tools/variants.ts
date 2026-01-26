@@ -26,7 +26,7 @@ export function registerVariantTools(
 ): void {
   // get_variants - List variants with filtering
   server.tool(
-    'get_variants',
+    'ip_get_variants',
     'Get variants with demand forecasting and replenishment metrics. Filter by SKU, warehouse, vendor, or stock levels. Returns stock on hand, replenishment recommendations, days until stockout, and forecast data.',
     {
       sku: z
@@ -149,14 +149,14 @@ export function registerVariantTools(
           ],
         };
       } catch (error) {
-        return handleToolError(error, 'get_variants');
+        return handleToolError(error, 'ip_get_variants');
       }
     }
   );
 
   // get_variant - Get single variant by ID
   server.tool(
-    'get_variant',
+    'ip_get_variant',
     'Get detailed information for a single variant by ID. Returns full metrics including stock levels, replenishment data, forecasts, vendor information, and planning parameters.',
     {
       id: z.string().describe('Variant ID'),
@@ -244,14 +244,14 @@ export function registerVariantTools(
           ],
         };
       } catch (error) {
-        return handleToolError(error, 'get_variant');
+        return handleToolError(error, 'ip_get_variant');
       }
     }
   );
 
   // get_replenishment - Get items needing reorder
   server.tool(
-    'get_replenishment',
+    'ip_get_replenishment',
     'Get variants that need replenishment (reorder quantity > 0). Essential for identifying items that need to be ordered. Returns SKU, current stock, recommended order quantity, and days until stockout.',
     {
       warehouse_id: z
@@ -355,7 +355,7 @@ export function registerVariantTools(
           ],
         };
       } catch (error) {
-        return handleToolError(error, 'get_replenishment');
+        return handleToolError(error, 'ip_get_replenishment');
       }
     }
   );
