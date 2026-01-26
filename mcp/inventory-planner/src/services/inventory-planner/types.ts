@@ -450,3 +450,29 @@ export interface UpdateVariantPayload {
   /** Active status */
   active?: boolean;
 }
+
+// ============================================================================
+// Warehouse Types
+// ============================================================================
+
+/**
+ * Warehouse/location from /api/v1/warehouses endpoint.
+ */
+export interface Warehouse {
+  /** Warehouse ID (e.g., "c955_330498075") */
+  name: string;
+  /** Display name (e.g., "Monta") */
+  display_name: string;
+  /** Warehouse type */
+  type?: string;
+  /** Whether warehouse is disabled */
+  disabled?: boolean;
+  /** Connection name (e.g., Shopify store) */
+  connection?: string;
+  /** Currency code */
+  currency?: string;
+  /** Created timestamp */
+  created_at?: string;
+  /** Updated timestamp */
+  updated_at?: string;
+}

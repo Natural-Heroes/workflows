@@ -277,13 +277,13 @@ describe('Mutation Tools', () => {
         const variant = data.variant as Record<string, unknown>;
         expect(variant.leadTime).toBe(21);
 
-        // Verify the PATCH request was made with correct body
+        // Verify the PATCH request was made with correct body (wrapped in variant key)
         const fetchCall = fetchMocker.mock.calls[0];
         expect(fetchCall[0]).toContain('/variants/v1');
         const requestInit = fetchCall[1] as RequestInit;
         expect(requestInit.method).toBe('PATCH');
         const body = JSON.parse(requestInit.body as string);
-        expect(body.lead_time).toBe(21);
+        expect(body.variant.lead_time).toBe(21);
       });
 
       it('can update review_period', async () => {
@@ -312,7 +312,7 @@ describe('Mutation Tools', () => {
         const fetchCall = fetchMocker.mock.calls[0];
         const requestInit = fetchCall[1] as RequestInit;
         const body = JSON.parse(requestInit.body as string);
-        expect(body.review_period).toBe(45);
+        expect(body.variant.review_period).toBe(45);
       });
 
       it('can update safety_stock', async () => {
@@ -341,7 +341,7 @@ describe('Mutation Tools', () => {
         const fetchCall = fetchMocker.mock.calls[0];
         const requestInit = fetchCall[1] as RequestInit;
         const body = JSON.parse(requestInit.body as string);
-        expect(body.safety_stock).toBe(75);
+        expect(body.variant.safety_stock).toBe(75);
       });
 
       it('can update reorder_point', async () => {
@@ -370,7 +370,7 @@ describe('Mutation Tools', () => {
         const fetchCall = fetchMocker.mock.calls[0];
         const requestInit = fetchCall[1] as RequestInit;
         const body = JSON.parse(requestInit.body as string);
-        expect(body.reorder_point).toBe(150);
+        expect(body.variant.reorder_point).toBe(150);
       });
 
       it('can update active status', async () => {
@@ -399,7 +399,7 @@ describe('Mutation Tools', () => {
         const fetchCall = fetchMocker.mock.calls[0];
         const requestInit = fetchCall[1] as RequestInit;
         const body = JSON.parse(requestInit.body as string);
-        expect(body.active).toBe(false);
+        expect(body.variant.active).toBe(false);
       });
 
       it('can update multiple fields at once', async () => {
@@ -441,15 +441,15 @@ describe('Mutation Tools', () => {
         expect(variant.reorderPoint).toBe(40);
         expect(variant.active).toBe(true);
 
-        // Verify all fields sent in PATCH body
+        // Verify all fields sent in PATCH body (wrapped in variant key)
         const fetchCall = fetchMocker.mock.calls[0];
         const requestInit = fetchCall[1] as RequestInit;
         const body = JSON.parse(requestInit.body as string);
-        expect(body.lead_time).toBe(10);
-        expect(body.review_period).toBe(20);
-        expect(body.safety_stock).toBe(30);
-        expect(body.reorder_point).toBe(40);
-        expect(body.active).toBe(true);
+        expect(body.variant.lead_time).toBe(10);
+        expect(body.variant.review_period).toBe(20);
+        expect(body.variant.safety_stock).toBe(30);
+        expect(body.variant.reorder_point).toBe(40);
+        expect(body.variant.active).toBe(true);
       });
     });
 

@@ -2,8 +2,8 @@
  * MCP Tools: Reference Data
  *
  * Provides tools for accessing reference data (warehouses, vendors).
- * Since Inventory Planner API doesn't expose dedicated endpoints for
- * these resources, we extract unique values from variant responses.
+ * Warehouses come from dedicated /api/v1/warehouses endpoint.
+ * Vendors are extracted from variant responses.
  */
 
 import { z } from 'zod';
@@ -25,50 +25,40 @@ export function registerReferenceTools(
   // list_warehouses - Get available warehouses
   server.tool(
     'list_warehouses',
-    'Get available warehouses/locations. Use this to understand filtering options for variants and purchase orders. Warehouses are extracted from variant data.',
+    'Get available warehouses/locations. Use this to understand filtering options for variants and purchase orders.',
     {
-      limit: z
-        .number()
-        .int()
-        .min(1)
-        .max(100)
-        .default(50)
-        .describe('Maximum warehouses to return'),
+      include_disabled: z
+        .boolean()
+        .default(false)
+        .describe('Include disabled warehouses'),
     },
     async (params) => {
       logger.debug('list_warehouses tool called', { params });
 
       try {
-        // Fetch variants with warehouse fields only
-        // Using high limit to get representative sample
-        const response = await client.getVariants({
-          fields: 'warehouse_id,warehouse_name',
-          limit: 1000,
-        });
+        const response = await client.getWarehouses();
 
-        // Extract unique warehouses
-        const warehouseMap = new Map<string, string>();
-        for (const v of response.data) {
-          if (v.warehouse_id && v.warehouse_name) {
-            warehouseMap.set(v.warehouse_id, v.warehouse_name);
-          }
-        }
+        // Filter and map warehouses
+        const warehouses = response.data
+          .filter((w) => params.include_disabled || !w.disabled)
+          .map((w) => ({
+            id: w.name,
+            name: w.display_name,
+            type: w.type,
+            disabled: w.disabled,
+            connection: w.connection,
+          }));
 
-        const warehouses = Array.from(warehouseMap.entries())
-          .slice(0, params.limit)
-          .map(([id, name]) => ({ id, name }));
+        const activeCount = warehouses.filter((w) => !w.disabled).length;
+        const disabledCount = warehouses.filter((w) => w.disabled).length;
 
         return {
           content: [
             {
               type: 'text',
               text: JSON.stringify({
-                summary: `${warehouses.length} warehouse(s) found.`,
+                summary: `${warehouses.length} warehouse(s) found. ${activeCount} active, ${disabledCount} disabled.`,
                 warehouses,
-                note:
-                  warehouses.length >= params.limit
-                    ? 'Results limited. Increase limit parameter to see more.'
-                    : 'All available warehouses shown.',
               }),
             },
           ],

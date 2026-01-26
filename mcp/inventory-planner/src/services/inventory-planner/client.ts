@@ -32,6 +32,7 @@ import type {
   UpdateVariantPayload,
   PaginationMeta,
   InventoryPlannerError,
+  Warehouse,
 } from './types.js';
 
 /**
@@ -433,6 +434,28 @@ export class InventoryPlannerClient {
   }
 
   // ===========================================================================
+  // Warehouses (Reference Data)
+  // ===========================================================================
+
+  /**
+   * Get warehouses/locations.
+   *
+   * @returns Paginated list of warehouses
+   */
+  async getWarehouses(): Promise<PaginatedResponse<Warehouse>> {
+    const response = await this.request<{
+      result?: { status: string; message?: string };
+      meta?: PaginationMeta;
+      warehouses?: Warehouse[];
+    }>('/api/v1/warehouses');
+
+    return {
+      data: response.warehouses ?? [],
+      meta: response.meta,
+    };
+  }
+
+  // ===========================================================================
   // Purchase Orders (Core Read Operations)
   // ===========================================================================
 
@@ -559,6 +582,8 @@ export class InventoryPlannerClient {
   /**
    * Update a variant's planning parameters.
    *
+   * API requires payload wrapped in "variant" key: { variant: { lead_time: 21 } }
+   *
    * @param id - Variant ID
    * @param payload - Fields to update
    * @returns Updated variant
@@ -567,7 +592,7 @@ export class InventoryPlannerClient {
     const response = await this.request<{
       result?: { status: string; message?: string };
       variant?: Variant;
-    }>(`/api/v1/variants/${id}`, undefined, 'PATCH', payload);
+    }>(`/api/v1/variants/${id}`, undefined, 'PATCH', { variant: payload });
 
     if (!response.variant) {
       throw new InventoryPlannerApiError('Failed to update variant', 500);
