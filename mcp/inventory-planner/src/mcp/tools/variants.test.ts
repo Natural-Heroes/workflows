@@ -220,9 +220,9 @@ describe('Variant Tools', () => {
       expect(variants).toHaveLength(1);
       expect(variants[0].sku).toBe('SPECIFIC-SKU');
 
-      // Verify the API was called with the SKU parameter
+      // Verify the API was called with the case-insensitive SKU parameter
       const fetchCall = fetchMocker.mock.calls[0];
-      expect(fetchCall[0]).toContain('sku=SPECIFIC-SKU');
+      expect(fetchCall[0]).toContain('sku_eqi=SPECIFIC-SKU');
     });
 
     it('filters by warehouse_id parameter', async () => {
