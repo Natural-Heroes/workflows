@@ -190,6 +190,32 @@ export interface Variant {
   updated_at?: string;
   /** Created timestamp (RFC822) */
   created_at?: string;
+
+  // Stockout history and analysis (from API)
+  /**
+   * Total days out of stock historically
+   * (API field: oos - but this represents total OOS days, not just forecast)
+   */
+  oos_days_total?: number;
+  /** Days out of stock in the last 60 days */
+  oos_last_60_days?: number;
+  /** Whether continuing to sell when OOS */
+  oos_sell?: boolean;
+  /** Mean OOS duration (days) */
+  cur_mean_oos?: number;
+  /**
+   * Stockout history - array of [date, status] pairs
+   * where status: 1 = stockout started, 0 = back in stock
+   */
+  stockouts_hist?: [string, number][];
+  /** Stock level history - array of [date, quantity] pairs */
+  stock_hist?: [string, number][];
+  /** Forecasted stockouts during days of stock period */
+  forecasted_stockouts_dos?: number;
+  /** Forecasted lost sales during lead time (units) */
+  forecasted_lost_sales_lead_time?: number;
+  /** Forecasted lost revenue during lead time */
+  forecasted_lost_revenue_lead_time?: number;
 }
 
 /**

@@ -157,7 +157,7 @@ export function registerVariantTools(
   // get_variant - Get single variant by ID
   server.tool(
     'get_variant',
-    'Get detailed information for a single variant by ID. Returns full metrics including stock levels, replenishment data, forecasts, vendor information, and planning parameters.',
+    'Get detailed information for a single variant by ID. Returns full metrics including stock levels, replenishment data, forecasts, vendor information, planning parameters, and stockout history.',
     {
       id: z.string().describe('Variant ID'),
     },
@@ -166,6 +166,52 @@ export function registerVariantTools(
 
       try {
         const variant = await client.getVariant(params.id);
+
+        // Parse stockout history into human-readable events
+        const stockoutEvents: {
+          startDate: string;
+          endDate: string | null;
+          durationDays: number | null;
+        }[] = [];
+
+        if (variant.stockouts_hist && Array.isArray(variant.stockouts_hist)) {
+          let currentStockoutStart: string | null = null;
+
+          for (const [date, status] of variant.stockouts_hist) {
+            if (status === 1) {
+              // Stockout started
+              currentStockoutStart = date;
+            } else if (status === 0 && currentStockoutStart) {
+              // Stockout ended - calculate duration
+              const startDate = new Date(currentStockoutStart);
+              const endDate = new Date(date);
+              const durationMs = endDate.getTime() - startDate.getTime();
+              const durationDays = Math.round(durationMs / (1000 * 60 * 60 * 24));
+
+              stockoutEvents.push({
+                startDate: currentStockoutStart.split('T')[0],
+                endDate: date.split('T')[0],
+                durationDays,
+              });
+              currentStockoutStart = null;
+            }
+          }
+
+          // If still in stockout (no end date yet)
+          if (currentStockoutStart) {
+            stockoutEvents.push({
+              startDate: currentStockoutStart.split('T')[0],
+              endDate: null,
+              durationDays: null,
+            });
+          }
+        }
+
+        // Calculate stockout summary
+        const totalStockoutDays = stockoutEvents
+          .filter((e) => e.durationDays !== null)
+          .reduce((sum, e) => sum + (e.durationDays ?? 0), 0);
+        const currentlyOOS = stockoutEvents.some((e) => e.endDate === null);
 
         const result = {
           id: variant.id,
@@ -212,6 +258,20 @@ export function registerVariantTools(
             inventoryValue: variant.inventory_value ?? null,
             underValue: variant.under_value ?? null,
             overValue: variant.over_value ?? null,
+          },
+
+          // Stockout history and analysis
+          stockoutHistory: {
+            summary: {
+              totalStockoutEvents: stockoutEvents.length,
+              totalDaysOutOfStock: totalStockoutDays,
+              oosLast60Days: variant.oos_last_60_days ?? null,
+              meanStockoutDuration: variant.cur_mean_oos ?? null,
+              currentlyOutOfStock: currentlyOOS,
+              forecastedLostSales: variant.forecasted_lost_sales_lead_time ?? null,
+              forecastedLostRevenue: variant.forecasted_lost_revenue_lead_time ?? null,
+            },
+            events: stockoutEvents.slice(-10), // Last 10 stockout events
           },
 
           // Vendor
