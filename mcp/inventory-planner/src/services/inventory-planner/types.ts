@@ -191,6 +191,22 @@ export interface Variant {
   /** Created timestamp (RFC822) */
   created_at?: string;
 
+  // Sales lifecycle dates
+  /** Whether product is published/listed for sale */
+  published?: boolean;
+  /** When product was published/listed for sale (timestamp) */
+  published_at_time?: string;
+  /** Date of first customer order (YYYY-MM-DD) */
+  first_order_date?: string;
+  /** Timestamp of first customer order */
+  first_self_order_date?: string;
+  /** Date of most recent order (YYYY-MM-DD) */
+  last_order_date?: string;
+  /** When first stock was received (date or timestamp) */
+  first_received_at_time?: string;
+  /** Quantity of first stock received */
+  first_received_qty?: number;
+
   // Stockout history and analysis (from API)
   /**
    * Total days out of stock historically

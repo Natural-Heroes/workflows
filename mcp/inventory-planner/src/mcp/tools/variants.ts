@@ -274,6 +274,17 @@ export function registerVariantTools(
             events: stockoutEvents.slice(-10), // Last 10 stockout events
           },
 
+          // Sales lifecycle (when product started selling)
+          lifecycle: {
+            createdAt: variant.created_at ?? null,
+            published: variant.published ?? null,
+            publishedAt: variant.published_at_time?.split('T')[0] ?? null,
+            firstOrderDate: variant.first_order_date ?? null,
+            lastOrderDate: variant.last_order_date ?? null,
+            firstStockReceivedAt: variant.first_received_at_time ?? null,
+            firstStockReceivedQty: variant.first_received_qty ?? null,
+          },
+
           // Vendor
           vendor: variant.vendors?.[0] ?? {
             id: variant.vendor_id,
