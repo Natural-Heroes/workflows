@@ -375,6 +375,202 @@ describe('Variant Tools', () => {
       expect(data.summary).toContain('No variants found');
     });
 
+    it('applies exact match filtering by default (filters out prefix matches)', async () => {
+      // API returns prefix matches (50DIYR returns both 50DIYR and 50DIYRK)
+      fetchMocker.mockResponse((req) => {
+        const url = req.url;
+        if (url.includes('sku_eqi=50DIYR')) {
+          return JSON.stringify({
+            result: { status: 'success' },
+            meta: { name: 'variants', total: 2, count: 2, limit: 100 },
+            variants: [
+              { id: 'v1', sku: '50DIYR', title: 'Exact Match', stock_on_hand: 100 },
+              { id: 'v2', sku: '50DIYRK', title: 'Prefix Match', stock_on_hand: 50 },
+            ],
+          });
+        }
+        return JSON.stringify({
+          result: { status: 'success' },
+          meta: { name: 'variants', total: 0, count: 0, limit: 100 },
+          variants: [],
+        });
+      });
+
+      const sessionId = await initializeSession();
+      const { result } = await callTool(sessionId, 'get_variants', {
+        skus: ['50DIYR'],
+        exact_match: true, // default
+      });
+
+      expect(result).toBeDefined();
+      const data = result as Record<string, unknown>;
+      const variants = data.variants as Array<Record<string, unknown>>;
+
+      // Should only return exact match, filtering out prefix match
+      expect(variants).toHaveLength(1);
+      expect(variants[0].sku).toBe('50DIYR');
+    });
+
+    it('allows prefix matches when exact_match is false', async () => {
+      fetchMocker.mockResponse((req) => {
+        const url = req.url;
+        if (url.includes('sku_eqi=50DIYR')) {
+          return JSON.stringify({
+            result: { status: 'success' },
+            meta: { name: 'variants', total: 2, count: 2, limit: 100 },
+            variants: [
+              { id: 'v1', sku: '50DIYR', title: 'Exact Match', stock_on_hand: 100 },
+              { id: 'v2', sku: '50DIYRK', title: 'Prefix Match', stock_on_hand: 50 },
+            ],
+          });
+        }
+        return JSON.stringify({
+          result: { status: 'success' },
+          meta: { name: 'variants', total: 0, count: 0, limit: 100 },
+          variants: [],
+        });
+      });
+
+      const sessionId = await initializeSession();
+      const { result } = await callTool(sessionId, 'get_variants', {
+        skus: ['50DIYR'],
+        exact_match: false,
+      });
+
+      expect(result).toBeDefined();
+      const data = result as Record<string, unknown>;
+      const variants = data.variants as Array<Record<string, unknown>>;
+
+      // Should return both exact and prefix matches
+      expect(variants).toHaveLength(2);
+      const skus = variants.map((v) => v.sku);
+      expect(skus).toContain('50DIYR');
+      expect(skus).toContain('50DIYRK');
+    });
+
+    it('reports failedSkus separately from notFoundSkus', async () => {
+      let callCount = 0;
+      fetchMocker.mockResponse((req) => {
+        callCount++;
+        const url = req.url;
+        if (url.includes('sku_eqi=FOUND-SKU')) {
+          return JSON.stringify({
+            result: { status: 'success' },
+            meta: { name: 'variants', total: 1, count: 1, limit: 100 },
+            variants: [
+              { id: 'v1', sku: 'FOUND-SKU', title: 'Found', stock_on_hand: 100 },
+            ],
+          });
+        } else if (url.includes('sku_eqi=NOT-FOUND')) {
+          return JSON.stringify({
+            result: { status: 'success' },
+            meta: { name: 'variants', total: 0, count: 0, limit: 100 },
+            variants: [],
+          });
+        } else if (url.includes('sku_eqi=FAILED-SKU')) {
+          // Simulate network error
+          return {
+            status: 500,
+            body: JSON.stringify({ message: 'Internal Server Error' }),
+          };
+        }
+        return JSON.stringify({
+          result: { status: 'success' },
+          meta: { name: 'variants', total: 0, count: 0, limit: 100 },
+          variants: [],
+        });
+      });
+
+      const sessionId = await initializeSession();
+      const { result } = await callTool(sessionId, 'get_variants', {
+        skus: ['FOUND-SKU', 'NOT-FOUND', 'FAILED-SKU'],
+      });
+
+      expect(result).toBeDefined();
+      const data = result as Record<string, unknown>;
+
+      // Should have the found variant
+      const variants = data.variants as Array<Record<string, unknown>>;
+      expect(variants).toHaveLength(1);
+      expect(variants[0].sku).toBe('FOUND-SKU');
+
+      // Should separate not found from failed
+      expect(data.notFoundSkus).toBeDefined();
+      expect(data.notFoundSkus).toContain('NOT-FOUND');
+      expect(data.failedSkus).toBeDefined();
+      expect(data.failedSkus).toContain('FAILED-SKU');
+    });
+
+    it('handles empty skus array gracefully', async () => {
+      fetchMocker.mockResponseOnce(
+        JSON.stringify({
+          result: { status: 'success' },
+          meta: { name: 'variants', total: 100, count: 10, limit: 10 },
+          variants: Array(10)
+            .fill(null)
+            .map((_, i) => ({ id: `v${i}`, sku: `SKU-${i}`, stock_on_hand: i * 10 })),
+        })
+      );
+
+      const sessionId = await initializeSession();
+      const { result } = await callTool(sessionId, 'get_variants', {
+        skus: [], // Empty array
+        limit: 10,
+      });
+
+      expect(result).toBeDefined();
+      const data = result as Record<string, unknown>;
+      const variants = data.variants as Array<Record<string, unknown>>;
+
+      // Empty skus array should behave like no SKU filter (fetch all)
+      expect(variants).toHaveLength(10);
+    });
+
+    it('handles large SKU arrays with concurrency limiting', async () => {
+      const largeSKUArray = Array(20)
+        .fill(null)
+        .map((_, i) => `SKU-${i.toString().padStart(3, '0')}`);
+
+      let maxConcurrent = 0;
+      let currentConcurrent = 0;
+
+      fetchMocker.mockResponse(async (req) => {
+        currentConcurrent++;
+        maxConcurrent = Math.max(maxConcurrent, currentConcurrent);
+
+        // Simulate some async work
+        await new Promise((resolve) => setTimeout(resolve, 10));
+
+        currentConcurrent--;
+
+        const url = req.url;
+        const match = url.match(/sku_eqi=([^&]+)/);
+        const sku = match ? decodeURIComponent(match[1]) : 'UNKNOWN';
+
+        return JSON.stringify({
+          result: { status: 'success' },
+          meta: { name: 'variants', total: 1, count: 1, limit: 100 },
+          variants: [{ id: `v-${sku}`, sku, stock_on_hand: 100 }],
+        });
+      });
+
+      const sessionId = await initializeSession();
+      const { result } = await callTool(sessionId, 'get_variants', {
+        skus: largeSKUArray,
+      });
+
+      expect(result).toBeDefined();
+      const data = result as Record<string, unknown>;
+      const variants = data.variants as Array<Record<string, unknown>>;
+
+      // Should have all 20 variants
+      expect(variants).toHaveLength(20);
+
+      // Concurrency should be limited (default is 5)
+      // Due to test timing, we allow some variance but it should not exceed limit significantly
+      expect(maxConcurrent).toBeLessThanOrEqual(10); // Allow some buffer for timing
+    });
+
     it('filters by warehouse_id parameter', async () => {
       fetchMocker.mockResponseOnce(
         JSON.stringify({

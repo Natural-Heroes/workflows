@@ -15,6 +15,40 @@ import type { Variant } from '../../services/inventory-planner/types.js';
 import { logger } from '../../lib/logger.js';
 import { handleToolError } from './error-handler.js';
 
+/** Default concurrency limit for parallel SKU fetches */
+const DEFAULT_CONCURRENCY = 5;
+
+/**
+ * Executes async tasks with limited concurrency.
+ * Prevents overwhelming the API when fetching many SKUs.
+ *
+ * @param tasks - Array of async task functions
+ * @param concurrency - Max concurrent tasks (default: 5)
+ * @returns Array of results in same order as input tasks
+ */
+async function executeWithConcurrency<T>(
+  tasks: (() => Promise<T>)[],
+  concurrency: number = DEFAULT_CONCURRENCY
+): Promise<T[]> {
+  const results: T[] = new Array(tasks.length);
+  let currentIndex = 0;
+
+  async function runNext(): Promise<void> {
+    while (currentIndex < tasks.length) {
+      const index = currentIndex++;
+      results[index] = await tasks[index]();
+    }
+  }
+
+  // Start up to 'concurrency' workers
+  const workers = Array(Math.min(concurrency, tasks.length))
+    .fill(null)
+    .map(() => runNext());
+
+  await Promise.all(workers);
+  return results;
+}
+
 /**
  * Registers variant-related MCP tools with the server.
  *
@@ -38,6 +72,10 @@ export function registerVariantTools(
         .array(z.string())
         .optional()
         .describe('Filter by multiple SKUs (case-insensitive). Makes parallel API calls and aggregates results.'),
+      exact_match: z
+        .boolean()
+        .default(true)
+        .describe('If true (default), only return variants with exact SKU match. If false, allows prefix/partial matches from API.'),
       warehouse_id: z
         .string()
         .optional()
@@ -98,38 +136,59 @@ export function registerVariantTools(
         let variants: Variant[] = [];
         let totalCount = 0;
         const notFoundSkus: string[] = [];
+        const failedSkus: string[] = [];
 
         if (skusToFetch.length > 1) {
-          // Multi-SKU mode: fetch in parallel, aggregate results
-          logger.debug('Fetching multiple SKUs in parallel', { count: skusToFetch.length });
+          // Multi-SKU mode: fetch with concurrency limiting, aggregate results
+          logger.debug('Fetching multiple SKUs with concurrency limit', {
+            count: skusToFetch.length,
+            concurrency: DEFAULT_CONCURRENCY,
+          });
 
-          const results = await Promise.all(
-            skusToFetch.map(async (sku) => {
-              try {
-                const response = await client.getVariants({
-                  ...baseParams,
-                  sku_eqi: sku,
-                  page: 1, // Always fetch first page for each SKU
-                  limit: params.limit,
-                });
-                return { sku, data: response.data, error: null };
-              } catch (error) {
-                logger.debug('Failed to fetch SKU', { sku, error });
-                return { sku, data: [], error };
-              }
-            })
-          );
+          // Create tasks for each SKU fetch
+          const tasks = skusToFetch.map((sku) => async () => {
+            try {
+              const response = await client.getVariants({
+                ...baseParams,
+                sku_eqi: sku,
+                page: 1, // Always fetch first page for each SKU
+                limit: params.limit,
+              });
+              return { sku, data: response.data, error: null as Error | null };
+            } catch (error) {
+              logger.debug('Failed to fetch SKU', { sku, error });
+              return { sku, data: [] as Variant[], error: error as Error };
+            }
+          });
+
+          // Execute with concurrency limiting
+          const results = await executeWithConcurrency(tasks, DEFAULT_CONCURRENCY);
 
           // Aggregate and deduplicate by variant ID
           const seenIds = new Set<string>();
           for (const result of results) {
-            if (result.data.length === 0 && !result.error) {
+            if (result.error) {
+              // API call failed (network error, timeout, etc.)
+              failedSkus.push(result.sku);
+            } else if (result.data.length === 0) {
+              // API succeeded but no results found
               notFoundSkus.push(result.sku);
-            }
-            for (const variant of result.data) {
-              if (!seenIds.has(variant.id)) {
-                seenIds.add(variant.id);
-                variants.push(variant);
+            } else {
+              // Apply exact match filtering if enabled
+              const matchingVariants = params.exact_match
+                ? result.data.filter((v) => v.sku?.toLowerCase() === result.sku.toLowerCase())
+                : result.data;
+
+              if (matchingVariants.length === 0 && result.data.length > 0) {
+                // API returned results but none matched exactly - treat as not found
+                notFoundSkus.push(result.sku);
+              }
+
+              for (const variant of matchingVariants) {
+                if (!seenIds.has(variant.id)) {
+                  seenIds.add(variant.id);
+                  variants.push(variant);
+                }
               }
             }
           }
@@ -141,24 +200,38 @@ export function registerVariantTools(
             ...baseParams,
             sku_eqi: skusToFetch[0], // undefined if no SKU filter
           });
-          variants = response.data;
-          totalCount = response.meta?.total ?? variants.length;
+
+          // Apply exact match filtering for single SKU if enabled
+          if (skusToFetch[0] && params.exact_match) {
+            variants = response.data.filter(
+              (v) => v.sku?.toLowerCase() === skusToFetch[0].toLowerCase()
+            );
+            totalCount = variants.length;
+          } else {
+            variants = response.data;
+            totalCount = response.meta?.total ?? variants.length;
+          }
         }
 
         if (variants.length === 0) {
-          const summaryMsg = notFoundSkus.length > 0
-            ? `No variants found. SKUs not found: ${notFoundSkus.join(', ')}`
-            : 'No variants found matching the criteria.';
+          const summaryParts: string[] = ['No variants found.'];
+          if (notFoundSkus.length > 0) {
+            summaryParts.push(`SKUs not found: ${notFoundSkus.join(', ')}.`);
+          }
+          if (failedSkus.length > 0) {
+            summaryParts.push(`SKUs failed to fetch: ${failedSkus.join(', ')}.`);
+          }
 
           return {
             content: [
               {
                 type: 'text',
                 text: JSON.stringify({
-                  summary: summaryMsg,
+                  summary: summaryParts.join(' '),
                   pagination: { showing: 0, total: 0 },
                   variants: [],
                   ...(notFoundSkus.length > 0 && { notFoundSkus }),
+                  ...(failedSkus.length > 0 && { failedSkus }),
                 }),
               },
             ],
@@ -200,6 +273,9 @@ export function registerVariantTools(
         if (notFoundSkus.length > 0) {
           summaryMsg += ` SKUs not found: ${notFoundSkus.join(', ')}.`;
         }
+        if (failedSkus.length > 0) {
+          summaryMsg += ` SKUs failed: ${failedSkus.join(', ')}.`;
+        }
 
         const result: Record<string, unknown> = {
           summary: summaryMsg,
@@ -214,6 +290,9 @@ export function registerVariantTools(
 
         if (notFoundSkus.length > 0) {
           result.notFoundSkus = notFoundSkus;
+        }
+        if (failedSkus.length > 0) {
+          result.failedSkus = failedSkus;
         }
 
         return {
