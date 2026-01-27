@@ -11,6 +11,7 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { InventoryPlannerClient } from '../../services/inventory-planner/index.js';
+import type { Variant } from '../../services/inventory-planner/types.js';
 import { logger } from '../../lib/logger.js';
 import { handleToolError } from './error-handler.js';
 
@@ -27,12 +28,16 @@ export function registerVariantTools(
   // get_variants - List variants with filtering
   server.tool(
     'get_variants',
-    'Get variants with demand forecasting and replenishment metrics. Filter by SKU, warehouse, vendor, or stock levels. Returns stock on hand, replenishment recommendations, days until stockout, and forecast data.',
+    'Get variants with demand forecasting and replenishment metrics. Filter by SKU (single or multiple), warehouse, vendor, or stock levels. Returns stock on hand, replenishment recommendations, days until stockout, and forecast data.',
     {
       sku: z
         .string()
         .optional()
-        .describe('Filter by SKU (case-insensitive)'),
+        .describe('Filter by single SKU (case-insensitive). Use "skus" for multiple SKUs.'),
+      skus: z
+        .array(z.string())
+        .optional()
+        .describe('Filter by multiple SKUs (case-insensitive). Makes parallel API calls and aggregates results.'),
       warehouse_id: z
         .string()
         .optional()
@@ -71,8 +76,16 @@ export function registerVariantTools(
       logger.debug('get_variants tool called', { params });
 
       try {
-        const response = await client.getVariants({
-          sku_eqi: params.sku, // Use case-insensitive filter for better UX
+        // Determine which SKUs to fetch
+        const skusToFetch: string[] = [];
+        if (params.skus && params.skus.length > 0) {
+          skusToFetch.push(...params.skus);
+        } else if (params.sku) {
+          skusToFetch.push(params.sku);
+        }
+
+        // Build base params (without SKU filter)
+        const baseParams = {
           warehouse_id: params.warehouse_id,
           vendor_id: params.vendor_id,
           stock_on_hand_lt: params.stock_on_hand_lt,
@@ -80,20 +93,72 @@ export function registerVariantTools(
           fields: params.fields,
           page: params.page,
           limit: params.limit,
-        });
+        };
 
-        const variants = response.data;
-        const meta = response.meta;
+        let variants: Variant[] = [];
+        let totalCount = 0;
+        const notFoundSkus: string[] = [];
+
+        if (skusToFetch.length > 1) {
+          // Multi-SKU mode: fetch in parallel, aggregate results
+          logger.debug('Fetching multiple SKUs in parallel', { count: skusToFetch.length });
+
+          const results = await Promise.all(
+            skusToFetch.map(async (sku) => {
+              try {
+                const response = await client.getVariants({
+                  ...baseParams,
+                  sku_eqi: sku,
+                  page: 1, // Always fetch first page for each SKU
+                  limit: params.limit,
+                });
+                return { sku, data: response.data, error: null };
+              } catch (error) {
+                logger.debug('Failed to fetch SKU', { sku, error });
+                return { sku, data: [], error };
+              }
+            })
+          );
+
+          // Aggregate and deduplicate by variant ID
+          const seenIds = new Set<string>();
+          for (const result of results) {
+            if (result.data.length === 0 && !result.error) {
+              notFoundSkus.push(result.sku);
+            }
+            for (const variant of result.data) {
+              if (!seenIds.has(variant.id)) {
+                seenIds.add(variant.id);
+                variants.push(variant);
+              }
+            }
+          }
+
+          totalCount = variants.length;
+        } else {
+          // Single SKU or no SKU filter: use standard pagination
+          const response = await client.getVariants({
+            ...baseParams,
+            sku_eqi: skusToFetch[0], // undefined if no SKU filter
+          });
+          variants = response.data;
+          totalCount = response.meta?.total ?? variants.length;
+        }
 
         if (variants.length === 0) {
+          const summaryMsg = notFoundSkus.length > 0
+            ? `No variants found. SKUs not found: ${notFoundSkus.join(', ')}`
+            : 'No variants found matching the criteria.';
+
           return {
             content: [
               {
                 type: 'text',
                 text: JSON.stringify({
-                  summary: 'No variants found matching the criteria.',
-                  pagination: { showing: 0, total: meta?.total ?? 0 },
+                  summary: summaryMsg,
+                  pagination: { showing: 0, total: 0 },
                   variants: [],
+                  ...(notFoundSkus.length > 0 && { notFoundSkus }),
                 }),
               },
             ],
@@ -129,16 +194,27 @@ export function registerVariantTools(
           };
         });
 
-        const result = {
-          summary: `${variants.length} of ${meta?.total ?? variants.length} variants. ${needsReorder} need reorder, ${lowStock} at risk (<14 days stock). Total value: $${totalValue.toLocaleString()}.`,
+        // Build summary message
+        const isMultiSku = skusToFetch.length > 1;
+        let summaryMsg = `${variants.length}${isMultiSku ? '' : ` of ${totalCount}`} variants. ${needsReorder} need reorder, ${lowStock} at risk (<14 days stock). Total value: $${totalValue.toLocaleString()}.`;
+        if (notFoundSkus.length > 0) {
+          summaryMsg += ` SKUs not found: ${notFoundSkus.join(', ')}.`;
+        }
+
+        const result: Record<string, unknown> = {
+          summary: summaryMsg,
           pagination: {
             showing: variants.length,
-            total: meta?.total ?? variants.length,
-            page: params.page,
-            limit: meta?.limit ?? params.limit,
+            total: totalCount,
+            ...(isMultiSku ? { note: 'Multi-SKU query; pagination applies per-SKU' } : { page: params.page }),
+            limit: params.limit,
           },
           variants: variantItems,
         };
+
+        if (notFoundSkus.length > 0) {
+          result.notFoundSkus = notFoundSkus;
+        }
 
         return {
           content: [
