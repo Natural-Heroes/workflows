@@ -225,6 +225,156 @@ describe('Variant Tools', () => {
       expect(fetchCall[0]).toContain('sku_eqi=SPECIFIC-SKU'); // Case-insensitive filter
     });
 
+    it('fetches multiple SKUs in parallel using skus array', async () => {
+      // Mock responses for each SKU (will be called in parallel)
+      fetchMocker.mockResponse((req) => {
+        const url = req.url;
+        if (url.includes('sku_eqi=SKU-001')) {
+          return JSON.stringify({
+            result: { status: 'success' },
+            meta: { name: 'variants', total: 1, count: 1, limit: 100 },
+            variants: [
+              { id: 'v1', sku: 'SKU-001', title: 'Product 1', stock_on_hand: 100 },
+            ],
+          });
+        } else if (url.includes('sku_eqi=SKU-002')) {
+          return JSON.stringify({
+            result: { status: 'success' },
+            meta: { name: 'variants', total: 1, count: 1, limit: 100 },
+            variants: [
+              { id: 'v2', sku: 'SKU-002', title: 'Product 2', stock_on_hand: 50 },
+            ],
+          });
+        } else if (url.includes('sku_eqi=SKU-003')) {
+          return JSON.stringify({
+            result: { status: 'success' },
+            meta: { name: 'variants', total: 1, count: 1, limit: 100 },
+            variants: [
+              { id: 'v3', sku: 'SKU-003', title: 'Product 3', stock_on_hand: 25 },
+            ],
+          });
+        }
+        return JSON.stringify({
+          result: { status: 'success' },
+          meta: { name: 'variants', total: 0, count: 0, limit: 100 },
+          variants: [],
+        });
+      });
+
+      const sessionId = await initializeSession();
+      const { result } = await callTool(sessionId, 'get_variants', {
+        skus: ['SKU-001', 'SKU-002', 'SKU-003'],
+      });
+
+      expect(result).toBeDefined();
+      const data = result as Record<string, unknown>;
+      const variants = data.variants as Array<Record<string, unknown>>;
+
+      // Should have aggregated all 3 variants
+      expect(variants).toHaveLength(3);
+      const skus = variants.map((v) => v.sku);
+      expect(skus).toContain('SKU-001');
+      expect(skus).toContain('SKU-002');
+      expect(skus).toContain('SKU-003');
+
+      // Summary should reflect multi-SKU mode
+      expect(data.summary).toContain('3 variants');
+
+      // Pagination should note multi-SKU mode
+      const pagination = data.pagination as Record<string, unknown>;
+      expect(pagination.note).toBe('Multi-SKU query; pagination applies per-SKU');
+    });
+
+    it('reports not found SKUs when using skus array', async () => {
+      fetchMocker.mockResponse((req) => {
+        const url = req.url;
+        if (url.includes('sku_eqi=FOUND-SKU')) {
+          return JSON.stringify({
+            result: { status: 'success' },
+            meta: { name: 'variants', total: 1, count: 1, limit: 100 },
+            variants: [
+              { id: 'v1', sku: 'FOUND-SKU', title: 'Found Product', stock_on_hand: 100 },
+            ],
+          });
+        }
+        // NOT-FOUND-SKU returns empty
+        return JSON.stringify({
+          result: { status: 'success' },
+          meta: { name: 'variants', total: 0, count: 0, limit: 100 },
+          variants: [],
+        });
+      });
+
+      const sessionId = await initializeSession();
+      const { result } = await callTool(sessionId, 'get_variants', {
+        skus: ['FOUND-SKU', 'NOT-FOUND-SKU'],
+      });
+
+      expect(result).toBeDefined();
+      const data = result as Record<string, unknown>;
+
+      // Should have the found variant
+      const variants = data.variants as Array<Record<string, unknown>>;
+      expect(variants).toHaveLength(1);
+      expect(variants[0].sku).toBe('FOUND-SKU');
+
+      // Should report not found SKU
+      expect(data.notFoundSkus).toBeDefined();
+      expect(data.notFoundSkus).toContain('NOT-FOUND-SKU');
+
+      // Summary should mention not found SKUs
+      expect(data.summary).toContain('NOT-FOUND-SKU');
+    });
+
+    it('deduplicates variants when same ID returned for multiple SKUs', async () => {
+      // Edge case: same variant returned for different SKU queries
+      fetchMocker.mockResponse(() => {
+        return JSON.stringify({
+          result: { status: 'success' },
+          meta: { name: 'variants', total: 1, count: 1, limit: 100 },
+          variants: [
+            { id: 'same-id', sku: 'SAME-SKU', title: 'Same Product', stock_on_hand: 100 },
+          ],
+        });
+      });
+
+      const sessionId = await initializeSession();
+      const { result } = await callTool(sessionId, 'get_variants', {
+        skus: ['SAME-SKU', 'SAME-SKU-ALIAS'],
+      });
+
+      expect(result).toBeDefined();
+      const data = result as Record<string, unknown>;
+      const variants = data.variants as Array<Record<string, unknown>>;
+
+      // Should deduplicate by ID
+      expect(variants).toHaveLength(1);
+      expect(variants[0].id).toBe('same-id');
+    });
+
+    it('handles all SKUs not found', async () => {
+      fetchMocker.mockResponse(() => {
+        return JSON.stringify({
+          result: { status: 'success' },
+          meta: { name: 'variants', total: 0, count: 0, limit: 100 },
+          variants: [],
+        });
+      });
+
+      const sessionId = await initializeSession();
+      const { result } = await callTool(sessionId, 'get_variants', {
+        skus: ['NONEXISTENT-1', 'NONEXISTENT-2'],
+      });
+
+      expect(result).toBeDefined();
+      const data = result as Record<string, unknown>;
+
+      expect(data.variants).toEqual([]);
+      expect(data.notFoundSkus).toContain('NONEXISTENT-1');
+      expect(data.notFoundSkus).toContain('NONEXISTENT-2');
+      expect(data.summary).toContain('No variants found');
+    });
+
     it('filters by warehouse_id parameter', async () => {
       fetchMocker.mockResponseOnce(
         JSON.stringify({
