@@ -29,6 +29,12 @@ FastMCP.__init__ = _patched_init
 # Now import analytics_mcp which will create its FastMCP with our patched __init__
 from analytics_mcp.coordinator import mcp  # noqa: E402
 
+# Import tool modules to register them with the mcp instance
+# (these use @mcp.tool() decorators that need to execute)
+from analytics_mcp.tools.admin import info  # noqa: E402, F401
+from analytics_mcp.tools.reporting import core  # noqa: E402, F401
+from analytics_mcp.tools.reporting import realtime  # noqa: E402, F401
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", "3001"))
 
