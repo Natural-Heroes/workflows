@@ -1,11 +1,13 @@
 /**
  * Token storage for OAuth tokens
  * 
- * Stores tokens in a JSON file for persistence across restarts.
- * In production, consider using Redis or a database.
+ * Uses a GLOBAL token store - all sessions share the same tokens.
+ * This is suitable for internal/single-user deployments.
+ * For multi-user, implement per-user token storage with proper auth.
  */
 
-import { readFileSync, writeFileSync, existsSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
+import { dirname } from 'path';
 import { logger } from '../lib/logger.js';
 
 export interface OAuthTokens {
@@ -16,57 +18,64 @@ export interface OAuthTokens {
   scope?: string;
 }
 
-interface TokenStore {
-  [sessionId: string]: OAuthTokens;
-}
-
 let tokenStorePath = '/tmp/gtm-tokens.json';
 
 export function setTokenStorePath(path: string): void {
   tokenStorePath = path;
+  // Ensure directory exists
+  const dir = dirname(path);
+  if (!existsSync(dir)) {
+    try {
+      mkdirSync(dir, { recursive: true });
+    } catch (e) {
+      logger.warn('Could not create token storage directory', { dir, error: String(e) });
+    }
+  }
 }
 
-function loadStore(): TokenStore {
+function loadTokens(): OAuthTokens | null {
   try {
     if (existsSync(tokenStorePath)) {
       const data = readFileSync(tokenStorePath, 'utf-8');
       return JSON.parse(data);
     }
   } catch (error) {
-    logger.warn('Failed to load token store', { error: String(error) });
+    logger.warn('Failed to load tokens', { error: String(error) });
   }
-  return {};
+  return null;
 }
 
-function saveStore(store: TokenStore): void {
+function saveTokens(tokens: OAuthTokens): void {
   try {
-    writeFileSync(tokenStorePath, JSON.stringify(store, null, 2));
+    writeFileSync(tokenStorePath, JSON.stringify(tokens, null, 2));
+    logger.info('Tokens saved successfully');
   } catch (error) {
-    logger.error('Failed to save token store', { error: String(error) });
+    logger.error('Failed to save tokens', { error: String(error) });
   }
 }
 
-export function getTokens(sessionId: string): OAuthTokens | null {
-  const store = loadStore();
-  return store[sessionId] || null;
+// Global token storage - ignores sessionId for single-user mode
+export function getTokens(_sessionId?: string): OAuthTokens | null {
+  return loadTokens();
 }
 
-export function setTokens(sessionId: string, tokens: OAuthTokens): void {
-  const store = loadStore();
-  store[sessionId] = tokens;
-  saveStore(store);
-  logger.debug('Tokens saved for session', { sessionId });
+export function setTokens(_sessionId: string, tokens: OAuthTokens): void {
+  saveTokens(tokens);
 }
 
-export function deleteTokens(sessionId: string): void {
-  const store = loadStore();
-  delete store[sessionId];
-  saveStore(store);
-  logger.debug('Tokens deleted for session', { sessionId });
+export function deleteTokens(_sessionId?: string): void {
+  try {
+    if (existsSync(tokenStorePath)) {
+      writeFileSync(tokenStorePath, '{}');
+    }
+    logger.info('Tokens deleted');
+  } catch (error) {
+    logger.error('Failed to delete tokens', { error: String(error) });
+  }
 }
 
-export function hasValidTokens(sessionId: string): boolean {
-  const tokens = getTokens(sessionId);
+export function hasValidTokens(_sessionId?: string): boolean {
+  const tokens = loadTokens();
   if (!tokens) return false;
   
   // Check if token is expired (with 5 minute buffer)

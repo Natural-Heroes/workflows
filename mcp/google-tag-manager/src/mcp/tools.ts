@@ -2,37 +2,25 @@
  * GTM MCP Tools Registration
  * 
  * Registers tools for interacting with Google Tag Manager API.
- * Each tool requires a valid OAuth session.
+ * Uses global token storage (single-user mode).
  */
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { logger } from '../lib/logger.js';
 import { getTagManagerClient, getTokens, hasValidTokens, refreshAccessToken } from '../oauth/index.js';
-import type { OAuthTokens } from '../oauth/index.js';
 
-// Session ID is passed via request context
-let currentSessionId: string | null = null;
-
-export function setCurrentSession(sessionId: string | null) {
-  currentSessionId = sessionId;
-}
-
-async function getClientForSession(): Promise<ReturnType<typeof getTagManagerClient>> {
-  if (!currentSessionId) {
-    throw new Error('No active session. Please authenticate first by visiting /auth');
-  }
-
-  let tokens = getTokens(currentSessionId);
+async function getClient(): Promise<ReturnType<typeof getTagManagerClient>> {
+  let tokens = getTokens();
   
   if (!tokens) {
-    throw new Error('No tokens found for session. Please authenticate first by visiting /auth');
+    throw new Error('No tokens found. Please authenticate first by visiting /auth in your browser.');
   }
 
   // Check if token needs refresh
-  if (!hasValidTokens(currentSessionId)) {
-    logger.info('Token expired, attempting refresh', { sessionId: currentSessionId });
-    const refreshedTokens = await refreshAccessToken(currentSessionId);
+  if (!hasValidTokens()) {
+    logger.info('Token expired, attempting refresh');
+    const refreshedTokens = await refreshAccessToken('global');
     if (!refreshedTokens) {
       throw new Error('Token expired and refresh failed. Please re-authenticate by visiting /auth');
     }
@@ -59,7 +47,7 @@ export function registerTools(server: McpServer) {
     {},
     async () => {
       try {
-        const client = await getClientForSession();
+        const client = await getClient();
         const response = await client.accounts.list();
         return {
           content: [{ type: 'text', text: JSON.stringify(response.data, null, 2) }],
@@ -78,7 +66,7 @@ export function registerTools(server: McpServer) {
     },
     async ({ accountId }) => {
       try {
-        const client = await getClientForSession();
+        const client = await getClient();
         const response = await client.accounts.get({
           path: 'accounts/' + accountId,
         });
@@ -100,7 +88,7 @@ export function registerTools(server: McpServer) {
     },
     async ({ accountId }) => {
       try {
-        const client = await getClientForSession();
+        const client = await getClient();
         const response = await client.accounts.containers.list({
           parent: 'accounts/' + accountId,
         });
@@ -122,7 +110,7 @@ export function registerTools(server: McpServer) {
     },
     async ({ accountId, containerId }) => {
       try {
-        const client = await getClientForSession();
+        const client = await getClient();
         const response = await client.accounts.containers.get({
           path: 'accounts/' + accountId + '/containers/' + containerId,
         });
@@ -145,7 +133,7 @@ export function registerTools(server: McpServer) {
     },
     async ({ accountId, containerId }) => {
       try {
-        const client = await getClientForSession();
+        const client = await getClient();
         const response = await client.accounts.containers.workspaces.list({
           parent: 'accounts/' + accountId + '/containers/' + containerId,
         });
@@ -169,7 +157,7 @@ export function registerTools(server: McpServer) {
     },
     async ({ accountId, containerId, workspaceId }) => {
       try {
-        const client = await getClientForSession();
+        const client = await getClient();
         const response = await client.accounts.containers.workspaces.tags.list({
           parent: 'accounts/' + accountId + '/containers/' + containerId + '/workspaces/' + workspaceId,
         });
@@ -193,7 +181,7 @@ export function registerTools(server: McpServer) {
     },
     async ({ accountId, containerId, workspaceId, tagId }) => {
       try {
-        const client = await getClientForSession();
+        const client = await getClient();
         const response = await client.accounts.containers.workspaces.tags.get({
           path: 'accounts/' + accountId + '/containers/' + containerId + '/workspaces/' + workspaceId + '/tags/' + tagId,
         });
@@ -224,7 +212,7 @@ export function registerTools(server: McpServer) {
     },
     async ({ accountId, containerId, workspaceId, name, type, parameter, firingTriggerId }) => {
       try {
-        const client = await getClientForSession();
+        const client = await getClient();
         const response = await client.accounts.containers.workspaces.tags.create({
           parent: 'accounts/' + accountId + '/containers/' + containerId + '/workspaces/' + workspaceId,
           requestBody: {
@@ -254,7 +242,7 @@ export function registerTools(server: McpServer) {
     },
     async ({ accountId, containerId, workspaceId }) => {
       try {
-        const client = await getClientForSession();
+        const client = await getClient();
         const response = await client.accounts.containers.workspaces.triggers.list({
           parent: 'accounts/' + accountId + '/containers/' + containerId + '/workspaces/' + workspaceId,
         });
@@ -278,7 +266,7 @@ export function registerTools(server: McpServer) {
     },
     async ({ accountId, containerId, workspaceId, triggerId }) => {
       try {
-        const client = await getClientForSession();
+        const client = await getClient();
         const response = await client.accounts.containers.workspaces.triggers.get({
           path: 'accounts/' + accountId + '/containers/' + containerId + '/workspaces/' + workspaceId + '/triggers/' + triggerId,
         });
@@ -302,7 +290,7 @@ export function registerTools(server: McpServer) {
     },
     async ({ accountId, containerId, workspaceId }) => {
       try {
-        const client = await getClientForSession();
+        const client = await getClient();
         const response = await client.accounts.containers.workspaces.variables.list({
           parent: 'accounts/' + accountId + '/containers/' + containerId + '/workspaces/' + workspaceId,
         });
@@ -326,7 +314,7 @@ export function registerTools(server: McpServer) {
     },
     async ({ accountId, containerId, workspaceId, variableId }) => {
       try {
-        const client = await getClientForSession();
+        const client = await getClient();
         const response = await client.accounts.containers.workspaces.variables.get({
           path: 'accounts/' + accountId + '/containers/' + containerId + '/workspaces/' + workspaceId + '/variables/' + variableId,
         });
@@ -349,7 +337,7 @@ export function registerTools(server: McpServer) {
     },
     async ({ accountId, containerId }) => {
       try {
-        const client = await getClientForSession();
+        const client = await getClient();
         const response = await client.accounts.containers.version_headers.list({
           parent: 'accounts/' + accountId + '/containers/' + containerId,
         });
@@ -374,7 +362,7 @@ export function registerTools(server: McpServer) {
     },
     async ({ accountId, containerId, workspaceId, versionName, versionNotes }) => {
       try {
-        const client = await getClientForSession();
+        const client = await getClient();
         // First create a version from the workspace
         const createResponse = await client.accounts.containers.workspaces.create_version({
           path: 'accounts/' + accountId + '/containers/' + containerId + '/workspaces/' + workspaceId,

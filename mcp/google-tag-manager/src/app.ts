@@ -2,7 +2,7 @@
  * GTM MCP Application
  * 
  * Express app with:
- * - OAuth 2.0 authentication flow
+ * - OAuth 2.0 authentication flow (global/single-user)
  * - StreamableHTTPServerTransport for MCP communication
  * - Session-based architecture with in-memory session store
  */
@@ -13,7 +13,6 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
 import { logger } from './lib/logger.js';
 import { createMcpServer } from './mcp/index.js';
-import { setCurrentSession } from './mcp/tools.js';
 import { getAuthUrl, exchangeCodeForTokens, setTokens, hasValidTokens } from './oauth/index.js';
 
 const app = express();
@@ -24,8 +23,8 @@ app.use(express.json());
 // Session store: Map<sessionId, transport>
 const transports: Map<string, StreamableHTTPServerTransport> = new Map();
 
-// Pending OAuth states: Map<state, {sessionId, redirectUri}>
-const pendingOAuthStates: Map<string, { sessionId: string; redirectUri: string }> = new Map();
+// Pending OAuth states: Map<state, redirectUri>
+const pendingOAuthStates: Map<string, string> = new Map();
 
 /**
  * Health check endpoint
@@ -35,22 +34,22 @@ app.get('/health', (_req: Request, res: Response) => {
     status: 'healthy',
     version: '0.1.0',
     sessions: transports.size,
+    authenticated: hasValidTokens(),
   });
 });
 
 /**
  * Home page - shows auth status and links
  */
-app.get('/', (req: Request, res: Response) => {
-  const sessionId = req.query.session as string | undefined;
-  const authenticated = sessionId ? hasValidTokens(sessionId) : false;
+app.get('/', (_req: Request, res: Response) => {
+  const authenticated = hasValidTokens();
   
   res.send('<html><head><title>GTM MCP Server</title></head><body>' +
     '<h1>Google Tag Manager MCP Server</h1>' +
     '<p>This server provides MCP access to Google Tag Manager API.</p>' +
     (authenticated 
-      ? '<p style="color: green;">Authenticated! You can now use MCP tools.</p>'
-      : '<p><a href="/auth">Click here to authenticate with Google</a></p>') +
+      ? '<p style="color: green;">&#10004; Authenticated! MCP tools are ready to use.</p>'
+      : '<p style="color: orange;">&#9888; Not authenticated. <a href="/auth">Click here to authenticate with Google</a></p>') +
     '<h2>Endpoints</h2>' +
     '<ul>' +
     '<li><code>/mcp</code> - MCP endpoint (POST/GET/DELETE)</li>' +
@@ -65,18 +64,17 @@ app.get('/', (req: Request, res: Response) => {
  * OAuth: Start authentication flow
  */
 app.get('/auth', (req: Request, res: Response) => {
-  const sessionId = req.query.session as string || randomUUID();
   const redirectUri = req.query.redirect as string || '/';
   
   // Generate a state parameter for security
   const state = randomUUID();
-  pendingOAuthStates.set(state, { sessionId, redirectUri });
+  pendingOAuthStates.set(state, redirectUri);
   
   // Clean up old states after 10 minutes
   setTimeout(() => pendingOAuthStates.delete(state), 10 * 60 * 1000);
   
   const authUrl = getAuthUrl(state);
-  logger.info('Starting OAuth flow', { sessionId, state });
+  logger.info('Starting OAuth flow', { state });
   
   res.redirect(authUrl);
 });
@@ -98,8 +96,7 @@ app.get('/callback', async (req: Request, res: Response) => {
     return;
   }
   
-  const pendingState = pendingOAuthStates.get(state);
-  if (!pendingState) {
+  if (!pendingOAuthStates.has(state)) {
     res.status(400).send('<html><body><h1>Invalid State</h1><p>OAuth state expired or invalid</p></body></html>');
     return;
   }
@@ -108,15 +105,14 @@ app.get('/callback', async (req: Request, res: Response) => {
   
   try {
     const tokens = await exchangeCodeForTokens(code);
-    setTokens(pendingState.sessionId, tokens);
+    setTokens('global', tokens);
     
-    logger.info('OAuth completed successfully', { sessionId: pendingState.sessionId });
+    logger.info('OAuth completed successfully');
     
     res.send('<html><head><title>Success</title></head><body>' +
       '<h1>Authentication Successful!</h1>' +
-      '<p>You can now close this window and use the GTM MCP tools.</p>' +
-      '<p>Session ID: <code>' + pendingState.sessionId + '</code></p>' +
-      '<p><a href="/?session=' + pendingState.sessionId + '">Back to home</a></p>' +
+      '<p style="color: green;">&#10004; You can now close this window and use the GTM MCP tools in Claude.</p>' +
+      '<p><a href="/">Back to home</a></p>' +
       '</body></html>');
   } catch (err) {
     logger.error('Failed to exchange code for tokens', { 
@@ -133,9 +129,6 @@ app.post('/mcp', async (req: Request, res: Response) => {
   const sessionId = req.headers['mcp-session-id'] as string | undefined;
 
   logger.debug('Received MCP POST request', { sessionId: sessionId || 'none' });
-
-  // Set the current session for tools to use
-  setCurrentSession(sessionId || null);
 
   try {
     if (sessionId && transports.has(sessionId)) {
@@ -193,8 +186,6 @@ app.post('/mcp', async (req: Request, res: Response) => {
       error: { code: -32603, message: 'Internal server error' },
       id: null,
     });
-  } finally {
-    setCurrentSession(null);
   }
 });
 
@@ -214,7 +205,6 @@ app.get('/mcp', async (req: Request, res: Response) => {
     return;
   }
 
-  setCurrentSession(sessionId);
   logger.debug('SSE connection established', { sessionId });
   const transport = transports.get(sessionId)!;
   await transport.handleRequest(req, res);
