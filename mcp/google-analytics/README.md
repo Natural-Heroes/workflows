@@ -13,7 +13,7 @@ All tools from the official Google Analytics MCP package:
 
 This server is deployed on Dokploy at:
 ```
-https://mcp-google-analytics.naturalheroes.nl
+https://mcp-ga.naturalheroes.nl
 ```
 
 ## Environment Variables
@@ -57,11 +57,11 @@ docker run -p 3001:3001 \
 
 Add as a remote MCP server in Claude settings:
 ```
-URL: https://mcp-google-analytics.naturalheroes.nl/mcp
+URL: https://mcp-ga.naturalheroes.nl/mcp
 ```
 
 ## Health Check
 
 ```bash
-curl https://mcp-google-analytics.naturalheroes.nl/health
+curl https://mcp-ga.naturalheroes.nl/health
 ```
