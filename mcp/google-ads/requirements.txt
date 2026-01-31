@@ -1,0 +1,3 @@
+# Google Ads MCP from google-marketing-solutions
+# Using git+https since PyPI version (0.0.1 from googleads repo) is outdated
+google-ads-mcp @ git+https://github.com/google-marketing-solutions/google_ads_mcp.git@v0.6.1
