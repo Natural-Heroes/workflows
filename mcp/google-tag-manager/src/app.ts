@@ -17,7 +17,7 @@ import { requireBearerAuth } from '@modelcontextprotocol/sdk/server/auth/middlew
 import { logger } from './lib/logger.js';
 import { getEnv } from './lib/env.js';
 import { createMcpServer } from './mcp/index.js';
-import { setTokens, hasValidTokens } from './oauth/index.js';
+import { setTokens, hasValidTokens, exchangeCodeForTokens } from './oauth/index.js';
 
 const app = express();
 const env = getEnv();
@@ -243,6 +243,70 @@ app.get('/auth', (_req: Request, res: Response) => {
       '<p>MCP Server URL: <code>' + baseUrl.toString() + 'mcp</code></p>' +
       '</body></html>'
   );
+});
+
+/**
+ * OAuth callback endpoint - handles Google's redirect after authorization
+ * This is used for direct browser testing and legacy OAuth flows.
+ */
+app.get('/callback', async (req: Request, res: Response) => {
+  const code = req.query.code as string | undefined;
+  const error = req.query.error as string | undefined;
+
+  if (error) {
+    logger.error('OAuth callback received error', { error });
+    res.status(400).send(
+      '<html><head><title>Authentication Error</title></head><body>' +
+        '<h1>Authentication Failed</h1>' +
+        '<p>Error: ' + error + '</p>' +
+        '<p><a href="/">Return to home</a></p>' +
+        '</body></html>'
+    );
+    return;
+  }
+
+  if (!code) {
+    logger.warn('OAuth callback missing authorization code');
+    res.status(400).send(
+      '<html><head><title>Missing Code</title></head><body>' +
+        '<h1>Missing Authorization Code</h1>' +
+        '<p>No authorization code was provided.</p>' +
+        '<p><a href="/">Return to home</a></p>' +
+        '</body></html>'
+    );
+    return;
+  }
+
+  try {
+    logger.info('Exchanging authorization code for tokens');
+    const tokens = await exchangeCodeForTokens(code);
+
+    // Store tokens globally for MCP tools to use
+    setTokens('global', tokens);
+
+    logger.info('Successfully authenticated via OAuth callback');
+
+    res.send(
+      '<html><head><title>Authentication Successful</title></head><body>' +
+        '<h1>Authentication Successful!</h1>' +
+        '<p style="color: green;">&#10004; You are now authenticated with Google Tag Manager.</p>' +
+        '<p>You can close this window and use the MCP tools.</p>' +
+        '<p><a href="/">Return to home</a></p>' +
+        '</body></html>'
+    );
+  } catch (err) {
+    logger.error('Failed to exchange authorization code', {
+      error: err instanceof Error ? err.message : String(err),
+    });
+    res.status(500).send(
+      '<html><head><title>Authentication Error</title></head><body>' +
+        '<h1>Authentication Failed</h1>' +
+        '<p>Failed to exchange authorization code for tokens.</p>' +
+        '<p>Error: ' + (err instanceof Error ? err.message : String(err)) + '</p>' +
+        '<p><a href="/">Return to home</a></p>' +
+        '</body></html>'
+    );
+  }
 });
 
 /**
