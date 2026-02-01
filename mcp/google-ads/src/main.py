@@ -8,14 +8,15 @@ import os
 os.environ.setdefault("PORT", "3001")
 
 # Patch FastMCP to disable DNS rebinding protection BEFORE importing ads_mcp
-from mcp.server.fastmcp import FastMCP
-from mcp.server.transport_security import TransportSecuritySettings
+# Note: google_ads_mcp uses fastmcp package, not mcp.server.fastmcp
+from fastmcp import FastMCP
+from fastmcp.server.settings import TransportSecurity
 
 _original_init = FastMCP.__init__
 
 def _patched_init(self, name="FastMCP", **kwargs):
     if "transport_security" not in kwargs:
-        kwargs["transport_security"] = TransportSecuritySettings(
+        kwargs["transport_security"] = TransportSecurity(
             enable_dns_rebinding_protection=False,
         )
     _original_init(self, name, **kwargs)
