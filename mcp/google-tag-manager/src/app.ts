@@ -86,26 +86,31 @@ const oauthProvider = new ProxyOAuthServerProvider({
 
   /**
    * Return client configuration for OAuth.
-   * Supports both dynamically registered clients (Claude) and pre-configured clients.
+   *
+   * IMPORTANT: Always return Google OAuth credentials for upstream requests.
+   * The clientId parameter is the MCP client's ID (e.g., from Claude's dynamic registration),
+   * but we need to use our pre-registered Google OAuth credentials when talking to Google.
    */
   async getClient(clientId: string) {
     logger.debug('Getting client configuration', { clientId });
 
-    // Check if this is a dynamically registered client
+    // Check if this is a dynamically registered client (from Claude)
     if (registeredClients.has(clientId)) {
       const client = registeredClients.get(clientId)!;
-      logger.debug('Returning dynamically registered client', { clientId });
+      logger.debug('Found dynamically registered client, using Google credentials for upstream', { clientId });
+
+      // Return Google OAuth credentials for upstream, but keep the registered redirect_uris
+      // so Claude's callback URL is accepted
       return {
-        client_id: client.client_id,
-        client_secret: env.GOOGLE_CLIENT_SECRET, // Use Google credentials for upstream
-        redirect_uris: client.redirect_uris,
+        client_id: env.GOOGLE_CLIENT_ID,           // Use Google client ID for upstream OAuth
+        client_secret: env.GOOGLE_CLIENT_SECRET,   // Use Google client secret for upstream OAuth
+        redirect_uris: client.redirect_uris,       // Use Claude's registered redirect URIs
         grant_types: client.grant_types,
       };
     }
 
-    // Default client configuration for Claude
-    // Allow Claude's callback URLs plus our own callback
-    logger.debug('Returning default client configuration for Claude');
+    // Default client configuration - also uses Google credentials
+    logger.debug('Using default Google client configuration');
     return {
       client_id: env.GOOGLE_CLIENT_ID,
       client_secret: env.GOOGLE_CLIENT_SECRET,
