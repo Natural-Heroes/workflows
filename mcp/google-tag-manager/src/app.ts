@@ -118,6 +118,52 @@ const oauthProvider = new ProxyOAuthServerProvider({
 // Skip local PKCE validation since Google handles it
 oauthProvider.skipLocalPkceValidation = true;
 
+// Override clientsStore to add dynamic client registration support
+// This allows Claude Desktop to register as a client
+const originalGetClient = oauthProvider.clientsStore.getClient.bind(oauthProvider.clientsStore);
+Object.defineProperty(oauthProvider, 'clientsStore', {
+  get() {
+    return {
+      getClient: originalGetClient,
+      registerClient: async (clientInfo: {
+        redirect_uris: string[];
+        grant_types?: string[];
+        client_name?: string;
+        client_uri?: string;
+        logo_uri?: string;
+        scope?: string;
+      }) => {
+        const clientId = `claude-${randomUUID()}`;
+        const clientSecret = randomUUID();
+        const now = Math.floor(Date.now() / 1000);
+
+        const client = {
+          client_id: clientId,
+          client_secret: clientSecret,
+          client_id_issued_at: now,
+          client_secret_expires_at: 0, // Never expires
+          redirect_uris: clientInfo.redirect_uris,
+          grant_types: clientInfo.grant_types || ['authorization_code', 'refresh_token'],
+          client_name: clientInfo.client_name,
+          client_uri: clientInfo.client_uri,
+          logo_uri: clientInfo.logo_uri,
+          scope: clientInfo.scope,
+        };
+
+        registeredClients.set(clientId, {
+          client_id: clientId,
+          client_secret: clientSecret,
+          redirect_uris: clientInfo.redirect_uris,
+          grant_types: clientInfo.grant_types || ['authorization_code', 'refresh_token'],
+        });
+
+        logger.info('Registered new OAuth client', { clientId, clientName: clientInfo.client_name });
+        return client;
+      },
+    };
+  },
+});
+
 const authMiddleware = requireBearerAuth({
   verifier: oauthProvider,
   requiredScopes: GTM_SCOPES,
