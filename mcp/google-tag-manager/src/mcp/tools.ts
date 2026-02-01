@@ -1,6 +1,6 @@
 /**
  * GTM MCP Tools Registration
- * 
+ *
  * Registers tools for interacting with Google Tag Manager API.
  * Uses global token storage (single-user mode).
  */
@@ -8,13 +8,35 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { logger } from '../lib/logger.js';
+import { getEnv } from '../lib/env.js';
 import { getTagManagerClient, getTokens, hasValidTokens, refreshAccessToken } from '../oauth/index.js';
+
+/**
+ * Get the auth URL from the callback URL
+ * e.g., https://mcp-gtm.naturalheroes.nl/callback -> https://mcp-gtm.naturalheroes.nl/auth
+ */
+function getAuthUrl(): string {
+  const callbackUrl = getEnv().GOOGLE_CALLBACK_URL;
+  return callbackUrl.replace('/callback', '/auth');
+}
+
+class AuthenticationRequiredError extends Error {
+  constructor() {
+    const authUrl = getAuthUrl();
+    super(
+      'Authentication required. Please visit this URL in your browser to authenticate:\n\n' +
+      authUrl + '\n\n' +
+      'After authenticating, you can use GTM tools.'
+    );
+    this.name = 'AuthenticationRequiredError';
+  }
+}
 
 async function getClient(): Promise<ReturnType<typeof getTagManagerClient>> {
   let tokens = getTokens();
-  
+
   if (!tokens) {
-    throw new Error('No tokens found. Please authenticate first by visiting /auth in your browser.');
+    throw new AuthenticationRequiredError();
   }
 
   // Check if token needs refresh
@@ -22,7 +44,10 @@ async function getClient(): Promise<ReturnType<typeof getTagManagerClient>> {
     logger.info('Token expired, attempting refresh');
     const refreshedTokens = await refreshAccessToken('global');
     if (!refreshedTokens) {
-      throw new Error('Token expired and refresh failed. Please re-authenticate by visiting /auth');
+      const authUrl = getAuthUrl();
+      throw new Error(
+        'Token expired and refresh failed. Please re-authenticate:\n\n' + authUrl
+      );
     }
     tokens = refreshedTokens;
   }
@@ -40,6 +65,37 @@ function createErrorResponse(error: unknown) {
 }
 
 export function registerTools(server: McpServer) {
+  // Authentication tool - provides auth URL when not authenticated
+  server.tool(
+    'gtm_authenticate',
+    'Get the authentication URL for Google Tag Manager. Use this first if other GTM tools fail with authentication errors.',
+    {},
+    async () => {
+      const tokens = getTokens();
+      const authUrl = getAuthUrl();
+      
+      if (tokens && hasValidTokens()) {
+        return {
+          content: [{
+            type: 'text',
+            text: 'Already authenticated with Google Tag Manager.\n\n' +
+                  'If you need to re-authenticate with a different account, visit:\n' + authUrl
+          }],
+        };
+      }
+      
+      return {
+        content: [{
+          type: 'text',
+          text: 'Authentication required for Google Tag Manager.\n\n' +
+                'Please visit this URL in your browser to authenticate:\n\n' +
+                authUrl + '\n\n' +
+                'After completing authentication, you can use the other GTM tools.'
+        }],
+      };
+    }
+  );
+
   // Account tools
   server.tool(
     'gtm_list_accounts',
@@ -371,16 +427,16 @@ export function registerTools(server: McpServer) {
             notes: versionNotes,
           },
         });
-        
+
         if (!createResponse.data.containerVersion?.containerVersionId) {
           throw new Error('Failed to create version');
         }
-        
+
         // Then publish it
         const publishResponse = await client.accounts.containers.versions.publish({
           path: 'accounts/' + accountId + '/containers/' + containerId + '/versions/' + createResponse.data.containerVersion.containerVersionId,
         });
-        
+
         return {
           content: [{ type: 'text', text: JSON.stringify(publishResponse.data, null, 2) }],
         };
