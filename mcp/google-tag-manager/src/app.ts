@@ -2,7 +2,7 @@
  * GTM MCP Application
  *
  * Express app with:
- * - MCP SDK OAuth 2.0 integration (works with Claude Desktop's Connect button)
+ * - MCP SDK OAuth 2.0 integration (works with Claude's Connect button)
  * - Proxied Google OAuth for GTM API access
  * - StreamableHTTPServerTransport for MCP communication
  */
@@ -16,7 +16,7 @@ import { mcpAuthRouter } from '@modelcontextprotocol/sdk/server/auth/router.js';
 import { logger } from './lib/logger.js';
 import { getEnv } from './lib/env.js';
 import { createMcpServer } from './mcp/index.js';
-import { setTokens, hasValidTokens, getTokens } from './oauth/index.js';
+import { setTokens, hasValidTokens } from './oauth/index.js';
 
 const app = express();
 const env = getEnv();
@@ -37,9 +37,23 @@ const GTM_SCOPES = [
   'https://www.googleapis.com/auth/tagmanager.publish',
 ];
 
+// Claude's OAuth callback URLs (must be allowed for the OAuth flow to work)
+const CLAUDE_CALLBACK_URLS = [
+  'https://claude.ai/api/mcp/auth_callback',
+  'https://claude.com/api/mcp/auth_callback',
+];
+
+// Store for dynamically registered clients
+const registeredClients = new Map<string, {
+  client_id: string;
+  client_secret?: string;
+  redirect_uris: string[];
+  grant_types: string[];
+}>();
+
 /**
  * Set up MCP OAuth with Google as the upstream provider.
- * When Claude Desktop clicks "Connect", this handles the OAuth flow.
+ * When Claude clicks "Connect", this handles the OAuth flow.
  */
 const oauthProvider = new ProxyOAuthServerProvider({
   endpoints: {
@@ -49,15 +63,14 @@ const oauthProvider = new ProxyOAuthServerProvider({
   },
 
   /**
-   * Verify access tokens from Claude Desktop.
+   * Verify access tokens from Claude.
    * Called on each MCP request to validate the token.
-   * We store the token globally for GTM tools to use.
+   * The token is the Google access token from the OAuth flow.
    */
   async verifyAccessToken(token: string) {
     logger.debug('Verifying access token');
 
-    // Store the token globally for GTM tools to use
-    // The token is the Google access token from the OAuth flow
+    // Store the Google access token for GTM tools to use
     setTokens('global', {
       access_token: token,
       token_type: 'Bearer',
@@ -72,21 +85,36 @@ const oauthProvider = new ProxyOAuthServerProvider({
 
   /**
    * Return client configuration for OAuth.
-   * Claude Desktop uses this to know how to authenticate.
+   * Supports both dynamically registered clients (Claude) and pre-configured clients.
    */
   async getClient(clientId: string) {
-    // Accept any client ID for dynamic registration
-    // The actual Google OAuth uses our configured credentials
+    logger.debug('Getting client configuration', { clientId });
+
+    // Check if this is a dynamically registered client
+    if (registeredClients.has(clientId)) {
+      const client = registeredClients.get(clientId)!;
+      logger.debug('Returning dynamically registered client', { clientId });
+      return {
+        client_id: client.client_id,
+        client_secret: env.GOOGLE_CLIENT_SECRET, // Use Google credentials for upstream
+        redirect_uris: client.redirect_uris,
+        grant_types: client.grant_types,
+      };
+    }
+
+    // Default client configuration for Claude
+    // Allow Claude's callback URLs plus our own callback
+    logger.debug('Returning default client configuration for Claude');
     return {
       client_id: env.GOOGLE_CLIENT_ID,
       client_secret: env.GOOGLE_CLIENT_SECRET,
-      redirect_uris: [env.GOOGLE_CALLBACK_URL],
+      redirect_uris: [...CLAUDE_CALLBACK_URLS, env.GOOGLE_CALLBACK_URL],
       grant_types: ['authorization_code', 'refresh_token'],
     };
   },
 });
 
-// Skip PKCE validation since Google handles it
+// Skip local PKCE validation since Google handles it
 oauthProvider.skipLocalPkceValidation = true;
 
 // Mount the MCP OAuth router
@@ -94,7 +122,7 @@ oauthProvider.skipLocalPkceValidation = true;
 app.use(
   mcpAuthRouter({
     provider: oauthProvider,
-    issuerUrl: baseUrl, // We are the issuer (proxying to Google)
+    issuerUrl: baseUrl,
     baseUrl,
     serviceDocumentationUrl: new URL('https://developers.google.com/tag-platform/tag-manager'),
     scopesSupported: GTM_SCOPES,
@@ -125,11 +153,11 @@ app.get('/', (_req: Request, res: Response) => {
       '<p>This server provides MCP access to Google Tag Manager API.</p>' +
       (authenticated
         ? '<p style="color: green;">&#10004; Authenticated! MCP tools are ready to use.</p>'
-        : '<p style="color: orange;">&#9888; Not authenticated. Connect via Claude Desktop to authenticate.</p>') +
+        : '<p style="color: orange;">&#9888; Not authenticated. Connect via Claude to authenticate.</p>') +
       '<h2>Connection</h2>' +
-      '<p>Add this URL to Claude Desktop as a remote MCP server:</p>' +
+      '<p>Add this URL to Claude as a remote MCP server:</p>' +
       '<pre>' + baseUrl.toString() + 'mcp</pre>' +
-      '<p>Click "Connect" in Claude Desktop to authenticate with Google.</p>' +
+      '<p>Click "Connect" in Claude to authenticate with Google.</p>' +
       '<h2>Endpoints</h2>' +
       '<ul>' +
       '<li><code>/mcp</code> - MCP endpoint</li>' +
@@ -141,16 +169,16 @@ app.get('/', (_req: Request, res: Response) => {
 });
 
 /**
- * Legacy /auth endpoint - redirect to OAuth discovery
+ * Legacy /auth endpoint - shows instructions
  */
 app.get('/auth', (_req: Request, res: Response) => {
   res.send(
     '<html><head><title>Authentication</title></head><body>' +
-      '<h1>Authentication via Claude Desktop</h1>' +
+      '<h1>Authentication via Claude</h1>' +
       '<p>This server uses MCP OAuth integration.</p>' +
       '<p>To authenticate:</p>' +
       '<ol>' +
-      '<li>Add this MCP server to Claude Desktop</li>' +
+      '<li>Add this MCP server to Claude (Settings → Connectors)</li>' +
       '<li>Click the "Connect" button</li>' +
       '<li>Complete the Google OAuth flow</li>' +
       '</ol>' +
