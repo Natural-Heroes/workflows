@@ -2,6 +2,7 @@
 
 Wraps google-marketing-solutions/google_ads_mcp with Streamable HTTP transport.
 """
+import asyncio
 import os
 
 # Set port before importing the server
@@ -22,11 +23,19 @@ def _patched_init(self, name="FastMCP", **kwargs):
 
 FastMCP.__init__ = _patched_init
 
-# Now import and run the server
+# Import server and tools (importing tools registers them via decorators)
 from ads_mcp.coordinator import mcp_server
+from ads_mcp.scripts.generate_views import update_views_yaml
+from ads_mcp.tools import api
+from ads_mcp.tools import docs
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", "3001"))
+
+    # Initialize docs resources and verify credentials
+    asyncio.run(update_views_yaml())
+    api.get_ads_client()
+
     mcp_server.settings.host = "0.0.0.0"
     mcp_server.settings.port = port
     print(f"Starting Google Ads MCP server on port {port}...")
