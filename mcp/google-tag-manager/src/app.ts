@@ -87,9 +87,9 @@ const oauthProvider = new ProxyOAuthServerProvider({
   /**
    * Return client configuration for OAuth.
    *
-   * IMPORTANT: Always return Google OAuth credentials for upstream requests.
-   * The clientId parameter is the MCP client's ID (e.g., from Claude's dynamic registration),
-   * but we need to use our pre-registered Google OAuth credentials when talking to Google.
+   * For dynamically registered clients (Claude), we return Claude's registered secret
+   * so the token endpoint validation passes. The actual Google credentials are
+   * substituted in the overridden exchangeAuthorizationCode method below.
    */
   async getClient(clientId: string) {
     logger.debug('Getting client configuration', { clientId });
@@ -97,19 +97,19 @@ const oauthProvider = new ProxyOAuthServerProvider({
     // Check if this is a dynamically registered client (from Claude)
     if (registeredClients.has(clientId)) {
       const client = registeredClients.get(clientId)!;
-      logger.debug('Found dynamically registered client, using Google credentials for upstream', { clientId });
+      logger.debug('Found dynamically registered client', { clientId });
 
-      // Return Google OAuth credentials for upstream, but keep the registered redirect_uris
-      // so Claude's callback URL is accepted
+      // Return Claude's registered secret so validation passes
+      // The upstream request will use Google credentials (substituted in exchangeAuthorizationCode)
       return {
         client_id: env.GOOGLE_CLIENT_ID,           // Use Google client ID for upstream OAuth
-        client_secret: env.GOOGLE_CLIENT_SECRET,   // Use Google client secret for upstream OAuth
+        client_secret: client.client_secret,       // Use Claude's secret for validation
         redirect_uris: client.redirect_uris,       // Use Claude's registered redirect URIs
         grant_types: client.grant_types,
       };
     }
 
-    // Default client configuration - also uses Google credentials
+    // Default client configuration - uses Google credentials
     logger.debug('Using default Google client configuration');
     return {
       client_id: env.GOOGLE_CLIENT_ID,
@@ -122,6 +122,32 @@ const oauthProvider = new ProxyOAuthServerProvider({
 
 // Skip local PKCE validation since Google handles it
 oauthProvider.skipLocalPkceValidation = true;
+
+// Override exchangeAuthorizationCode to always use Google credentials for upstream
+const originalExchangeAuthorizationCode = oauthProvider.exchangeAuthorizationCode.bind(oauthProvider);
+oauthProvider.exchangeAuthorizationCode = async (client, authorizationCode, codeVerifier, redirectUri, resource) => {
+  logger.debug('Exchanging authorization code with Google credentials');
+  // Substitute Google credentials for the upstream request
+  const googleClient = {
+    ...client,
+    client_id: env.GOOGLE_CLIENT_ID,
+    client_secret: env.GOOGLE_CLIENT_SECRET,
+  };
+  return originalExchangeAuthorizationCode(googleClient, authorizationCode, codeVerifier, redirectUri, resource);
+};
+
+// Override exchangeRefreshToken to always use Google credentials for upstream
+const originalExchangeRefreshToken = oauthProvider.exchangeRefreshToken.bind(oauthProvider);
+oauthProvider.exchangeRefreshToken = async (client, refreshToken, scopes, resource) => {
+  logger.debug('Refreshing token with Google credentials');
+  // Substitute Google credentials for the upstream request
+  const googleClient = {
+    ...client,
+    client_id: env.GOOGLE_CLIENT_ID,
+    client_secret: env.GOOGLE_CLIENT_SECRET,
+  };
+  return originalExchangeRefreshToken(googleClient, refreshToken, scopes, resource);
+};
 
 // Override clientsStore to add dynamic client registration support
 // This allows Claude Desktop to register as a client
