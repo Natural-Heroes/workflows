@@ -13,6 +13,7 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
 import { ProxyOAuthServerProvider } from '@modelcontextprotocol/sdk/server/auth/providers/proxyProvider.js';
 import { mcpAuthRouter } from '@modelcontextprotocol/sdk/server/auth/router.js';
+import { requireBearerAuth } from '@modelcontextprotocol/sdk/server/auth/middleware/bearerAuth.js';
 import { logger } from './lib/logger.js';
 import { getEnv } from './lib/env.js';
 import { createMcpServer } from './mcp/index.js';
@@ -117,6 +118,12 @@ const oauthProvider = new ProxyOAuthServerProvider({
 // Skip local PKCE validation since Google handles it
 oauthProvider.skipLocalPkceValidation = true;
 
+const authMiddleware = requireBearerAuth({
+  verifier: oauthProvider,
+  requiredScopes: GTM_SCOPES,
+  resourceMetadataUrl: baseUrl.toString() + '.well-known/oauth-authorization-server',
+});
+
 // Mount the MCP OAuth router
 // This adds /.well-known/oauth-authorization-server, /authorize, /token, etc.
 app.use(
@@ -190,7 +197,7 @@ app.get('/auth', (_req: Request, res: Response) => {
 /**
  * MCP POST endpoint - handles requests and initializes new sessions
  */
-app.post('/mcp', async (req: Request, res: Response) => {
+app.post('/mcp', authMiddleware, async (req: Request, res: Response) => {
   const sessionId = req.headers['mcp-session-id'] as string | undefined;
 
   logger.debug('Received MCP POST request', { sessionId: sessionId || 'none' });
@@ -257,7 +264,7 @@ app.post('/mcp', async (req: Request, res: Response) => {
 /**
  * MCP GET endpoint - Server-Sent Events for server-to-client notifications
  */
-app.get('/mcp', async (req: Request, res: Response) => {
+app.get('/mcp', authMiddleware, async (req: Request, res: Response) => {
   const sessionId = req.headers['mcp-session-id'] as string | undefined;
 
   if (!sessionId || !transports.has(sessionId)) {
@@ -278,7 +285,7 @@ app.get('/mcp', async (req: Request, res: Response) => {
 /**
  * MCP DELETE endpoint - explicit session termination
  */
-app.delete('/mcp', async (req: Request, res: Response) => {
+app.delete('/mcp', authMiddleware, async (req: Request, res: Response) => {
   const sessionId = req.headers['mcp-session-id'] as string | undefined;
 
   if (!sessionId || !transports.has(sessionId)) {
