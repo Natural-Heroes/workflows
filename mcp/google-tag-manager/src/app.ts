@@ -31,11 +31,20 @@ const transports: Map<string, StreamableHTTPServerTransport> = new Map();
 // Derive base URL from callback URL
 const baseUrl = new URL(env.GOOGLE_CALLBACK_URL.replace('/callback', ''));
 
-// Google OAuth scopes for GTM
+// Google OAuth scopes for GTM (must match client.ts)
 const GTM_SCOPES = [
   'https://www.googleapis.com/auth/tagmanager.readonly',
   'https://www.googleapis.com/auth/tagmanager.edit.containers',
+  'https://www.googleapis.com/auth/tagmanager.edit.containerversions',
   'https://www.googleapis.com/auth/tagmanager.publish',
+];
+
+// Allowed redirect URI patterns for dynamic client registration
+const ALLOWED_REDIRECT_PATTERNS = [
+  /^https:\/\/claude\.ai\//,
+  /^https:\/\/claude\.com\//,
+  /^http:\/\/localhost(:\d+)?\//,
+  /^http:\/\/127\.0\.0\.1(:\d+)?\//,
 ];
 
 // Claude's OAuth callback URLs (must be allowed for the OAuth flow to work)
@@ -69,19 +78,59 @@ const oauthProvider = new ProxyOAuthServerProvider({
    * The token is the Google access token from the OAuth flow.
    */
   async verifyAccessToken(token: string) {
-    logger.debug('Verifying access token');
+    logger.debug('Verifying access token with Google');
 
-    // Store the Google access token for GTM tools to use
-    setTokens('global', {
-      access_token: token,
-      token_type: 'Bearer',
-    });
+    try {
+      // Validate the token with Google's tokeninfo endpoint
+      const response = await fetch(
+        `https://oauth2.googleapis.com/tokeninfo?access_token=${encodeURIComponent(token)}`
+      );
 
-    return {
-      token,
-      clientId: env.GOOGLE_CLIENT_ID,
-      scopes: GTM_SCOPES,
-    };
+      if (!response.ok) {
+        logger.warn('Token validation failed', { status: response.status });
+        throw new Error('Invalid or expired token');
+      }
+
+      const tokenInfo = await response.json();
+
+      // Verify the token was issued for our client
+      if (tokenInfo.aud !== env.GOOGLE_CLIENT_ID && tokenInfo.azp !== env.GOOGLE_CLIENT_ID) {
+        logger.warn('Token client ID mismatch', {
+          expected: env.GOOGLE_CLIENT_ID,
+          got: tokenInfo.aud || tokenInfo.azp
+        });
+        throw new Error('Token was not issued for this application');
+      }
+
+      // Store the Google access token for GTM tools to use
+      // Include expiry calculated from expires_in
+      const expiryDate = tokenInfo.expires_in
+        ? Date.now() + (parseInt(tokenInfo.expires_in, 10) * 1000)
+        : undefined;
+
+      setTokens('global', {
+        access_token: token,
+        token_type: 'Bearer',
+        expiry_date: expiryDate,
+        scope: tokenInfo.scope,
+      });
+
+      logger.debug('Token verified successfully', {
+        expiresIn: tokenInfo.expires_in,
+        scope: tokenInfo.scope
+      });
+
+      return {
+        token,
+        clientId: env.GOOGLE_CLIENT_ID,
+        scopes: tokenInfo.scope ? tokenInfo.scope.split(' ') : GTM_SCOPES,
+      };
+    } catch (error) {
+      logger.error('Token verification failed', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    }
   },
 
   /**
@@ -123,6 +172,13 @@ const oauthProvider = new ProxyOAuthServerProvider({
 // Skip local PKCE validation since Google handles it
 oauthProvider.skipLocalPkceValidation = true;
 
+/**
+ * Validate that a redirect URI matches allowed patterns.
+ */
+function isAllowedRedirectUri(uri: string): boolean {
+  return ALLOWED_REDIRECT_PATTERNS.some(pattern => pattern.test(uri));
+}
+
 // Override clientsStore to add dynamic client registration support
 // This allows Claude Desktop to register as a client
 const originalGetClient = oauthProvider.clientsStore.getClient.bind(oauthProvider.clientsStore);
@@ -138,6 +194,13 @@ Object.defineProperty(oauthProvider, 'clientsStore', {
         logo_uri?: string;
         scope?: string;
       }) => {
+        // Validate redirect URIs against allowed patterns
+        const invalidUris = clientInfo.redirect_uris.filter(uri => !isAllowedRedirectUri(uri));
+        if (invalidUris.length > 0) {
+          logger.warn('Client registration rejected: invalid redirect URIs', { invalidUris });
+          throw new Error(`Invalid redirect_uri(s): ${invalidUris.join(', ')}. Only Claude and localhost URLs are allowed.`);
+        }
+
         const clientId = `claude-${randomUUID()}`;
         const clientSecret = randomUUID();
         const now = Math.floor(Date.now() / 1000);
@@ -172,7 +235,7 @@ Object.defineProperty(oauthProvider, 'clientsStore', {
 const authMiddleware = requireBearerAuth({
   verifier: oauthProvider,
   requiredScopes: GTM_SCOPES,
-  resourceMetadataUrl: baseUrl.toString() + '.well-known/oauth-authorization-server',
+  resourceMetadataUrl: new URL('.well-known/oauth-authorization-server', baseUrl).toString(),
 });
 
 // Mount the MCP OAuth router
