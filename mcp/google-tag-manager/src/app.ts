@@ -36,8 +36,6 @@ const GTM_SCOPES = [
   'https://www.googleapis.com/auth/tagmanager.readonly',
   'https://www.googleapis.com/auth/tagmanager.edit.containers',
   'https://www.googleapis.com/auth/tagmanager.edit.containerversions',
-  'https://www.googleapis.com/auth/tagmanager.manage.accounts',
-  'https://www.googleapis.com/auth/tagmanager.manage.users',
   'https://www.googleapis.com/auth/tagmanager.publish',
 ];
 
