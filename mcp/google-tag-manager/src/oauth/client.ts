@@ -7,15 +7,6 @@ import { getEnv } from '../lib/env.js';
 import { logger } from '../lib/logger.js';
 import { getTokens, setTokens, OAuthTokens } from './token-store.js';
 
-const SCOPES = [
-  'https://www.googleapis.com/auth/tagmanager.readonly',
-  'https://www.googleapis.com/auth/tagmanager.edit.containers',
-  'https://www.googleapis.com/auth/tagmanager.edit.containerversions',
-  'https://www.googleapis.com/auth/tagmanager.manage.accounts',
-  'https://www.googleapis.com/auth/tagmanager.manage.users',
-  'https://www.googleapis.com/auth/tagmanager.publish',
-];
-
 let oauth2Client: InstanceType<typeof google.auth.OAuth2> | null = null;
 
 export function getOAuth2Client() {
@@ -28,16 +19,6 @@ export function getOAuth2Client() {
     );
   }
   return oauth2Client;
-}
-
-export function getAuthUrl(state?: string): string {
-  const client = getOAuth2Client();
-  return client.generateAuthUrl({
-    access_type: 'offline',
-    scope: SCOPES,
-    prompt: 'consent',
-    state: state,
-  });
 }
 
 export async function exchangeCodeForTokens(code: string): Promise<OAuthTokens> {
