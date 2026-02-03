@@ -430,8 +430,14 @@ app.get('/callback', async (req: Request, res: Response) => {
 app.post('/mcp', authMiddleware, async (req: Request, res: Response) => {
   const sessionId = req.headers['mcp-session-id'] as string | undefined;
   const method = req.body?.method;
+  const isInit = isInitializeRequest(req.body);
 
-  logger.info('Received MCP POST request', { sessionId: sessionId || 'none', method: method || 'unknown' });
+  logger.info('Received MCP POST request', {
+    sessionId: sessionId || 'none',
+    method: method || 'unknown',
+    isInitializeRequest: isInit,
+    bodyKeys: req.body ? Object.keys(req.body) : [],
+  });
 
   try {
     if (sessionId && transports.has(sessionId)) {
@@ -439,7 +445,7 @@ app.post('/mcp', authMiddleware, async (req: Request, res: Response) => {
       const transport = transports.get(sessionId)!;
       logger.debug('Reusing existing session', { sessionId });
       await transport.handleRequest(req, res, req.body);
-    } else if (!sessionId && isInitializeRequest(req.body)) {
+    } else if (!sessionId && isInit) {
       // New session - create transport and server
       logger.info('Initializing new MCP session');
 
