@@ -282,13 +282,39 @@ Object.defineProperty(oauthProvider, 'clientsStore', {
   },
 });
 
-const authMiddleware = requireBearerAuth({
+const bearerAuth = requireBearerAuth({
   verifier: oauthProvider,
   // Don't require specific scopes - let the tools handle scope errors gracefully
   // The token validation already verifies it was issued for our client
   requiredScopes: [],
   resourceMetadataUrl: new URL('.well-known/oauth-authorization-server', baseUrl).toString(),
 });
+
+// Wrap auth middleware to debug
+const authMiddleware: typeof bearerAuth = (req, res, next) => {
+  logger.info('Auth middleware starting', { path: req.path });
+
+  // Intercept res.end to detect if middleware sends response
+  const originalEnd = res.end.bind(res);
+  let responseSent = false;
+  res.end = ((...args: Parameters<typeof originalEnd>) => {
+    responseSent = true;
+    logger.info('Auth middleware sent response', {
+      path: req.path,
+      statusCode: res.statusCode,
+    });
+    return originalEnd(...args);
+  }) as typeof res.end;
+
+  bearerAuth(req, res, (err?: unknown) => {
+    if (err) {
+      logger.error('Auth middleware error', { error: err });
+    } else if (!responseSent) {
+      logger.info('Auth middleware passed, calling next');
+    }
+    next(err);
+  });
+};
 
 // Mount the MCP OAuth router
 // This adds /.well-known/oauth-authorization-server, /authorize, /token, etc.
