@@ -139,8 +139,11 @@ const oauthProvider = new ProxyOAuthServerProvider({
       });
 
       const scopes = tokenInfo.scope ? tokenInfo.scope.split(' ') : GTM_SCOPES;
+      const expiresAt = expiryDate ? Math.floor(expiryDate / 1000) : undefined;
+
       logger.info('Token verified successfully', {
         expiresIn: tokenInfo.expires_in,
+        expiresAt,
         scopeCount: scopes.length
       });
 
@@ -148,6 +151,7 @@ const oauthProvider = new ProxyOAuthServerProvider({
         token,
         clientId: env.GOOGLE_CLIENT_ID,
         scopes,
+        expiresAt, // Required by MCP SDK's requireBearerAuth
       };
     } catch (error) {
       logger.error('Token verification failed', {
