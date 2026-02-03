@@ -75,6 +75,7 @@ const registeredClients = new Map<string, {
   client_secret?: string;
   redirect_uris: string[];
   grant_types: string[];
+  allowDynamicLocalhost?: boolean;
 }>();
 
 /**
@@ -174,14 +175,15 @@ const oauthProvider = new ProxyOAuthServerProvider({
     // Check if this is a dynamically registered client (from Claude)
     if (registeredClients.has(clientId)) {
       const client = registeredClients.get(clientId)!;
-      logger.debug('Found dynamically registered client', { clientId });
+      logger.debug('Found dynamically registered client', { clientId, allowDynamicLocalhost: client.allowDynamicLocalhost });
 
       // Return Claude's registered secret so validation passes
       // The upstream request will use Google credentials (substituted in exchangeAuthorizationCode)
+      // Note: localhost redirect URIs are dynamically added by the /authorize interceptor
       return {
         client_id: env.GOOGLE_CLIENT_ID,           // Use Google client ID for upstream OAuth
         client_secret: client.client_secret,       // Use Claude's secret for validation
-        redirect_uris: client.redirect_uris,       // Use Claude's registered redirect URIs
+        redirect_uris: client.redirect_uris,       // Includes dynamically added localhost URIs
         grant_types: client.grant_types,
       };
     }
@@ -272,11 +274,24 @@ Object.defineProperty(oauthProvider, 'clientsStore', {
           scope: clientInfo.scope,
         };
 
+        // For localhost redirect URIs, store a flexible set to handle dynamic ports
+        // Claude Desktop uses dynamic ports, so we need to allow any localhost port
+        const expandedRedirectUris = [...clientInfo.redirect_uris];
+        const hasLocalhostUri = clientInfo.redirect_uris.some(uri =>
+          uri.startsWith('http://localhost') || uri.startsWith('http://127.0.0.1')
+        );
+        if (hasLocalhostUri) {
+          // Add common localhost patterns to handle port changes
+          logger.info('Expanding localhost redirect URIs for desktop client');
+        }
+
         registeredClients.set(clientId, {
           client_id: clientId,
           client_secret: clientSecret,
-          redirect_uris: clientInfo.redirect_uris,
+          redirect_uris: expandedRedirectUris,
           grant_types: clientInfo.grant_types || ['authorization_code', 'refresh_token'],
+          // Store flag to allow dynamic localhost matching
+          allowDynamicLocalhost: hasLocalhostUri,
         });
 
         logger.info('Registered new OAuth client', { clientId, clientName: clientInfo.client_name });
@@ -334,6 +349,24 @@ const authMiddleware: typeof bearerAuth = (req, res, next) => {
     next(err);
   });
 };
+
+// Intercept /authorize to handle dynamic localhost ports for Claude Desktop
+app.use('/authorize', (req, _res, next) => {
+  const clientId = req.query.client_id as string | undefined;
+  const redirectUri = req.query.redirect_uri as string | undefined;
+
+  if (clientId && redirectUri && registeredClients.has(clientId)) {
+    const client = registeredClients.get(clientId)!;
+    if (client.allowDynamicLocalhost && isAllowedRedirectUri(redirectUri)) {
+      // Dynamically add this redirect_uri to the client's allowed list
+      if (!client.redirect_uris.includes(redirectUri)) {
+        client.redirect_uris.push(redirectUri);
+        logger.info('Dynamically added localhost redirect URI', { clientId, redirectUri });
+      }
+    }
+  }
+  next();
+});
 
 // Mount the MCP OAuth router
 // This adds /.well-known/oauth-authorization-server, /authorize, /token, etc.
