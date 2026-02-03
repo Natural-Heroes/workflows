@@ -22,6 +22,10 @@ import { setTokens, hasValidTokens, exchangeCodeForTokens } from './oauth/index.
 const app = express();
 const env = getEnv();
 
+// Trust proxy - required when running behind reverse proxy (nginx, cloud load balancer)
+// This allows express-rate-limit to correctly identify clients via X-Forwarded-For
+app.set('trust proxy', 1);
+
 // Middleware
 app.use(express.json());
 
