@@ -351,18 +351,31 @@ const authMiddleware: typeof bearerAuth = (req, res, next) => {
 };
 
 // Intercept /authorize to handle dynamic localhost ports for Claude Desktop
+// Also handles case where client was registered before server restart (mcp-remote persists client_id)
 app.use('/authorize', (req, _res, next) => {
   const clientId = req.query.client_id as string | undefined;
   const redirectUri = req.query.redirect_uri as string | undefined;
 
-  if (clientId && redirectUri && registeredClients.has(clientId)) {
-    const client = registeredClients.get(clientId)!;
-    if (client.allowDynamicLocalhost && isAllowedRedirectUri(redirectUri)) {
-      // Dynamically add this redirect_uri to the client's allowed list
-      if (!client.redirect_uris.includes(redirectUri)) {
+  if (clientId && redirectUri && isAllowedRedirectUri(redirectUri)) {
+    // Check if client exists
+    if (registeredClients.has(clientId)) {
+      const client = registeredClients.get(clientId)!;
+      if (client.allowDynamicLocalhost && !client.redirect_uris.includes(redirectUri)) {
         client.redirect_uris.push(redirectUri);
         logger.info('Dynamically added localhost redirect URI', { clientId, redirectUri });
       }
+    } else if (clientId.startsWith('claude-')) {
+      // Client was registered before server restart - recreate registration
+      // mcp-remote persists client_id but server loses registeredClients on restart
+      const isLocalhostUri = redirectUri.startsWith('http://localhost') || redirectUri.startsWith('http://127.0.0.1');
+      logger.info('Recreating registration for persisted Claude client', { clientId, redirectUri });
+      registeredClients.set(clientId, {
+        client_id: clientId,
+        client_secret: undefined, // Will be validated via token exchange
+        redirect_uris: [redirectUri],
+        grant_types: ['authorization_code', 'refresh_token'],
+        allowDynamicLocalhost: isLocalhostUri,
+      });
     }
   }
   next();
