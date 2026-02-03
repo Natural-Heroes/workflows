@@ -29,6 +29,18 @@ app.set('trust proxy', 1);
 // Middleware
 app.use(express.json());
 
+// Request logging middleware
+app.use((req, _res, next) => {
+  const hasAuth = !!req.headers.authorization;
+  logger.info('Incoming request', {
+    method: req.method,
+    path: req.path,
+    hasAuth,
+    sessionId: req.headers['mcp-session-id'] || 'none'
+  });
+  next();
+});
+
 // Session store: Map<sessionId, transport>
 const transports: Map<string, StreamableHTTPServerTransport> = new Map();
 
@@ -82,7 +94,7 @@ const oauthProvider = new ProxyOAuthServerProvider({
    * The token is the Google access token from the OAuth flow.
    */
   async verifyAccessToken(token: string) {
-    logger.debug('Verifying access token with Google');
+    logger.info('Verifying access token with Google', { tokenPrefix: token.substring(0, 10) + '...' });
 
     try {
       // Validate the token with Google's tokeninfo endpoint
@@ -91,15 +103,22 @@ const oauthProvider = new ProxyOAuthServerProvider({
       );
 
       if (!response.ok) {
-        logger.warn('Token validation failed', { status: response.status });
+        const errorText = await response.text();
+        logger.error('Token validation failed', { status: response.status, error: errorText });
         throw new Error('Invalid or expired token');
       }
 
       const tokenInfo = await response.json();
+      logger.info('Token info received', {
+        aud: tokenInfo.aud,
+        azp: tokenInfo.azp,
+        scope: tokenInfo.scope,
+        expiresIn: tokenInfo.expires_in
+      });
 
       // Verify the token was issued for our client
       if (tokenInfo.aud !== env.GOOGLE_CLIENT_ID && tokenInfo.azp !== env.GOOGLE_CLIENT_ID) {
-        logger.warn('Token client ID mismatch', {
+        logger.error('Token client ID mismatch', {
           expected: env.GOOGLE_CLIENT_ID,
           got: tokenInfo.aud || tokenInfo.azp
         });
@@ -119,15 +138,16 @@ const oauthProvider = new ProxyOAuthServerProvider({
         scope: tokenInfo.scope,
       });
 
-      logger.debug('Token verified successfully', {
+      const scopes = tokenInfo.scope ? tokenInfo.scope.split(' ') : GTM_SCOPES;
+      logger.info('Token verified successfully', {
         expiresIn: tokenInfo.expires_in,
-        scope: tokenInfo.scope
+        scopeCount: scopes.length
       });
 
       return {
         token,
         clientId: env.GOOGLE_CLIENT_ID,
-        scopes: tokenInfo.scope ? tokenInfo.scope.split(' ') : GTM_SCOPES,
+        scopes,
       };
     } catch (error) {
       logger.error('Token verification failed', {
@@ -264,7 +284,9 @@ Object.defineProperty(oauthProvider, 'clientsStore', {
 
 const authMiddleware = requireBearerAuth({
   verifier: oauthProvider,
-  requiredScopes: GTM_SCOPES,
+  // Don't require specific scopes - let the tools handle scope errors gracefully
+  // The token validation already verifies it was issued for our client
+  requiredScopes: [],
   resourceMetadataUrl: new URL('.well-known/oauth-authorization-server', baseUrl).toString(),
 });
 
@@ -407,8 +429,9 @@ app.get('/callback', async (req: Request, res: Response) => {
  */
 app.post('/mcp', authMiddleware, async (req: Request, res: Response) => {
   const sessionId = req.headers['mcp-session-id'] as string | undefined;
+  const method = req.body?.method;
 
-  logger.debug('Received MCP POST request', { sessionId: sessionId || 'none' });
+  logger.info('Received MCP POST request', { sessionId: sessionId || 'none', method: method || 'unknown' });
 
   try {
     if (sessionId && transports.has(sessionId)) {
