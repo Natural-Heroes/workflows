@@ -294,15 +294,30 @@ const bearerAuth = requireBearerAuth({
 const authMiddleware: typeof bearerAuth = (req, res, next) => {
   logger.info('Auth middleware starting', { path: req.path });
 
-  // Intercept res.end to detect if middleware sends response
+  // Intercept res.json and res.end to capture response body
+  const originalJson = res.json.bind(res);
   const originalEnd = res.end.bind(res);
   let responseSent = false;
-  res.end = ((...args: Parameters<typeof originalEnd>) => {
+
+  res.json = ((body: unknown) => {
     responseSent = true;
-    logger.info('Auth middleware sent response', {
+    logger.info('Auth middleware sent JSON response', {
       path: req.path,
       statusCode: res.statusCode,
+      body: JSON.stringify(body).substring(0, 500),
     });
+    return originalJson(body);
+  }) as typeof res.json;
+
+  res.end = ((...args: Parameters<typeof originalEnd>) => {
+    if (!responseSent) {
+      responseSent = true;
+      logger.info('Auth middleware sent response', {
+        path: req.path,
+        statusCode: res.statusCode,
+        body: args[0] ? String(args[0]).substring(0, 500) : 'empty',
+      });
+    }
     return originalEnd(...args);
   }) as typeof res.end;
 
