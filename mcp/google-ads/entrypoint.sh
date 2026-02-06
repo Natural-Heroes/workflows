@@ -12,7 +12,7 @@ fi
 # google-ads python client v29+ requires use_proto_plus in the YAML config.
 # Inject it if the credentials file exists but doesn't contain the key.
 if [ -f /app/google-ads.yaml ] && ! grep -q "use_proto_plus" /app/google-ads.yaml; then
-    echo "use_proto_plus: True" >> /app/google-ads.yaml
+    printf '\nuse_proto_plus: True\n' >> /app/google-ads.yaml
 fi
 
 exec "$@"
