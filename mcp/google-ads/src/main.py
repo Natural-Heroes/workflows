@@ -13,7 +13,9 @@ Customisations over the upstream package:
     (1577805671) as login_customer_id.
 """
 import asyncio
+import copy
 import os
+import re
 import sys
 import traceback
 from typing import Any
@@ -24,9 +26,22 @@ os.environ.setdefault("PORT", "3001")
 # --- Natural Heroes account defaults ---
 DEFAULT_CUSTOMER_ID = "9795580872"
 DEFAULT_LOGIN_CUSTOMER_ID = "1577805671"
+DEFAULT_MAX_ROWS = 1000
 
 # Import server
 from ads_mcp.coordinator import mcp_server
+
+# --- Assert private FastMCP APIs we depend on still exist ---
+# We access _tool_manager._tools to remove/replace upstream tools.
+# If FastMCP renames or removes these internals, fail loudly at startup
+# rather than silently breaking tool registration.
+assert hasattr(mcp_server, "_tool_manager") and hasattr(
+    mcp_server._tool_manager, "_tools"
+), (
+    f"FastMCP private API changed — expected mcp_server._tool_manager._tools. "
+    f"Check fastmcp version (pinned 2.14.5) and update accordingly."
+)
+print("[startup] FastMCP private API assertion passed (_tool_manager._tools)")
 
 # --- CRITICAL FIX: Disable error masking ---
 # The upstream coordinator sets mask_error_details=True which replaces all
@@ -91,11 +106,25 @@ except Exception as e:
 # --- Re-register execute_gaql with Natural Heroes defaults ---
 
 
+def _inject_gaql_limit(query: str, max_rows: int) -> str:
+    """Add a LIMIT clause if the query doesn't already have one.
+
+    In GAQL, LIMIT is always the final clause, so we anchor the match to the
+    end of the query to avoid false positives from string literals mid-query.
+    """
+    if re.search(r"\bLIMIT\s+\d+\s*;?\s*$", query, re.IGNORECASE):
+        return query
+    return f"{query.rstrip().rstrip(';')} LIMIT {max_rows}"
+
+
 @mcp_server.tool(
     output_schema={
         "type": "object",
         "properties": {
             "data": {"type": "array", "items": {"type": "object"}},
+            "truncated": {"type": "boolean"},
+            "max_rows": {"type": "integer"},
+            "hint": {"type": "string"},
         },
         "required": ["data"],
     }
@@ -103,7 +132,8 @@ except Exception as e:
 def execute_gaql(
     query: str,
     customer_id: str = DEFAULT_CUSTOMER_ID,
-) -> list[dict[str, Any]]:
+    max_rows: int = DEFAULT_MAX_ROWS,
+) -> dict[str, Any]:
     """Execute a Google Ads Query Language (GAQL) query.
 
     Defaults to the Natural Heroes account (9795580872). No need to specify
@@ -114,17 +144,24 @@ def execute_gaql(
         query: The GAQL query to execute.
         customer_id: The customer account to query. Defaults to Natural Heroes
             (9795580872). Only digits, no dashes.
+        max_rows: Maximum number of rows to return. Defaults to 1000. A LIMIT
+            clause is also injected into the GAQL query when one is absent to
+            avoid streaming excessive data from the API.
 
     Returns:
-        An array of objects, each representing a row of query results.
+        An object with a "data" array and optional truncation metadata.
     """
     from google.ads.googleads.errors import GoogleAdsException
     from google.ads.googleads.util import get_nested_attr
     from fastmcp.exceptions import ToolError
 
     query = api.preprocess_gaql(query)
-    ads_client = api.get_ads_client()
+    query = _inject_gaql_limit(query, max_rows)
+
+    # Clone the cached client so we never mutate shared state.
+    ads_client = copy.copy(api.get_ads_client())
     ads_client.login_customer_id = DEFAULT_LOGIN_CUSTOMER_ID
+
     ads_service = ads_client.get_service("GoogleAdsService")
     try:
         query_res = ads_service.search_stream(
@@ -133,16 +170,28 @@ def execute_gaql(
         output = []
         for batch in query_res:
             for row in batch.results:
+                if len(output) >= max_rows:
+                    break
                 output.append(
                     {
                         i: api.format_value(get_nested_attr(row, i))
                         for i in batch.field_mask.paths
                     }
                 )
+            if len(output) >= max_rows:
+                break
     except GoogleAdsException as e:
         raise ToolError("\n".join(str(i) for i in e.failure.errors)) from e
 
-    return {"data": output}
+    result: dict[str, Any] = {"data": output}
+    if len(output) >= max_rows:
+        result["truncated"] = True
+        result["max_rows"] = max_rows
+        result["hint"] = (
+            "Results were capped at max_rows. Increase max_rows or add a "
+            "WHERE clause to narrow the query."
+        )
+    return result
 
 
 # --- Generate view/field YAML docs if missing ---
