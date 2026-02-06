@@ -109,12 +109,19 @@ except Exception as e:
 def _inject_gaql_limit(query: str, max_rows: int) -> str:
     """Add a LIMIT clause if the query doesn't already have one.
 
-    In GAQL, LIMIT is always the final clause, so we anchor the match to the
-    end of the query to avoid false positives from string literals mid-query.
+    In GAQL the clause order is: SELECT … FROM … WHERE … ORDER BY … LIMIT …
+    PARAMETERS …  — so LIMIT must come *before* PARAMETERS.
     """
-    if re.search(r"\bLIMIT\s+\d+\s*;?\s*$", query, re.IGNORECASE):
+    if re.search(r"\bLIMIT\s+\d+", query, re.IGNORECASE):
         return query
-    return f"{query.rstrip().rstrip(';')} LIMIT {max_rows}"
+
+    clean = query.rstrip().rstrip(";")
+
+    # Insert LIMIT before PARAMETERS if present, otherwise append.
+    params_match = re.search(r"\s+PARAMETERS\s+", clean, re.IGNORECASE)
+    if params_match:
+        return f"{clean[:params_match.start()]} LIMIT {max_rows}{clean[params_match.start():]}"
+    return f"{clean} LIMIT {max_rows}"
 
 
 @mcp_server.tool(
