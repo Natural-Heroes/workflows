@@ -2,14 +2,28 @@
 
 Wraps google-marketing-solutions/google_ads_mcp with Streamable HTTP transport.
 Patches mask_error_details to surface real error messages for debugging.
+
+Customisations over the upstream package:
+  - Hardcoded Natural Heroes defaults (customer_id, login_customer_id)
+    so Claude can query in a single tool call instead of 4-5 round trips.
+  - Removed list_accessible_accounts from the tool registry (only one
+    sub-account; use debug_auth if you need to inspect accessible accounts).
+  - Replaced upstream execute_gaql with a version that defaults to the
+    Natural Heroes account (9795580872) and always uses the MCC
+    (1577805671) as login_customer_id.
 """
 import asyncio
 import os
 import sys
 import traceback
+from typing import Any
 
 # Set port before importing the server
 os.environ.setdefault("PORT", "3001")
+
+# --- Natural Heroes account defaults ---
+DEFAULT_CUSTOMER_ID = "9795580872"
+DEFAULT_LOGIN_CUSTOMER_ID = "1577805671"
 
 # Import server
 from ads_mcp.coordinator import mcp_server
@@ -52,6 +66,84 @@ except Exception as e:
         f"[startup] ERROR importing ads_mcp.tools.docs: {e}", file=sys.stderr
     )
     traceback.print_exc(file=sys.stderr)
+
+# --- Remove upstream tools we're replacing/hiding ---
+try:
+    tools = mcp_server._tool_manager._tools
+
+    # Remove list_accessible_accounts — only one sub-account, hardcoded below.
+    # debug_auth still exposes this info for troubleshooting.
+    if "list_accessible_accounts" in tools:
+        del tools["list_accessible_accounts"]
+        print("[startup] Removed upstream list_accessible_accounts tool")
+
+    # Remove upstream execute_gaql — we re-register it below with defaults.
+    if "execute_gaql" in tools:
+        del tools["execute_gaql"]
+        print("[startup] Removed upstream execute_gaql tool (re-registering with defaults)")
+except Exception as e:
+    print(
+        f"[startup] WARNING: Could not remove upstream tools: {e}",
+        file=sys.stderr,
+    )
+    traceback.print_exc(file=sys.stderr)
+
+# --- Re-register execute_gaql with Natural Heroes defaults ---
+
+
+@mcp_server.tool(
+    output_schema={
+        "type": "object",
+        "properties": {
+            "data": {"type": "array", "items": {"type": "object"}},
+        },
+        "required": ["data"],
+    }
+)
+def execute_gaql(
+    query: str,
+    customer_id: str = DEFAULT_CUSTOMER_ID,
+) -> list[dict[str, Any]]:
+    """Execute a Google Ads Query Language (GAQL) query.
+
+    Defaults to the Natural Heroes account (9795580872). No need to specify
+    customer_id unless querying a different account. The MCC login
+    (1577805671) is handled automatically.
+
+    Args:
+        query: The GAQL query to execute.
+        customer_id: The customer account to query. Defaults to Natural Heroes
+            (9795580872). Only digits, no dashes.
+
+    Returns:
+        An array of objects, each representing a row of query results.
+    """
+    from google.ads.googleads.errors import GoogleAdsException
+    from google.ads.googleads.util import get_nested_attr
+    from fastmcp.exceptions import ToolError
+
+    query = api.preprocess_gaql(query)
+    ads_client = api.get_ads_client()
+    ads_client.login_customer_id = DEFAULT_LOGIN_CUSTOMER_ID
+    ads_service = ads_client.get_service("GoogleAdsService")
+    try:
+        query_res = ads_service.search_stream(
+            query=query, customer_id=customer_id
+        )
+        output = []
+        for batch in query_res:
+            for row in batch.results:
+                output.append(
+                    {
+                        i: api.format_value(get_nested_attr(row, i))
+                        for i in batch.field_mask.paths
+                    }
+                )
+    except GoogleAdsException as e:
+        raise ToolError("\n".join(str(i) for i in e.failure.errors)) from e
+
+    return {"data": output}
+
 
 # --- Generate view/field YAML docs if missing ---
 # The upstream server.py calls update_views_yaml() at startup to generate
