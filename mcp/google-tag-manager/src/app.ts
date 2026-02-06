@@ -22,6 +22,12 @@ import { setTokens, hasValidTokens, exchangeCodeForTokens } from './oauth/index.
 const app = express();
 const env = getEnv();
 
+// Token verification cache to avoid hitting Google's tokeninfo endpoint on every request.
+// Without caching, concurrent requests during MCP session setup can get rate-limited by Google,
+// causing intermittent "invalid_token" / "Invalid Value" 400 errors.
+const tokenVerificationCache = new Map<string, { result: { token: string; clientId: string; scopes: string[]; expiresAt?: number }; expiresAt: number }>();
+const TOKEN_CACHE_TTL_MS = 60_000; // Cache verification result for 60 seconds
+
 // Trust proxy - required when running behind reverse proxy (nginx, cloud load balancer)
 // This allows express-rate-limit to correctly identify clients via X-Forwarded-For
 app.set('trust proxy', 1);
@@ -97,6 +103,20 @@ const oauthProvider = new ProxyOAuthServerProvider({
   async verifyAccessToken(token: string) {
     logger.info('Verifying access token with Google', { tokenPrefix: token.substring(0, 10) + '...' });
 
+    // Check cache first to avoid rate-limiting from concurrent Google tokeninfo calls
+    const cached = tokenVerificationCache.get(token);
+    if (cached && Date.now() < cached.expiresAt) {
+      logger.info('Token verified from cache', { expiresAt: cached.result.expiresAt, scopeCount: cached.result.scopes.length });
+      // Still update the token store so tools have access
+      setTokens('global', {
+        access_token: token,
+        token_type: 'Bearer',
+        expiry_date: cached.result.expiresAt ? cached.result.expiresAt * 1000 : undefined,
+        scope: cached.result.scopes.join(' '),
+      });
+      return cached.result;
+    }
+
     try {
       // Validate the token with Google's tokeninfo endpoint
       const response = await fetch(
@@ -148,12 +168,22 @@ const oauthProvider = new ProxyOAuthServerProvider({
         scopeCount: scopes.length
       });
 
-      return {
+      const result = {
         token,
         clientId: env.GOOGLE_CLIENT_ID,
         scopes,
         expiresAt, // Required by MCP SDK's requireBearerAuth
       };
+
+      // Cache the result - use the shorter of TOKEN_CACHE_TTL or token expiry
+      const cacheTtl = expiryDate
+        ? Math.min(TOKEN_CACHE_TTL_MS, expiryDate - Date.now())
+        : TOKEN_CACHE_TTL_MS;
+      if (cacheTtl > 0) {
+        tokenVerificationCache.set(token, { result, expiresAt: Date.now() + cacheTtl });
+      }
+
+      return result;
     } catch (error) {
       logger.error('Token verification failed', {
         error: error instanceof Error ? error.message : String(error),
