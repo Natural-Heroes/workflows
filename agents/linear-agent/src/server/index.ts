@@ -4,7 +4,7 @@ import type { TokenManager } from "../oauth/token-manager.js";
 import type { AgentActivities } from "../linear/activities.js";
 import type { TaskQueue } from "../queue/task-queue.js";
 import type { SessionRegistry } from "../sessions/registry.js";
-import { execFile } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { resolve } from "node:path";
 import { verifyWebhookSignatureBuffer, verifyGitHubSignature } from "./signature-verify.js";
 
@@ -299,10 +299,14 @@ export function createServer(deps: ServerDependencies): FastifyInstance {
         if (stderr) console.error(`[github] stderr: ${stderr}`);
         return;
       }
-      console.log(`[github] Build complete — restarting...`);
+      console.log(`[github] Build complete — restarting via launchctl...`);
       if (stdout) console.log(`[github] ${stdout.slice(-500)}`);
-      // Exit cleanly — LaunchAgent (KeepAlive) will restart with new code
-      process.exit(0);
+      // Spawn detached launchctl restart — it kills this process group and starts fresh
+      const restart = spawn("bash", ["-c", "sleep 1 && launchctl kickstart -k gui/$(id -u)/com.naturalhero.linear-agent"], {
+        detached: true,
+        stdio: "ignore",
+      });
+      restart.unref();
     });
 
     return { ok: true, deploying: true };
