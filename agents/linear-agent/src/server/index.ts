@@ -49,7 +49,7 @@ export function createServer(deps: ServerDependencies): FastifyInstance {
   );
 
   // Health check
-  app.get("/health", async () => ({ status: "ok" }));
+  app.get("/health", async () => ({ status: "ok", version: "1.1.0" }));
 
   // OAuth callback — placeholder (actual OAuth handled by setup script)
   app.get("/oauth/callback", async (_req, reply) => {
