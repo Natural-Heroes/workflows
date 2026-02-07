@@ -48,10 +48,14 @@ Linear webhook → Fastify server (HMAC verify) → BullMQ queue → Worker → 
 
 `config/agent.config.json` — repos array maps `repo:` labels to local paths. `pi` section configures model provider/model/thinkingLevel. `queue` section: concurrency 5, 1hr timeout, 3 retries.
 
+### Auto-Deploy
+
+Push to `main` in the workflows repo triggers auto-deploy on the Mac Mini via GitHub webhook (`/webhooks/github`). Only deploys when files in `agents/linear-agent/` are changed. The server pulls, rebuilds, and restarts automatically (~10s).
+
 ## Conventions
 
 - TypeScript strict mode, ESM with `.js` import extensions
 - Dependency injection throughout — no globals
-- Console logging with `[tag]` prefixes: `[webhook]`, `[worker]`, `[runner]`, `[sessions]`
+- Console logging with `[tag]` prefixes: `[webhook]`, `[worker]`, `[runner]`, `[sessions]`, `[github]`
 - Conventional commits: `feat:`, `fix:`, `refactor:`
 - All PRs target `dev` branch
