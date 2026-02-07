@@ -1,0 +1,7 @@
+node_modules/
+dist/
+config/tokens.json
+config/agent.config.json
+config/cloudflared.yml
+.env
+*.log

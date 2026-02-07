@@ -1,0 +1,39 @@
+{
+  "server": {
+    "host": "127.0.0.1",
+    "port": 3000
+  },
+  "linear": {
+    "clientId": "<linear-oauth-client-id>",
+    "clientSecret": "<linear-oauth-client-secret>",
+    "webhookSecret": "<linear-webhook-signing-secret>",
+    "redirectUri": "http://localhost:3000/oauth/callback",
+    "rateLimit": 450,
+    "appUserId": "<linear-app-user-uuid>"
+  },
+  "queue": {
+    "concurrency": 5,
+    "jobTimeout": 3600000,
+    "maxRetries": 3
+  },
+  "redis": {
+    "host": "127.0.0.1",
+    "port": 6379
+  },
+  "repos": [
+    {
+      "label": "repo:dev-storefront",
+      "path": "/Users/nevil/Code/dev-storefront",
+      "defaultBranch": "dev"
+    }
+  ],
+  "defaultAgentType": "default",
+  "pi": {
+    "provider": "anthropic",
+    "model": "claude-sonnet-4-5",
+    "thinkingLevel": "medium"
+  },
+  "github": {
+    "webhookSecret": "<github-webhook-secret>"
+  }
+}
