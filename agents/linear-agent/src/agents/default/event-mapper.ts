@@ -78,7 +78,7 @@ export function createEventMapper(
 
       case "agent_end":
         flushText();
-        send("response", "Finished processing");
+        // Don't send response here — the worker sends the final response with PR info
         break;
     }
   };

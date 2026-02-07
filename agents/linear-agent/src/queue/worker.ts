@@ -116,9 +116,7 @@ export function createWorker(deps: WorkerDependencies): Worker<WebhookJobData> {
         const result = await strategy.execute(context);
         console.log(`[worker] Agent finished — hasChanges=${result.hasChanges} prUrl=${result.prUrl ?? "none"}`);
 
-        const message = result.prUrl
-          ? `${result.summary}\n\nPR: ${result.prUrl}`
-          : result.summary;
+        const message = result.summary;
 
         await linearActivities.sendActivity({
           sessionId,
