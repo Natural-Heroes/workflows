@@ -71,8 +71,11 @@ export function createEventMapper(
       }
 
       case "tool_execution_end":
+        // Tool errors are normal agent behavior (e.g. command not found, non-zero exit).
+        // The agent handles retries internally. Report as thought, not error —
+        // error activities break the Linear UI and trigger notifications.
         if (event.isError) {
-          send("error", `Tool ${event.toolName} failed`);
+          send("thought", `Tool ${event.toolName} returned an error — agent is handling it`);
         }
         break;
 
