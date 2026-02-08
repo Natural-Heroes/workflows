@@ -27,7 +27,7 @@ Linear webhook → Fastify server (HMAC verify) → BullMQ queue → Worker → 
 1. **Server** (`src/server/index.ts`) — receives webhooks, deduplicates, queues jobs. Handles both `AgentSessionEvent` (primary) and `Issue` webhooks (re-delegation fallback).
 2. **Worker** (`src/queue/worker.ts`) — processes jobs: resolves repo via `repo:` label, resolves agent via `agent:` label, executes strategy.
 3. **Runner** (`src/agents/default/runner.ts`) — creates Pi coding agent session, maps events to Linear activities, manages git lifecycle.
-4. **Git workflow** (`src/git/workflow.ts`) — branch from `origin/dev`, commit, push, draft PR via `gh` CLI. Branch naming: `feat/linear-{issueId}-{slug}`. PRs are always created as drafts.
+4. **Git workflow** (`src/git/workflow.ts`) — worktree-based isolation. Each session gets `/tmp/hero-{sessionId}` with push blocked. Runner unblocks push temporarily for its own operations. Branch naming: `feat/linear-{issueId}-{slug}`. PRs target `dev` as drafts.
 
 ### Key Mechanisms
 
@@ -39,6 +39,7 @@ Linear webhook → Fastify server (HMAC verify) → BullMQ queue → Worker → 
 - **Prompt composition**: Linear's `promptContext` is used when available, with agent rules always appended. Fallback prompt built from issue data via `context-builder.ts`.
 - **Activity mapping**: Pi session events are batched (5s intervals) and mapped to Linear agent activities (thought, action, response, error) via `event-mapper.ts`.
 - **Rate limiting**: Bottleneck at 450 req/hour for Linear API (limit is 500).
+- **Git worktree isolation**: Agent sessions run in isolated worktrees (`/tmp/hero-{sessionId}`). Push is blocked via per-worktree `remote.origin.pushurl` config (`extensions.worktreeConfig = true`). This is system-level enforcement — even if the Pi agent ignores prompt rules and runs `git push`, it fails. The runner temporarily unsets the pushurl when it needs to push.
 
 ### Visual Verification
 
@@ -59,7 +60,7 @@ The agent decides whether visual testing is needed based on file extensions — 
 
 ### Auto-Deploy
 
-Push to `main` in the workflows repo triggers auto-deploy on the Mac Mini via GitHub webhook (`/webhooks/github`). Only deploys when files in `agents/linear-agent/` are changed. The server pulls, rebuilds, and restarts automatically (~10s).
+Push to `main` in the workflows repo triggers auto-deploy on the Mac Mini via GitHub webhook (`/webhooks/github`). Only deploys when files in `agents/linear-agent/` are changed. The server pulls, rebuilds, waits for active agent sessions to finish, then restarts via `launchctl`.
 
 ## Conventions
 
