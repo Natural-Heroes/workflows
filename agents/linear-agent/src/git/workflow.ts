@@ -61,8 +61,18 @@ export async function gitSetup(
     // Branch doesn't exist — fine
   }
 
-  // Create worktree with a new branch based on the repo's default branch
-  await git(repoPath, "worktree", "add", "-b", branchName, worktreePath, `origin/${baseBranch}`);
+  // If the remote branch already exists (re-delegation), continue from it
+  // Otherwise start fresh from the base branch
+  let startPoint = `origin/${baseBranch}`;
+  try {
+    await git(repoPath, "rev-parse", "--verify", `origin/${branchName}`);
+    startPoint = `origin/${branchName}`;
+    console.log(`[git] Remote branch exists — continuing from origin/${branchName}`);
+  } catch {
+    // Remote branch doesn't exist — start from base branch
+  }
+
+  await git(repoPath, "worktree", "add", "-b", branchName, worktreePath, startPoint);
 
   // Enable per-worktree config so we can block push in this worktree only
   await git(repoPath, "config", "extensions.worktreeConfig", "true");
