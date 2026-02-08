@@ -10,9 +10,9 @@ import { getModel } from "@mariozechner/pi-ai";
 
 import type { AgentContext, AgentResult, AgentStrategy } from "../types.js";
 import type { PiConfig } from "../../config/types.js";
-import { buildAgentPrompt, getAgentRules } from "./context-builder.js";
+import { buildAgentPrompt, getAgentRules, buildVisualVerifyPrompt } from "./context-builder.js";
 import { createEventMapper, type ActivitySender } from "./event-mapper.js";
-import { gitSetup, gitFinalize, gitCleanup } from "../../git/workflow.js";
+import { gitSetup, gitFinalize, gitCleanup, getChangedFiles, hasVisualChanges, waitForPreviewUrl } from "../../git/workflow.js";
 
 export interface RunnerDependencies {
   activitySender: ActivitySender;
@@ -124,6 +124,49 @@ export class DefaultAgentRunner implements AgentStrategy {
       );
 
       if (prResult) {
+        // Check if visual verification is needed
+        const changedFiles = await getChangedFiles(repoPath);
+        const isVisual = hasVisualChanges(changedFiles);
+
+        if (isVisual) {
+          console.log(`[runner] Visual changes detected — waiting for preview deployment...`);
+          await activitySender.sendActivity({
+            sessionId,
+            type: "thought",
+            content: "Waiting for preview deployment to verify visual changes...",
+          });
+
+          const previewUrl = await waitForPreviewUrl(repoPath, prResult.prUrl);
+
+          if (previewUrl) {
+            console.log(`[runner] Preview URL found: ${previewUrl} — starting visual verification`);
+            await activitySender.sendActivity({
+              sessionId,
+              type: "action",
+              content: `Browsing preview at ${previewUrl}`,
+              action: "visual-verify",
+            });
+
+            // Re-prompt the agent to verify visually
+            const verifyPrompt = buildVisualVerifyPrompt(previewUrl, repoPath);
+            await session!.prompt(verifyPrompt);
+
+            // If the agent made fixes, commit and push them
+            const fixResult = await gitFinalize(
+              repoPath,
+              branchName,
+              issue.identifier,
+              issue.title,
+            );
+
+            if (fixResult) {
+              console.log(`[runner] Visual fixes pushed to ${fixResult.prUrl}`);
+            }
+          } else {
+            console.log(`[runner] No preview URL found — skipping visual verification`);
+          }
+        }
+
         return {
           hasChanges: true,
           prUrl: prResult.prUrl,

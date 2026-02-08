@@ -40,6 +40,15 @@ Linear webhook → Fastify server (HMAC verify) → BullMQ queue → Worker → 
 - **Activity mapping**: Pi session events are batched (5s intervals) and mapped to Linear agent activities (thought, action, response, error) via `event-mapper.ts`.
 - **Rate limiting**: Bottleneck at 450 req/hour for Linear API (limit is 500).
 
+### Visual Verification
+
+After creating a PR, the runner checks if the changes are visual (`.tsx`, `.jsx`, `.css`, `.scss`, `.html`, `.svg`, etc.). If visual:
+1. Polls PR comments for a preview deployment URL (Vercel/Dokploy pattern) for up to 5 minutes
+2. If found, re-prompts the Pi agent with the URL to browse via `surf` (headless Chrome) and verify
+3. If the agent finds visual issues and makes fixes, a new commit is pushed to the same PR
+
+The agent decides whether visual testing is needed based on file extensions — no per-repo config required. Preview URLs are detected from PR comments posted by Vercel/Dokploy bots.
+
 ### Pluggable Agents
 
 `AgentStrategy` interface (`src/agents/types.ts`) + `AgentRegistry` (`src/agents/registry.ts`). Agent type resolved from `agent:{type}` label on issue, falls back to `defaultAgentType` config. New agents: implement `AgentStrategy`, register in registry.

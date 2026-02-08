@@ -94,6 +94,67 @@ export async function gitFinalize(
   return { prUrl };
 }
 
+// File extensions that indicate visual/UI changes
+const VISUAL_EXTENSIONS = new Set([
+  ".tsx", ".jsx", ".vue", ".svelte",
+  ".css", ".scss", ".sass", ".less",
+  ".html", ".htm",
+  ".svg",
+]);
+
+/** Get the list of files changed compared to origin/dev. */
+export async function getChangedFiles(repoPath: string): Promise<string[]> {
+  const output = await git(repoPath, "diff", "--name-only", "origin/dev...HEAD");
+  return output ? output.split("\n").filter(Boolean) : [];
+}
+
+/** Check if any changed files are visual (UI components, styles, etc.). */
+export function hasVisualChanges(files: string[]): boolean {
+  return files.some((f) => {
+    const ext = f.slice(f.lastIndexOf(".")).toLowerCase();
+    return VISUAL_EXTENSIONS.has(ext);
+  });
+}
+
+/** Poll PR comments for a preview deployment URL. Returns the URL or null. */
+export async function waitForPreviewUrl(
+  repoPath: string,
+  prUrl: string,
+  timeoutMs = 300_000,
+  intervalMs = 15_000,
+): Promise<string | null> {
+  const prNumber = prUrl.match(/\/pull\/(\d+)/)?.[1];
+  if (!prNumber) return null;
+
+  const deadline = Date.now() + timeoutMs;
+
+  while (Date.now() < deadline) {
+    try {
+      const comments = await run(
+        repoPath,
+        "gh", "pr", "view", prNumber, "--json", "comments", "--jq",
+        ".comments[].body",
+      );
+
+      // Match common preview deployment URL patterns
+      const urlMatch = comments.match(
+        /https?:\/\/[^\s)>\]]+(?:\.vercel\.app|\.dokploy\.[^\s)>\]]+|preview[^\s)>\]]*)/i,
+      );
+      if (urlMatch) {
+        console.log(`[git] Found preview URL: ${urlMatch[0]}`);
+        return urlMatch[0];
+      }
+    } catch {
+      // gh command failed — keep polling
+    }
+
+    await new Promise((r) => setTimeout(r, intervalMs));
+  }
+
+  console.log(`[git] No preview URL found within ${timeoutMs / 1000}s`);
+  return null;
+}
+
 /** Clean up the feature branch: switch back to dev and delete. */
 export async function gitCleanup(
   repoPath: string,
