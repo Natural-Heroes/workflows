@@ -80,6 +80,7 @@ export async function gitFinalize(
   branchName: string,
   issueId: string,
   issueTitle: string,
+  summary?: string,
 ): Promise<{ prUrl: string } | null> {
   // Check for uncommitted changes
   const diffStat = await git(worktreePath, "diff", "--stat");
@@ -119,16 +120,31 @@ export async function gitFinalize(
     // No existing PR — create one
   }
 
+  const prBody = summary
+    ? `Resolves ${issueId}\n\n${summary}\n\n---\n*Automated PR by Hero*`
+    : `Resolves ${issueId}\n\nAutomated PR by Hero`;
+
   const prUrl = await run(
     worktreePath,
     "gh", "pr", "create",
     "--draft",
     "--base", "dev",
     "--title", `feat: ${issueTitle}`,
-    "--body", `Resolves ${issueId}\n\nAutomated PR by Hero`,
+    "--body", prBody,
   );
 
   return { prUrl };
+}
+
+/** Update the PR description body. */
+export async function updatePrBody(
+  worktreePath: string,
+  prUrl: string,
+  body: string,
+): Promise<void> {
+  const prNumber = prUrl.match(/\/pull\/(\d+)/)?.[1];
+  if (!prNumber) return;
+  await run(worktreePath, "gh", "pr", "edit", prNumber, "--body", body);
 }
 
 // File extensions that indicate visual/UI changes

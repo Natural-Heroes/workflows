@@ -14,7 +14,7 @@ import { readdir, stat } from "node:fs/promises";
 import { buildAgentPrompt, getAgentRules, buildVisualVerifyPrompt, screenshotPath } from "./context-builder.js";
 import type { AgentActivities } from "../../linear/activities.js";
 import { createEventMapper, type ActivitySender } from "./event-mapper.js";
-import { gitSetup, gitFinalize, gitCleanup, getChangedFiles, hasVisualChanges, waitForPreviewUrl } from "../../git/workflow.js";
+import { gitSetup, gitFinalize, gitCleanup, getChangedFiles, hasVisualChanges, waitForPreviewUrl, updatePrBody } from "../../git/workflow.js";
 
 export interface RunnerDependencies {
   activitySender: ActivitySender;
@@ -130,6 +130,7 @@ export class DefaultAgentRunner implements AgentStrategy {
         branchName,
         issue.identifier,
         issue.title,
+        codingSummary,
       );
 
       if (prResult) {
@@ -181,6 +182,12 @@ export class DefaultAgentRunner implements AgentStrategy {
               screenshotUrls: assetUrls,
             });
             await this.deps.linearActivities.postComment(issue.id, commentBody);
+
+            // Update PR description with the same content
+            const prBody = `Resolves ${issue.identifier}\n\n${commentBody}\n\n---\n*Automated PR by Hero*`;
+            await updatePrBody(worktreePath, prResult.prUrl, prBody).catch((err: unknown) => {
+              console.error("[runner] Failed to update PR body:", err);
+            });
 
             // If the agent made fixes, commit and push them
             const fixResult = await gitFinalize(
