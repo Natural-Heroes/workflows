@@ -10,6 +10,7 @@ import { getModel } from "@mariozechner/pi-ai";
 
 import type { AgentContext, AgentResult, AgentStrategy } from "../types.js";
 import type { PiConfig } from "../../config/types.js";
+import { readdir, stat } from "node:fs/promises";
 import { buildAgentPrompt, getAgentRules, buildVisualVerifyPrompt, screenshotPath } from "./context-builder.js";
 import type { AgentActivities } from "../../linear/activities.js";
 import { createEventMapper, type ActivitySender } from "./event-mapper.js";
@@ -153,16 +154,20 @@ export class DefaultAgentRunner implements AgentStrategy {
             });
 
             // Re-prompt the agent to verify visually
+            const verifyStartTime = Date.now();
             const verifyPrompt = buildVisualVerifyPrompt(previewUrl, worktreePath, sessionId);
             await session!.prompt(verifyPrompt);
 
-            // Upload screenshot to Linear issue as a comment
-            const screenshot = screenshotPath(sessionId);
-            await this.deps.linearActivities.uploadScreenshotComment(
-              issue.id,
-              screenshot,
-              `Visual verification screenshot for ${issue.identifier}\n\nPreview: ${previewUrl}`,
-            );
+            // Upload screenshots to Linear issue as a comment
+            // Try the expected path first, then find any PNGs created during this session
+            const screenshots = await findSessionScreenshots(sessionId, verifyStartTime);
+            for (const screenshotFile of screenshots) {
+              await this.deps.linearActivities.uploadScreenshotComment(
+                issue.id,
+                screenshotFile,
+                `Visual verification screenshot for ${issue.identifier}\n\nPreview: ${previewUrl}`,
+              );
+            }
 
             // If the agent made fixes, commit and push them
             const fixResult = await gitFinalize(
@@ -215,4 +220,35 @@ export class DefaultAgentRunner implements AgentStrategy {
       await gitCleanup(repoPath, worktreePath, branchName).catch(() => {});
     }
   }
+}
+
+/** Find screenshots created during the visual verification phase. */
+async function findSessionScreenshots(sessionId: string, startTime: number): Promise<string[]> {
+  const expected = screenshotPath(sessionId);
+  const results: string[] = [];
+
+  // Check the expected path first
+  const expectedStat = await stat(expected).catch(() => null);
+  if (expectedStat && expectedStat.mtimeMs >= startTime) {
+    results.push(expected);
+  }
+
+  // Also scan /tmp/ for any PNGs created during the session
+  try {
+    const files = await readdir("/tmp");
+    for (const file of files) {
+      if (!file.endsWith(".png")) continue;
+      if (file === expected.split("/").pop()) continue; // already added
+      const filePath = `/tmp/${file}`;
+      const fileStat = await stat(filePath).catch(() => null);
+      if (fileStat && fileStat.mtimeMs >= startTime) {
+        results.push(filePath);
+      }
+    }
+  } catch {
+    // /tmp scan failed — use whatever we found
+  }
+
+  console.log(`[runner] Found ${results.length} screenshot(s) for session ${sessionId}`);
+  return results;
 }
