@@ -82,11 +82,12 @@ export async function gitFinalize(
   issueTitle: string,
   summary?: string,
 ): Promise<{ prUrl: string } | null> {
-  // Check for uncommitted changes
+  // Check for any changes (tracked modifications, staged changes, or new untracked files)
   const diffStat = await git(worktreePath, "diff", "--stat");
   const stagedStat = await git(worktreePath, "diff", "--cached", "--stat");
+  const untrackedFiles = await git(worktreePath, "ls-files", "--others", "--exclude-standard");
 
-  if (diffStat || stagedStat) {
+  if (diffStat || stagedStat || untrackedFiles) {
     await git(worktreePath, "add", "-A");
     await git(worktreePath, "commit", "-m", `feat: ${issueTitle} [linear-${issueId}]`);
   }
