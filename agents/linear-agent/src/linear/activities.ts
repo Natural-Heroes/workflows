@@ -155,23 +155,21 @@ export class AgentActivities {
     }
   }
 
-  /** Uploads a screenshot and posts it as a comment on the issue. */
-  async uploadScreenshotComment(issueId: string, screenshotPath: string, caption: string): Promise<void> {
+  /** Uploads a file to Linear and returns the asset URL, or null on failure. */
+  async uploadFile(filePath: string): Promise<string | null> {
     try {
-      // Check if file exists
-      const fileStat = await stat(screenshotPath).catch(() => null);
+      const fileStat = await stat(filePath).catch(() => null);
       if (!fileStat) {
-        console.log(`[activities] Screenshot not found at ${screenshotPath} — skipping upload`);
-        return;
+        console.log(`[activities] File not found at ${filePath} — skipping upload`);
+        return null;
       }
 
-      const fileBuffer = await readFile(screenshotPath);
+      const fileBuffer = await readFile(filePath);
       const fileSize = fileStat.size;
 
-      await this.rateLimiter.schedule(async () => {
+      return await this.rateLimiter.schedule(async () => {
         const token = await this.tokenManager.getAccessToken();
 
-        // Step 1: Request upload URL
         const uploadRes = await fetch("https://api.linear.app/graphql", {
           method: "POST",
           headers: {
@@ -186,7 +184,7 @@ export class AgentActivities {
 
         if (!uploadRes.ok) {
           console.error(`[activities] fileUpload request failed (${uploadRes.status})`);
-          return;
+          return null;
         }
 
         const uploadJson = (await uploadRes.json()) as {
@@ -204,16 +202,15 @@ export class AgentActivities {
 
         if (uploadJson.errors?.length) {
           console.error("[activities] fileUpload errors:", uploadJson.errors);
-          return;
+          return null;
         }
 
         const uploadFile = uploadJson.data?.fileUpload?.uploadFile;
         if (!uploadFile) {
           console.error("[activities] fileUpload returned no uploadFile");
-          return;
+          return null;
         }
 
-        // Step 2: PUT the file to the signed URL
         const putHeaders = new Headers();
         putHeaders.set("Content-Type", "image/png");
         for (const { key, value } of uploadFile.headers) {
@@ -228,12 +225,25 @@ export class AgentActivities {
 
         if (!putRes.ok) {
           console.error(`[activities] PUT upload failed (${putRes.status})`);
-          return;
+          return null;
         }
 
-        // Step 3: Create comment with the image
-        const body = `${caption}\n\n![Preview screenshot](${uploadFile.assetUrl})`;
-        const commentRes = await fetch("https://api.linear.app/graphql", {
+        console.log(`[activities] File uploaded: ${uploadFile.assetUrl}`);
+        return uploadFile.assetUrl;
+      });
+    } catch (err) {
+      console.error("[activities] uploadFile failed:", err);
+      return null;
+    }
+  }
+
+  /** Posts a comment on an issue. */
+  async postComment(issueId: string, body: string): Promise<void> {
+    try {
+      await this.rateLimiter.schedule(async () => {
+        const token = await this.tokenManager.getAccessToken();
+
+        const res = await fetch("https://api.linear.app/graphql", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -245,21 +255,21 @@ export class AgentActivities {
           }),
         });
 
-        if (!commentRes.ok) {
-          console.error(`[activities] commentCreate failed (${commentRes.status})`);
+        if (!res.ok) {
+          console.error(`[activities] commentCreate failed (${res.status})`);
           return;
         }
 
-        const commentJson = (await commentRes.json()) as { errors?: Array<{ message: string }> };
-        if (commentJson.errors?.length) {
-          console.error("[activities] commentCreate errors:", commentJson.errors);
+        const json = (await res.json()) as { errors?: Array<{ message: string }> };
+        if (json.errors?.length) {
+          console.error("[activities] commentCreate errors:", json.errors);
           return;
         }
 
-        console.log(`[activities] Screenshot uploaded and posted as comment on issue ${issueId}`);
+        console.log(`[activities] Comment posted on issue ${issueId}`);
       });
     } catch (err) {
-      console.error("[activities] uploadScreenshotComment failed:", err);
+      console.error("[activities] postComment failed:", err);
     }
   }
 

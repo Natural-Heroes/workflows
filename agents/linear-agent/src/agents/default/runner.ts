@@ -112,6 +112,9 @@ export class DefaultAgentRunner implements AgentStrategy {
         : basePrompt;
       await session.prompt(prompt);
 
+      // Capture the agent's summary from the coding phase
+      const codingSummary = session.getLastAssistantText() ?? "";
+
       // Clean up abort listener
       signal?.removeEventListener("abort", onAbort);
 
@@ -158,16 +161,26 @@ export class DefaultAgentRunner implements AgentStrategy {
             const verifyPrompt = buildVisualVerifyPrompt(previewUrl, worktreePath, sessionId);
             await session!.prompt(verifyPrompt);
 
-            // Upload screenshots to Linear issue as a comment
-            // Try the expected path first, then find any PNGs created during this session
+            // Capture the agent's visual verification summary
+            const verifySummary = session!.getLastAssistantText() ?? "";
+
+            // Upload screenshots and build a combined comment
             const screenshots = await findSessionScreenshots(sessionId, verifyStartTime);
+            const assetUrls: string[] = [];
             for (const screenshotFile of screenshots) {
-              await this.deps.linearActivities.uploadScreenshotComment(
-                issue.id,
-                screenshotFile,
-                `Visual verification screenshot for ${issue.identifier}\n\nPreview: ${previewUrl}`,
-              );
+              const url = await this.deps.linearActivities.uploadFile(screenshotFile);
+              if (url) assetUrls.push(url);
             }
+
+            // Post one combined comment with summaries + screenshots
+            const commentBody = buildVerificationComment({
+              issueIdentifier: issue.identifier,
+              previewUrl,
+              codingSummary,
+              verifySummary,
+              screenshotUrls: assetUrls,
+            });
+            await this.deps.linearActivities.postComment(issue.id, commentBody);
 
             // If the agent made fixes, commit and push them
             const fixResult = await gitFinalize(
@@ -220,6 +233,39 @@ export class DefaultAgentRunner implements AgentStrategy {
       await gitCleanup(repoPath, worktreePath, branchName).catch(() => {});
     }
   }
+}
+
+/** Build a combined comment with coding summary, visual verification, and screenshots. */
+function buildVerificationComment(params: {
+  issueIdentifier: string;
+  previewUrl: string;
+  codingSummary: string;
+  verifySummary: string;
+  screenshotUrls: string[];
+}): string {
+  const { issueIdentifier, previewUrl, codingSummary, verifySummary, screenshotUrls } = params;
+  const sections: string[] = [];
+
+  if (codingSummary) {
+    sections.push(`## Changes Made\n\n${codingSummary}`);
+  }
+
+  if (verifySummary) {
+    sections.push(`## Visual Verification\n\n${verifySummary}`);
+  }
+
+  if (screenshotUrls.length > 0) {
+    const images = screenshotUrls
+      .map((url, i) => `![Screenshot${screenshotUrls.length > 1 ? ` ${i + 1}` : ""}](${url})`)
+      .join("\n\n");
+    sections.push(`## Preview\n\n${previewUrl}\n\n${images}`);
+  }
+
+  if (sections.length === 0) {
+    return `Visual verification completed for ${issueIdentifier}\n\nPreview: ${previewUrl}`;
+  }
+
+  return sections.join("\n\n---\n\n");
 }
 
 /** Find screenshots created during the visual verification phase. */
