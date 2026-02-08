@@ -15,7 +15,7 @@ const BATCH_INTERVAL_MS = 5_000;
 const SILENT_TOOLS = new Set(["read", "glob", "grep", "ls"]);
 
 // Regex to strip worktree prefix: /tmp/hero-{uuid}/
-const WORKTREE_PREFIX_RE = /\/tmp\/hero-[a-f0-9-]+\//g;
+const WORKTREE_PREFIX_RE = /\/tmp\/hero-[a-f0-9-]+\//gi;
 
 /** Create an event handler that maps Pi session events to Linear activities. */
 export function createEventMapper(
@@ -105,25 +105,26 @@ function formatToolAction(toolName: string, args: unknown): string {
 
   const name = toolName.toLowerCase();
 
+  // Linear already shows the tool name as a label — don't repeat it in content
   if (name === "bash") {
     const command = String(parsed.command ?? "");
-    return `bash: ${stripWorktree(command)}`;
+    return stripWorktree(command);
   }
 
   if (name === "edit") {
     const path = stripWorktree(String(parsed.file_path ?? parsed.path ?? ""));
-    return `edit: ${path}`;
+    return path;
   }
 
   if (name === "write") {
     const path = stripWorktree(String(parsed.file_path ?? parsed.path ?? ""));
-    return `write: ${path}`;
+    return path;
   }
 
   // Fallback for unknown tools
   const summary = JSON.stringify(args);
   const clean = stripWorktree(summary.length <= 200 ? summary : summary.slice(0, 197) + "...");
-  return `${toolName}: ${clean}`;
+  return clean;
 }
 
 /** Remove worktree path prefix to show repo-relative paths. */
