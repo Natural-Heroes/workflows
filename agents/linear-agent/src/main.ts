@@ -31,7 +31,7 @@ async function main(): Promise<void> {
 
   // Agent registry
   const registry = new AgentRegistry();
-  registry.register(new DefaultAgentRunner({ activitySender: activities, piConfig: config.pi }));
+  registry.register(new DefaultAgentRunner({ activitySender: activities, linearActivities: activities, piConfig: config.pi }));
 
   // Session registry (shared between server and worker for stop request handling)
   const sessionRegistry = new SessionRegistry();

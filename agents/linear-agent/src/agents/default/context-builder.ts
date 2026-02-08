@@ -23,8 +23,14 @@ export function getAgentRules(repoPath: string): string {
   ].join("\n");
 }
 
+/** Path where the agent saves screenshots during visual verification. */
+export function screenshotPath(sessionId: string): string {
+  return `/tmp/hero-${sessionId}-preview.png`;
+}
+
 /** Prompt for visual verification phase — sent after PR + preview deploy. */
-export function buildVisualVerifyPrompt(previewUrl: string, repoPath: string): string {
+export function buildVisualVerifyPrompt(previewUrl: string, repoPath: string, sessionId: string): string {
+  const screenshotDest = screenshotPath(sessionId);
   return [
     "## Visual Verification",
     "",
@@ -32,7 +38,7 @@ export function buildVisualVerifyPrompt(previewUrl: string, repoPath: string): s
     "",
     "Use agent-browser (headless Playwright) to verify your visual changes look correct:",
     `1. Run: \`/opt/homebrew/bin/agent-browser open "${previewUrl}"\``,
-    "2. Run: `/opt/homebrew/bin/agent-browser screenshot --full /tmp/preview.png`",
+    `2. Run: \`/opt/homebrew/bin/agent-browser screenshot --full ${screenshotDest}\``,
     "3. Review the screenshot to check your changes rendered correctly",
     "4. If you need to inspect specific parts, use `/opt/homebrew/bin/agent-browser snapshot` to get the accessibility tree",
     "5. If you spot visual issues, fix them in the code",

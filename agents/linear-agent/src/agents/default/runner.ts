@@ -10,12 +10,14 @@ import { getModel } from "@mariozechner/pi-ai";
 
 import type { AgentContext, AgentResult, AgentStrategy } from "../types.js";
 import type { PiConfig } from "../../config/types.js";
-import { buildAgentPrompt, getAgentRules, buildVisualVerifyPrompt } from "./context-builder.js";
+import { buildAgentPrompt, getAgentRules, buildVisualVerifyPrompt, screenshotPath } from "./context-builder.js";
+import type { AgentActivities } from "../../linear/activities.js";
 import { createEventMapper, type ActivitySender } from "./event-mapper.js";
 import { gitSetup, gitFinalize, gitCleanup, getChangedFiles, hasVisualChanges, waitForPreviewUrl } from "../../git/workflow.js";
 
 export interface RunnerDependencies {
   activitySender: ActivitySender;
+  linearActivities: AgentActivities;
   piConfig?: PiConfig;
 }
 
@@ -151,8 +153,16 @@ export class DefaultAgentRunner implements AgentStrategy {
             });
 
             // Re-prompt the agent to verify visually
-            const verifyPrompt = buildVisualVerifyPrompt(previewUrl, worktreePath);
+            const verifyPrompt = buildVisualVerifyPrompt(previewUrl, worktreePath, sessionId);
             await session!.prompt(verifyPrompt);
+
+            // Upload screenshot to Linear issue as a comment
+            const screenshot = screenshotPath(sessionId);
+            await this.deps.linearActivities.uploadScreenshotComment(
+              issue.id,
+              screenshot,
+              `Visual verification screenshot for ${issue.identifier}\n\nPreview: ${previewUrl}`,
+            );
 
             // If the agent made fixes, commit and push them
             const fixResult = await gitFinalize(
