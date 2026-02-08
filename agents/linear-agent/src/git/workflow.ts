@@ -263,11 +263,9 @@ ${issue.description ? `### Description\n${issue.description}\n\n` : ""}### Diff
 ${diff}
 \`\`\``;
 
-  // Codex models use the completions API (not chat/completions)
-  const prompt = `${systemPrompt}\n\n${userMessage}\n\n## Review\n`;
-
+  // Codex models use the Responses API
   try {
-    const res = await fetch("https://api.openai.com/v1/completions", {
+    const res = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -275,9 +273,8 @@ ${diff}
       },
       body: JSON.stringify({
         model: "gpt-5.2-codex",
-        prompt,
-        max_tokens: 4096,
-        temperature: 0.2,
+        instructions: systemPrompt,
+        input: userMessage,
       }),
     });
 
@@ -288,16 +285,24 @@ ${diff}
     }
 
     const json = (await res.json()) as {
-      choices?: Array<{ text?: string }>;
+      output?: Array<{ type?: string; content?: Array<{ type?: string; text?: string }> }>;
     };
 
-    const review = json.choices?.[0]?.text?.trim();
-    if (!review) {
+    // Extract text from the response output
+    const textContent = json.output
+      ?.filter((item) => item.type === "message")
+      .flatMap((item) => item.content ?? [])
+      .filter((c) => c.type === "output_text")
+      .map((c) => c.text)
+      .join("\n")
+      .trim();
+
+    if (!textContent) {
       console.error("[git] Codex returned no content");
       return null;
     }
 
-    return `## Bug Review (GPT Codex)\n\n${review}`;
+    return `## Bug Review (GPT Codex)\n\n${textContent}`;
   } catch (err) {
     console.error("[git] Codex review failed:", err);
     return null;
