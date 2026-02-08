@@ -138,6 +138,12 @@ export class DefaultAgentRunner implements AgentStrategy {
         const changedFiles = await getChangedFiles(worktreePath);
         const isVisual = hasVisualChanges(changedFiles);
 
+        if (!isVisual && codingSummary) {
+          // For non-visual PRs, post a standalone "Changes Made" comment
+          // (visual PRs get this as part of the combined verification comment)
+          await this.deps.linearActivities.postComment(issue.id, `## Changes Made\n\n${codingSummary}`);
+        }
+
         if (isVisual) {
           console.log(`[runner] Visual changes detected — waiting for preview deployment...`);
           await activitySender.sendActivity({
