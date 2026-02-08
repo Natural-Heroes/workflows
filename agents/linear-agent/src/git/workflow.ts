@@ -208,6 +208,117 @@ export async function waitForPreviewUrl(
   return null;
 }
 
+/** Get the full diff for a PR via gh. */
+export async function getPrDiff(worktreePath: string, prUrl: string): Promise<string | null> {
+  const prNumber = prUrl.match(/\/pull\/(\d+)/)?.[1];
+  if (!prNumber) return null;
+
+  try {
+    const diff = await run(worktreePath, "gh", "pr", "diff", prNumber);
+    return diff || null;
+  } catch (err) {
+    console.error("[git] Failed to get PR diff:", err);
+    return null;
+  }
+}
+
+/** Send a diff to GPT Codex for bug review. Returns review markdown or null. */
+export async function reviewWithCodex(
+  diff: string,
+  issue: { identifier: string; title: string; description: string },
+): Promise<string | null> {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    console.log("[git] OPENAI_API_KEY not set — skipping bug review");
+    return null;
+  }
+
+  const systemPrompt = `You are a senior code reviewer focused exclusively on finding bugs.
+
+Review the provided pull request diff and report any issues you find.
+
+Focus on:
+- Logic errors and off-by-one mistakes
+- Security vulnerabilities (injection, XSS, auth bypass, etc.)
+- Edge cases and error handling gaps
+- Race conditions and concurrency issues
+- Regressions — does the change break existing behavior?
+
+Skip:
+- Style preferences, naming opinions, formatting nits
+- Minor suggestions that don't affect correctness
+
+Format:
+- Use concise markdown
+- Group findings by severity: 🔴 Critical, 🟡 Warning, 🟢 Note
+- Include file paths and line references from the diff
+- If no bugs found, say "No bugs found — looks good."`;
+
+  const userMessage = `## Issue: ${issue.identifier} — ${issue.title}
+
+${issue.description ? `### Description\n${issue.description}\n\n` : ""}### Diff
+
+\`\`\`diff
+${diff}
+\`\`\``;
+
+  try {
+    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: "gpt-5.2-codex",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userMessage },
+        ],
+        temperature: 0.2,
+      }),
+    });
+
+    if (!res.ok) {
+      const body = await res.text();
+      console.error(`[git] Codex review request failed (${res.status}): ${body}`);
+      return null;
+    }
+
+    const json = (await res.json()) as {
+      choices?: Array<{ message?: { content?: string } }>;
+    };
+
+    const review = json.choices?.[0]?.message?.content?.trim();
+    if (!review) {
+      console.error("[git] Codex returned no content");
+      return null;
+    }
+
+    return `## Bug Review (GPT Codex)\n\n${review}`;
+  } catch (err) {
+    console.error("[git] Codex review failed:", err);
+    return null;
+  }
+}
+
+/** Post a comment on a GitHub PR via gh. */
+export async function postPrComment(
+  worktreePath: string,
+  prUrl: string,
+  body: string,
+): Promise<void> {
+  const prNumber = prUrl.match(/\/pull\/(\d+)/)?.[1];
+  if (!prNumber) return;
+
+  try {
+    await run(worktreePath, "gh", "pr", "comment", prNumber, "--body", body);
+    console.log(`[git] Comment posted on PR #${prNumber}`);
+  } catch (err) {
+    console.error("[git] Failed to post PR comment:", err);
+  }
+}
+
 /** Remove the worktree and delete the local branch. */
 export async function gitCleanup(
   repoPath: string,

@@ -14,7 +14,7 @@ import { readdir, stat } from "node:fs/promises";
 import { buildAgentPrompt, getAgentRules, buildVisualVerifyPrompt, screenshotPath } from "./context-builder.js";
 import type { AgentActivities } from "../../linear/activities.js";
 import { createEventMapper, type ActivitySender } from "./event-mapper.js";
-import { gitSetup, gitFinalize, gitCleanup, getChangedFiles, hasVisualChanges, waitForPreviewUrl, updatePrBody } from "../../git/workflow.js";
+import { gitSetup, gitFinalize, gitCleanup, getChangedFiles, hasVisualChanges, waitForPreviewUrl, updatePrBody, getPrDiff, reviewWithCodex, postPrComment } from "../../git/workflow.js";
 
 export interface RunnerDependencies {
   activitySender: ActivitySender;
@@ -203,6 +203,24 @@ export class DefaultAgentRunner implements AgentStrategy {
             }
           } else {
             console.log(`[runner] No preview URL found — skipping visual verification`);
+          }
+        }
+
+        // Bug review via GPT Codex — runs for all PRs (visual and non-visual)
+        const diff = await getPrDiff(worktreePath, prResult.prUrl);
+        if (diff) {
+          console.log(`[runner] Running bug review via GPT Codex for ${issue.identifier}...`);
+          await activitySender.sendActivity({
+            sessionId,
+            type: "thought",
+            content: "Running independent bug review via GPT Codex...",
+          });
+
+          const review = await reviewWithCodex(diff, issue);
+          if (review) {
+            await this.deps.linearActivities.postComment(issue.id, review);
+            await postPrComment(worktreePath, prResult.prUrl, review);
+            console.log(`[runner] Bug review posted for ${issue.identifier}`);
           }
         }
 
