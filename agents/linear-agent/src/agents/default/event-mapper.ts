@@ -11,6 +11,12 @@ export interface ActivitySender {
 
 const BATCH_INTERVAL_MS = 5_000;
 
+// Tools that only read — skip these to reduce noise in the Linear feed
+const SILENT_TOOLS = new Set(["read", "glob", "grep", "ls"]);
+
+// Regex to strip worktree prefix: /tmp/hero-{uuid}/
+const WORKTREE_PREFIX_RE = /\/tmp\/hero-[a-f0-9-]+\//g;
+
 /** Create an event handler that maps Pi session events to Linear activities. */
 export function createEventMapper(
   sessionId: string,
@@ -63,10 +69,15 @@ export function createEventMapper(
       }
 
       case "tool_execution_start": {
+        const toolName = event.toolName.toLowerCase();
+
+        // Skip read-only tools — they create noise without useful signal
+        if (SILENT_TOOLS.has(toolName)) break;
+
         // Flush text before reporting tool execution
         flushText();
-        const argsSummary = summarizeArgs(event.args);
-        send("action", argsSummary || event.toolName, event.toolName);
+        const summary = formatToolAction(event.toolName, event.args);
+        send("action", summary, event.toolName);
         break;
       }
 
@@ -74,8 +85,8 @@ export function createEventMapper(
         // Tool errors are normal agent behavior (e.g. command not found, non-zero exit).
         // The agent handles retries internally. Report as thought, not error —
         // error activities break the Linear UI and trigger notifications.
-        if (event.isError) {
-          send("thought", `Tool ${event.toolName} returned an error — agent is handling it`);
+        if (event.isError && !SILENT_TOOLS.has(event.toolName.toLowerCase())) {
+          send("thought", `${event.toolName} returned an error — agent is handling it`);
         }
         break;
 
@@ -87,13 +98,35 @@ export function createEventMapper(
   };
 }
 
-function summarizeArgs(args: unknown): string {
-  if (args == null) return "";
-  try {
-    const json = JSON.stringify(args);
-    if (json.length <= 200) return `: ${json}`;
-    return `: ${json.slice(0, 197)}...`;
-  } catch {
-    return "";
+/** Format a tool execution into a human-readable summary. */
+function formatToolAction(toolName: string, args: unknown): string {
+  const parsed = args as Record<string, unknown> | null;
+  if (!parsed) return toolName;
+
+  const name = toolName.toLowerCase();
+
+  if (name === "bash") {
+    const command = String(parsed.command ?? "");
+    return `bash: ${stripWorktree(command)}`;
   }
+
+  if (name === "edit") {
+    const path = stripWorktree(String(parsed.file_path ?? parsed.path ?? ""));
+    return `edit: ${path}`;
+  }
+
+  if (name === "write") {
+    const path = stripWorktree(String(parsed.file_path ?? parsed.path ?? ""));
+    return `write: ${path}`;
+  }
+
+  // Fallback for unknown tools
+  const summary = JSON.stringify(args);
+  const clean = stripWorktree(summary.length <= 200 ? summary : summary.slice(0, 197) + "...");
+  return `${toolName}: ${clean}`;
+}
+
+/** Remove worktree path prefix to show repo-relative paths. */
+function stripWorktree(text: string): string {
+  return text.replace(WORKTREE_PREFIX_RE, "");
 }
