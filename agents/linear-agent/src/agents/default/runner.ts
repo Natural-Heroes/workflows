@@ -110,12 +110,10 @@ export class DefaultAgentRunner implements AgentStrategy {
       const prompt = context.promptContext
         ? basePrompt + getAgentRules(worktreePath)
         : basePrompt;
-      console.log(`[runner] Sending prompt (${prompt.length} chars) to Pi agent...`);
       await session.prompt(prompt);
 
       // Capture the agent's summary from the coding phase
       const codingSummary = session.getLastAssistantText() ?? "";
-      console.log(`[runner] Agent coding summary (${codingSummary.length} chars): ${codingSummary.slice(0, 300)}`);
 
       // Clean up abort listener
       signal?.removeEventListener("abort", onAbort);
