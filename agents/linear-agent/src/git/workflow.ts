@@ -11,70 +11,107 @@ function slugify(text: string): string {
     .slice(0, 50);
 }
 
-/** Safely run a git command in the given repo. */
-async function git(repoPath: string, ...args: string[]): Promise<string> {
-  const { stdout } = await execFileAsync("git", args, { cwd: repoPath });
+/** Safely run a git command in the given directory. */
+async function git(cwd: string, ...args: string[]): Promise<string> {
+  const { stdout } = await execFileAsync("git", args, { cwd });
   return stdout.trim();
 }
 
 /** Safely run an arbitrary command (e.g. gh). */
-async function run(repoPath: string, cmd: string, ...args: string[]): Promise<string> {
-  const { stdout } = await execFileAsync(cmd, args, { cwd: repoPath });
+async function run(cwd: string, cmd: string, ...args: string[]): Promise<string> {
+  const { stdout } = await execFileAsync(cmd, args, { cwd });
   return stdout.trim();
 }
 
-/** Set up a feature branch for the issue, based on origin/dev. */
+export interface GitSetupResult {
+  branchName: string;
+  /** Isolated worktree path where the agent works. */
+  worktreePath: string;
+}
+
+/**
+ * Create an isolated git worktree for the agent session.
+ * The agent works in the worktree; the main repo stays untouched on dev.
+ * Push is blocked in the worktree via per-worktree pushurl config.
+ */
 export async function gitSetup(
   repoPath: string,
   issueId: string,
   issueTitle: string,
-): Promise<{ branchName: string }> {
+  sessionId: string,
+): Promise<GitSetupResult> {
   const slug = slugify(issueTitle);
   const branchName = `feat/linear-${issueId}-${slug}`;
+  const worktreePath = `/tmp/hero-${sessionId}`;
 
   await git(repoPath, "fetch", "origin");
 
-  // Check if branch already exists (retry scenario)
+  // Clean up stale worktree at this path (from a previous failed run)
   try {
-    await git(repoPath, "rev-parse", "--verify", branchName);
-    // Branch exists — switch to it and reset to origin/dev
-    await git(repoPath, "checkout", branchName);
-    await git(repoPath, "reset", "--hard", "origin/dev");
+    await git(repoPath, "worktree", "remove", "--force", worktreePath);
   } catch {
-    // Branch doesn't exist — create it
-    await git(repoPath, "checkout", "-b", branchName, "origin/dev");
+    // Worktree doesn't exist — fine
   }
 
-  return { branchName };
+  // Clean up stale branch if it exists locally
+  try {
+    await git(repoPath, "branch", "-D", branchName);
+  } catch {
+    // Branch doesn't exist — fine
+  }
+
+  // Create worktree with a new branch based on origin/dev
+  await git(repoPath, "worktree", "add", "-b", branchName, worktreePath, "origin/dev");
+
+  // Enable per-worktree config so we can block push in this worktree only
+  await git(repoPath, "config", "extensions.worktreeConfig", "true");
+
+  // Block git push — agent cannot push from the worktree
+  await git(worktreePath, "config", "--worktree", "remote.origin.pushurl", "blocked://push-not-allowed-in-agent-session");
+
+  console.log(`[git] Created worktree at ${worktreePath} on branch ${branchName}`);
+  return { branchName, worktreePath };
 }
 
 /** Stage, commit, push, and create a PR. Returns null if no changes. */
 export async function gitFinalize(
   repoPath: string,
+  worktreePath: string,
   branchName: string,
   issueId: string,
   issueTitle: string,
 ): Promise<{ prUrl: string } | null> {
-  // Check for uncommitted changes first
-  const diffStat = await git(repoPath, "diff", "--stat");
-  const stagedStat = await git(repoPath, "diff", "--cached", "--stat");
+  // Check for uncommitted changes
+  const diffStat = await git(worktreePath, "diff", "--stat");
+  const stagedStat = await git(worktreePath, "diff", "--cached", "--stat");
 
   if (diffStat || stagedStat) {
-    // Pi agent left uncommitted changes — commit them
-    await git(repoPath, "add", "-A");
-    await git(repoPath, "commit", "-m", `feat: ${issueTitle} [linear-${issueId}]`);
+    await git(worktreePath, "add", "-A");
+    await git(worktreePath, "commit", "-m", `feat: ${issueTitle} [linear-${issueId}]`);
   }
 
-  // Check if there are new commits compared to origin/dev (Pi agent may have committed already)
-  const newCommits = await git(repoPath, "rev-list", "--count", "origin/dev..HEAD");
+  // Check if there are new commits compared to origin/dev
+  const newCommits = await git(worktreePath, "rev-list", "--count", "origin/dev..HEAD");
   if (newCommits === "0") return null;
 
-  await git(repoPath, "push", "-u", "origin", branchName);
+  // Temporarily unblock push for the runner
+  try {
+    await git(worktreePath, "config", "--worktree", "--unset", "remote.origin.pushurl");
+  } catch {
+    // Config key might not exist
+  }
+
+  try {
+    await git(worktreePath, "push", "-u", "origin", branchName);
+  } finally {
+    // Re-block push after runner is done
+    await git(worktreePath, "config", "--worktree", "remote.origin.pushurl", "blocked://push-not-allowed-in-agent-session");
+  }
 
   // Check if a PR already exists for this branch
   try {
     const existingPr = await run(
-      repoPath,
+      worktreePath,
       "gh", "pr", "view", branchName, "--json", "url", "--jq", ".url",
     );
     if (existingPr) return { prUrl: existingPr };
@@ -83,7 +120,7 @@ export async function gitFinalize(
   }
 
   const prUrl = await run(
-    repoPath,
+    worktreePath,
     "gh", "pr", "create",
     "--draft",
     "--base", "dev",
@@ -103,8 +140,8 @@ const VISUAL_EXTENSIONS = new Set([
 ]);
 
 /** Get the list of files changed compared to origin/dev. */
-export async function getChangedFiles(repoPath: string): Promise<string[]> {
-  const output = await git(repoPath, "diff", "--name-only", "origin/dev...HEAD");
+export async function getChangedFiles(worktreePath: string): Promise<string[]> {
+  const output = await git(worktreePath, "diff", "--name-only", "origin/dev...HEAD");
   return output ? output.split("\n").filter(Boolean) : [];
 }
 
@@ -118,7 +155,7 @@ export function hasVisualChanges(files: string[]): boolean {
 
 /** Poll PR comments for a preview deployment URL. Returns the URL or null. */
 export async function waitForPreviewUrl(
-  repoPath: string,
+  worktreePath: string,
   prUrl: string,
   timeoutMs = 300_000,
   intervalMs = 15_000,
@@ -131,7 +168,7 @@ export async function waitForPreviewUrl(
   while (Date.now() < deadline) {
     try {
       const comments = await run(
-        repoPath,
+        worktreePath,
         "gh", "pr", "view", prNumber, "--json", "comments", "--jq",
         ".comments[].body",
       );
@@ -155,13 +192,18 @@ export async function waitForPreviewUrl(
   return null;
 }
 
-/** Clean up the feature branch: switch back to dev and delete. */
+/** Remove the worktree and delete the local branch. */
 export async function gitCleanup(
   repoPath: string,
+  worktreePath: string,
   branchName: string,
 ): Promise<void> {
   try {
-    await git(repoPath, "checkout", "dev");
+    await git(repoPath, "worktree", "remove", "--force", worktreePath);
+  } catch {
+    // Best-effort cleanup
+  }
+  try {
     await git(repoPath, "branch", "-D", branchName);
   } catch {
     // Best-effort cleanup

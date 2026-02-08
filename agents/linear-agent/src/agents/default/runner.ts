@@ -37,11 +37,12 @@ export class DefaultAgentRunner implements AgentStrategy {
       content: `Starting work on ${issue.identifier}: ${issue.title}`,
     });
 
-    // Set up feature branch
-    const { branchName } = await gitSetup(
+    // Create isolated worktree for this session (push is blocked inside)
+    const { branchName, worktreePath } = await gitSetup(
       repoPath,
       issue.identifier,
       issue.title,
+      sessionId,
     );
 
     let session: Awaited<
@@ -76,8 +77,9 @@ export class DefaultAgentRunner implements AgentStrategy {
         defaultModel: piConfig?.model,
       });
 
+      // Agent works in the isolated worktree, not the main repo
       const result = await createAgentSession({
-        cwd: repoPath,
+        cwd: worktreePath,
         model,
         thinkingLevel,
         sessionManager: SessionManager.inMemory(),
@@ -101,9 +103,9 @@ export class DefaultAgentRunner implements AgentStrategy {
 
       // Build prompt — always append our rules regardless of prompt source
       const basePrompt =
-        context.promptContext || buildAgentPrompt(issue, repoPath);
+        context.promptContext || buildAgentPrompt(issue, worktreePath);
       const prompt = context.promptContext
-        ? basePrompt + getAgentRules(repoPath)
+        ? basePrompt + getAgentRules(worktreePath)
         : basePrompt;
       await session.prompt(prompt);
 
@@ -115,9 +117,10 @@ export class DefaultAgentRunner implements AgentStrategy {
         throw new Error("Session was stopped by user request");
       }
 
-      // Finalize git (stage, commit, push, PR)
+      // Finalize git (stage, commit, push, PR) — runner unblocks push temporarily
       const prResult = await gitFinalize(
         repoPath,
+        worktreePath,
         branchName,
         issue.identifier,
         issue.title,
@@ -125,7 +128,7 @@ export class DefaultAgentRunner implements AgentStrategy {
 
       if (prResult) {
         // Check if visual verification is needed
-        const changedFiles = await getChangedFiles(repoPath);
+        const changedFiles = await getChangedFiles(worktreePath);
         const isVisual = hasVisualChanges(changedFiles);
 
         if (isVisual) {
@@ -136,7 +139,7 @@ export class DefaultAgentRunner implements AgentStrategy {
             content: "Waiting for preview deployment to verify visual changes...",
           });
 
-          const previewUrl = await waitForPreviewUrl(repoPath, prResult.prUrl);
+          const previewUrl = await waitForPreviewUrl(worktreePath, prResult.prUrl);
 
           if (previewUrl) {
             console.log(`[runner] Preview URL found: ${previewUrl} — starting visual verification`);
@@ -148,12 +151,13 @@ export class DefaultAgentRunner implements AgentStrategy {
             });
 
             // Re-prompt the agent to verify visually
-            const verifyPrompt = buildVisualVerifyPrompt(previewUrl, repoPath);
+            const verifyPrompt = buildVisualVerifyPrompt(previewUrl, worktreePath);
             await session!.prompt(verifyPrompt);
 
             // If the agent made fixes, commit and push them
             const fixResult = await gitFinalize(
               repoPath,
+              worktreePath,
               branchName,
               issue.identifier,
               issue.title,
@@ -192,11 +196,13 @@ export class DefaultAgentRunner implements AgentStrategy {
           console.error("[runner] Failed to send error activity:", err);
         });
 
-      // Clean up branch on failure
-      await gitCleanup(repoPath, branchName);
+      // Clean up worktree and branch on failure
+      await gitCleanup(repoPath, worktreePath, branchName);
       throw error;
     } finally {
       session?.dispose();
+      // Clean up worktree after successful run too
+      await gitCleanup(repoPath, worktreePath, branchName).catch(() => {});
     }
   }
 }
