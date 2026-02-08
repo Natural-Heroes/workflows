@@ -263,8 +263,11 @@ ${issue.description ? `### Description\n${issue.description}\n\n` : ""}### Diff
 ${diff}
 \`\`\``;
 
+  // Codex models use the completions API (not chat/completions)
+  const prompt = `${systemPrompt}\n\n${userMessage}\n\n## Review\n`;
+
   try {
-    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+    const res = await fetch("https://api.openai.com/v1/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -272,10 +275,8 @@ ${diff}
       },
       body: JSON.stringify({
         model: "gpt-5.2-codex",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userMessage },
-        ],
+        prompt,
+        max_tokens: 4096,
         temperature: 0.2,
       }),
     });
@@ -287,10 +288,10 @@ ${diff}
     }
 
     const json = (await res.json()) as {
-      choices?: Array<{ message?: { content?: string } }>;
+      choices?: Array<{ text?: string }>;
     };
 
-    const review = json.choices?.[0]?.message?.content?.trim();
+    const review = json.choices?.[0]?.text?.trim();
     if (!review) {
       console.error("[git] Codex returned no content");
       return null;
