@@ -138,7 +138,7 @@ export async function waitForPreviewUrl(
 
       // Match common preview deployment URL patterns
       const urlMatch = comments.match(
-        /https?:\/\/[^\s)>\]]+(?:\.vercel\.app|\.dokploy\.[^\s)>\]]+|preview[^\s)>\]]*)/i,
+        /https?:\/\/[^\s)>\]]+(?:\.vercel\.app|\.traefik\.me|\.dokploy\.[^\s)>\]]+|preview[^\s)>\]]*)/i,
       );
       if (urlMatch) {
         console.log(`[git] Found preview URL: ${urlMatch[0]}`);
