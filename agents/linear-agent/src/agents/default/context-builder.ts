@@ -31,7 +31,7 @@ export function buildVisualVerifyPrompt(previewUrl: string, repoPath: string): s
     `A preview deployment is live at: ${previewUrl}`,
     "",
     "Use headless Chrome to verify your visual changes look correct:",
-    `1. Run: \`surf screenshot "${previewUrl}" --output /tmp/preview.png\` to take a screenshot`,
+    `1. Run: \`/opt/homebrew/bin/surf screenshot "${previewUrl}" --output /tmp/preview.png\` to take a screenshot`,
     `2. Review the screenshot to check your changes rendered correctly`,
     "3. If you spot visual issues, fix them in the code",
     "4. If everything looks good, confirm with a brief summary of what you verified",
