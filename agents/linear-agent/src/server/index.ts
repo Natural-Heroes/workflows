@@ -299,14 +299,32 @@ export function createServer(deps: ServerDependencies): FastifyInstance {
         if (stderr) console.error(`[github] stderr: ${stderr}`);
         return;
       }
-      console.log(`[github] Build complete — restarting via launchctl...`);
+      console.log(`[github] Build complete — checking for active sessions...`);
       if (stdout) console.log(`[github] ${stdout.slice(-500)}`);
-      // Spawn detached launchctl restart — it kills this process group and starts fresh
-      const restart = spawn("bash", ["-c", "sleep 1 && launchctl kickstart -k gui/$(id -u)/com.naturalhero.linear-agent"], {
-        detached: true,
-        stdio: "ignore",
+
+      // Wait for active agent sessions to finish before restarting
+      const waitAndRestart = async () => {
+        const activeSessions = sessionRegistry.activeCount;
+        if (activeSessions > 0) {
+          console.log(`[github] ${activeSessions} active session(s) — waiting before restart...`);
+          // Poll every 30s until all sessions are done (max 60 min)
+          const maxWait = Date.now() + 3_600_000;
+          while (sessionRegistry.activeCount > 0 && Date.now() < maxWait) {
+            await new Promise((r) => setTimeout(r, 30_000));
+            console.log(`[github] Still waiting — ${sessionRegistry.activeCount} active session(s)`);
+          }
+        }
+        console.log(`[github] No active sessions — restarting via launchctl...`);
+        // Spawn detached launchctl restart — it kills this process group and starts fresh
+        const restart = spawn("bash", ["-c", "sleep 1 && launchctl kickstart -k gui/$(id -u)/com.naturalhero.linear-agent"], {
+          detached: true,
+          stdio: "ignore",
+        });
+        restart.unref();
+      };
+      waitAndRestart().catch((err) => {
+        console.error(`[github] Error waiting for sessions: ${err}`);
       });
-      restart.unref();
     });
 
     return { ok: true, deploying: true };
