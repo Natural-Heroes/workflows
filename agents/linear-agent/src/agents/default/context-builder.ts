@@ -31,19 +31,24 @@ export function screenshotPath(sessionId: string): string {
 /** Prompt for visual verification phase — sent after PR + preview deploy. */
 export function buildVisualVerifyPrompt(previewUrl: string, repoPath: string, sessionId: string): string {
   const screenshotDest = screenshotPath(sessionId);
+  // Prefix all agent-browser commands with PATH to ensure node is findable
+  const ab = "PATH=/opt/homebrew/bin:$PATH /opt/homebrew/bin/agent-browser";
   return [
-    "## Visual Verification",
+    "## Visual Verification — MANDATORY",
     "",
     `A preview deployment is live at: ${previewUrl}`,
     "",
-    "Use agent-browser (headless Playwright) to verify your visual changes look correct:",
-    `1. Run: \`/opt/homebrew/bin/agent-browser open "${previewUrl}"\``,
-    `2. Run: \`/opt/homebrew/bin/agent-browser screenshot --full ${screenshotDest}\``,
+    "You MUST take a screenshot using agent-browser. Follow these steps exactly:",
+    `1. Run: \`${ab} open "${previewUrl}"\``,
+    `2. Run: \`${ab} screenshot --full ${screenshotDest}\``,
     "3. Review the screenshot to check your changes rendered correctly",
-    "4. If you need to inspect specific parts, use `/opt/homebrew/bin/agent-browser snapshot` to get the accessibility tree",
+    `4. If you need to inspect specific parts, run: \`${ab} snapshot\``,
     "5. If you spot visual issues, fix them in the code",
-    "6. If everything looks good, confirm with a brief summary of what you verified",
-    "7. Run: `/opt/homebrew/bin/agent-browser close`",
+    "6. Confirm with a brief summary of what you verified",
+    `7. Run: \`${ab} close\``,
+    "",
+    `IMPORTANT: The screenshot MUST be saved to exactly: ${screenshotDest}`,
+    "Do NOT skip the screenshot step — it will be uploaded to the Linear issue.",
     "",
     "Focus only on the parts of the page affected by your changes.",
     getAgentRules(repoPath),
