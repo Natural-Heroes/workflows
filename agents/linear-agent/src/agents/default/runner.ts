@@ -157,6 +157,12 @@ export class DefaultAgentRunner implements AgentStrategy {
           const previewUrl = await waitForPreviewUrl(worktreePath, prResult.prUrl);
 
           if (previewUrl) {
+            // Append Vercel bypass param so agent-browser can access protected previews
+            const bypassSecret = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
+            const browseUrl = bypassSecret
+              ? `${previewUrl}${previewUrl.includes("?") ? "&" : "?"}x-vercel-protection-bypass=${bypassSecret}&x-vercel-set-bypass-cookie=samesitenone`
+              : previewUrl;
+
             console.log(`[runner] Preview URL found: ${previewUrl} — starting visual verification`);
             await activitySender.sendActivity({
               sessionId,
@@ -167,7 +173,7 @@ export class DefaultAgentRunner implements AgentStrategy {
 
             // Re-prompt the agent to verify visually
             const verifyStartTime = Date.now();
-            const verifyPrompt = buildVisualVerifyPrompt(previewUrl, worktreePath, sessionId);
+            const verifyPrompt = buildVisualVerifyPrompt(browseUrl, worktreePath, sessionId);
             await session!.prompt(verifyPrompt);
 
             // Capture the agent's visual verification summary
