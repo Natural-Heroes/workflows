@@ -39,6 +39,7 @@ export async function gitSetup(
   issueId: string,
   issueTitle: string,
   sessionId: string,
+  baseBranch = "dev",
 ): Promise<GitSetupResult> {
   const slug = slugify(issueTitle);
   const branchName = `feat/linear-${issueId}-${slug}`;
@@ -60,8 +61,8 @@ export async function gitSetup(
     // Branch doesn't exist — fine
   }
 
-  // Create worktree with a new branch based on origin/dev
-  await git(repoPath, "worktree", "add", "-b", branchName, worktreePath, "origin/dev");
+  // Create worktree with a new branch based on the repo's default branch
+  await git(repoPath, "worktree", "add", "-b", branchName, worktreePath, `origin/${baseBranch}`);
 
   // Enable per-worktree config so we can block push in this worktree only
   await git(repoPath, "config", "extensions.worktreeConfig", "true");
@@ -81,6 +82,7 @@ export async function gitFinalize(
   issueId: string,
   issueTitle: string,
   summary?: string,
+  baseBranch = "dev",
 ): Promise<{ prUrl: string } | null> {
   // Check for any changes (tracked modifications, staged changes, or new untracked files)
   const diffStat = await git(worktreePath, "diff", "--stat");
@@ -92,8 +94,8 @@ export async function gitFinalize(
     await git(worktreePath, "commit", "-m", `feat: ${issueTitle} [linear-${issueId}]`);
   }
 
-  // Check if there are new commits compared to origin/dev
-  const newCommits = await git(worktreePath, "rev-list", "--count", "origin/dev..HEAD");
+  // Check if there are new commits compared to the base branch
+  const newCommits = await git(worktreePath, "rev-list", "--count", `origin/${baseBranch}..HEAD`);
   if (newCommits === "0") return null;
 
   // Temporarily unblock push for the runner
@@ -129,7 +131,7 @@ export async function gitFinalize(
     worktreePath,
     "gh", "pr", "create",
     "--draft",
-    "--base", "dev",
+    "--base", baseBranch,
     "--title", `feat: ${issueTitle}`,
     "--body", prBody,
   );
@@ -156,9 +158,9 @@ const VISUAL_EXTENSIONS = new Set([
   ".svg",
 ]);
 
-/** Get the list of files changed compared to origin/dev. */
-export async function getChangedFiles(worktreePath: string): Promise<string[]> {
-  const output = await git(worktreePath, "diff", "--name-only", "origin/dev...HEAD");
+/** Get the list of files changed compared to the base branch. */
+export async function getChangedFiles(worktreePath: string, baseBranch = "dev"): Promise<string[]> {
+  const output = await git(worktreePath, "diff", "--name-only", `origin/${baseBranch}...HEAD`);
   return output ? output.split("\n").filter(Boolean) : [];
 }
 

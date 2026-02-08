@@ -32,7 +32,7 @@ export class DefaultAgentRunner implements AgentStrategy {
 
   async execute(context: AgentContext): Promise<AgentResult> {
     const { activitySender } = this.deps;
-    const { issue, repoPath, sessionId, signal } = context;
+    const { issue, repoPath, defaultBranch, sessionId, signal } = context;
 
     await activitySender.sendActivity({
       sessionId,
@@ -46,6 +46,7 @@ export class DefaultAgentRunner implements AgentStrategy {
       issue.identifier,
       issue.title,
       sessionId,
+      defaultBranch,
     );
 
     let session: Awaited<
@@ -131,11 +132,12 @@ export class DefaultAgentRunner implements AgentStrategy {
         issue.identifier,
         issue.title,
         codingSummary,
+        defaultBranch,
       );
 
       if (prResult) {
         // Check if visual verification is needed
-        const changedFiles = await getChangedFiles(worktreePath);
+        const changedFiles = await getChangedFiles(worktreePath, defaultBranch);
         const isVisual = hasVisualChanges(changedFiles);
 
         if (!isVisual && codingSummary) {
@@ -202,6 +204,8 @@ export class DefaultAgentRunner implements AgentStrategy {
               branchName,
               issue.identifier,
               issue.title,
+              undefined,
+              defaultBranch,
             );
 
             if (fixResult) {

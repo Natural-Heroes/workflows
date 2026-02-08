@@ -105,6 +105,7 @@ export function createWorker(deps: WorkerDependencies): Worker<WebhookJobData> {
           issue,
           promptContext,
           repoPath: repo.path,
+          defaultBranch: repo.defaultBranch,
           signal,
         };
 

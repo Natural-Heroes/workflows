@@ -11,6 +11,7 @@ export interface AgentContext {
   issue: LinearIssue;
   promptContext: string;
   repoPath: string;
+  defaultBranch: string;
   /** Abort signal — fires when a stop request is received from Linear. */
   signal?: AbortSignal;
 }
