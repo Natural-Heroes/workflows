@@ -72,10 +72,12 @@ export class PlanRunner implements AgentStrategy {
       });
       session = result.session;
 
-      // Listen for abort signal
+      // Listen for abort signal — abort the Pi session to stop in-flight operations
       const onAbort = () => {
-        console.log(`[plan-runner] Abort signal received for session ${sessionId}, disposing Pi session...`);
-        session?.dispose();
+        console.log(`[plan-runner] Abort signal received for session ${sessionId}, aborting Pi session...`);
+        session?.abort().catch((err: unknown) => {
+          console.error(`[plan-runner] Error aborting Pi session: ${err}`);
+        });
       };
       signal?.addEventListener("abort", onAbort, { once: true });
 

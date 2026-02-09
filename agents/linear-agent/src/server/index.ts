@@ -172,19 +172,20 @@ export function createServer(deps: ServerDependencies): FastifyInstance {
     }
 
     // Handle stop — Linear sends "prompted" for initial prompt, follow-ups, AND stop clicks.
-    // We only treat it as a stop if the session has been active for >30s (initial prompted
-    // arrives within milliseconds of "created").
+    // Distinguish by checking if promptContext is present (initial prompt has it, stop doesn't).
+    // Also use a minimum age as a safety check — initial prompted typically arrives within seconds.
     if (action === "prompted") {
-      const MIN_AGE_FOR_STOP_MS = 30_000;
+      const hasPromptContext = !!(payload.promptContext as string | undefined);
       const age = sessionRegistry.getAge(sessionId);
+      const MIN_AGE_FOR_STOP_MS = 5_000;
 
-      if (age !== null && age > MIN_AGE_FOR_STOP_MS) {
-        console.log(`[webhook] Stop/interaction on session ${sessionId} (age=${Math.round(age / 1000)}s) — aborting`);
+      if (!hasPromptContext && age !== null && age > MIN_AGE_FOR_STOP_MS) {
+        console.log(`[webhook] Stop request on session ${sessionId} (age=${Math.round(age / 1000)}s, no promptContext) — aborting`);
         sessionRegistry.abort(sessionId);
         return { ok: true };
       }
 
-      console.log(`[webhook] Ignoring early prompted for session ${sessionId} (age=${age !== null ? Math.round(age / 1000) + "s" : "not registered"})`);
+      console.log(`[webhook] Ignoring prompted for session ${sessionId} (age=${age !== null ? Math.round(age / 1000) + "s" : "not registered"}, hasPromptContext=${hasPromptContext})`);
       return { ok: true };
     }
 
