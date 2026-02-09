@@ -153,60 +153,8 @@ export class PlanRunner implements AgentStrategy {
     }
   }
 
-  /**
-   * Post plan text as Linear comment(s).
-   * Splits at markdown heading boundaries if content exceeds 10,000 chars.
-   */
+  /** Post plan text as a single Linear comment. */
   private async postPlanComments(issueId: string, text: string): Promise<void> {
-    const MAX_COMMENT_LENGTH = 10_000;
-
-    if (text.length <= MAX_COMMENT_LENGTH) {
-      await this.deps.linearActivities.postComment(issueId, text);
-      return;
-    }
-
-    // Split at ## heading boundaries
-    const chunks = this.splitAtHeadings(text, MAX_COMMENT_LENGTH);
-
-    for (let i = 0; i < chunks.length; i++) {
-      const header = chunks.length > 1
-        ? `*Part ${i + 1} of ${chunks.length}*\n\n`
-        : "";
-      await this.deps.linearActivities.postComment(issueId, header + chunks[i]);
-    }
-  }
-
-  /** Split text at `## ` heading boundaries, respecting max length. */
-  private splitAtHeadings(text: string, maxLength: number): string[] {
-    const sections = text.split(/(?=^## )/m);
-    const chunks: string[] = [];
-    let current = "";
-
-    for (const section of sections) {
-      if (current.length + section.length > maxLength && current.length > 0) {
-        chunks.push(current.trim());
-        current = section;
-      } else {
-        current += section;
-      }
-    }
-
-    if (current.trim()) {
-      chunks.push(current.trim());
-    }
-
-    // If any single chunk is still too long, hard-split it
-    const result: string[] = [];
-    for (const chunk of chunks) {
-      if (chunk.length <= maxLength) {
-        result.push(chunk);
-      } else {
-        for (let i = 0; i < chunk.length; i += maxLength) {
-          result.push(chunk.slice(i, i + maxLength));
-        }
-      }
-    }
-
-    return result;
+    await this.deps.linearActivities.postComment(issueId, text);
   }
 }
