@@ -122,16 +122,18 @@ export class PlanRunner implements AgentStrategy {
         summary: `Plan analysis posted as comment on ${issue.identifier}`,
       };
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : String(error);
-      await activitySender
-        .sendActivity({
-          sessionId,
-          type: "error",
-          content: `Error analyzing ${issue.identifier}: ${message}`,
-        })
-        .catch((err: unknown) => {
-          console.error("[plan-runner] Failed to send error activity:", err);
-        });
+      if (!signal?.aborted) {
+        const message = error instanceof Error ? error.message : String(error);
+        await activitySender
+          .sendActivity({
+            sessionId,
+            type: "error",
+            content: `Error analyzing ${issue.identifier}: ${message}`,
+          })
+          .catch((err: unknown) => {
+            console.error("[plan-runner] Failed to send error activity:", err);
+          });
+      }
 
       throw error;
     } finally {

@@ -254,18 +254,20 @@ export class DefaultAgentRunner implements AgentStrategy {
         summary: `No changes needed for ${issue.identifier}`,
       };
     } catch (error: unknown) {
-      // Report error activity
-      const message =
-        error instanceof Error ? error.message : String(error);
-      await activitySender
-        .sendActivity({
-          sessionId,
-          type: "error",
-          content: `Error processing ${issue.identifier}: ${message}`,
-        })
-        .catch((err: unknown) => {
-          console.error("[runner] Failed to send error activity:", err);
-        });
+      // Only report error activity for real failures, not user-initiated stops
+      if (!signal?.aborted) {
+        const message =
+          error instanceof Error ? error.message : String(error);
+        await activitySender
+          .sendActivity({
+            sessionId,
+            type: "error",
+            content: `Error processing ${issue.identifier}: ${message}`,
+          })
+          .catch((err: unknown) => {
+            console.error("[runner] Failed to send error activity:", err);
+          });
+      }
 
       // Clean up worktree and branch on failure
       await gitCleanup(repoPath, worktreePath, branchName);
