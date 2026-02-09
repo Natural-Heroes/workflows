@@ -61,3 +61,4 @@ All follow the same pattern: Fastify HTTP server with SSE transport, Dockerized,
 - TypeScript strict mode, ESM with `.js` import extensions throughout
 - Conventional commits: `feat:`, `fix:`, `refactor:`, `chore:`, `docs:`
 - Each sub-project is independent — no workspace-level package.json
+- Always commit and push changes to `main` after implementation — no PRs for this repo
