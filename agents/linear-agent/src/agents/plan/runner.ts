@@ -8,10 +8,14 @@ import {
 } from "@mariozechner/pi-coding-agent";
 import { getModel } from "@mariozechner/pi-ai";
 
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import type { AgentContext, AgentResult, AgentStrategy } from "../types.js";
 import type { RunnerDependencies } from "../default/runner.js";
 import { createEventMapper } from "../default/event-mapper.js";
 import { buildPlanPrompt, getPlanRules } from "./context-builder.js";
+
+const execFileAsync = promisify(execFile);
 
 export class PlanRunner implements AgentStrategy {
   readonly name = "plan";
@@ -36,6 +40,14 @@ export class PlanRunner implements AgentStrategy {
     try {
       if (signal?.aborted) {
         throw new Error("Session was stopped before agent could start");
+      }
+
+      // Pull latest changes so plan analyzes up-to-date code
+      try {
+        await execFileAsync("git", ["pull", "--ff-only"], { cwd: repoPath });
+        console.log(`[plan-runner] git pull completed for ${repoPath}`);
+      } catch (err: unknown) {
+        console.warn(`[plan-runner] git pull failed (continuing with current state): ${err}`);
       }
 
       // Create Pi agent session — no git worktree, uses repo path directly (read-only)
