@@ -58,13 +58,17 @@ export function createWorker(deps: WorkerDependencies): Worker<WebhookJobData> {
           const linearIssue = await client.issue(issueId);
           const linearLabels = await linearIssue.labels({ first: 50 });
           console.log(`[worker] Fetched ${linearLabels.nodes.length} labels from API`);
+          const resolvedLabels = await resolveGroupedLabels(linearLabels.nodes);
           issue = {
             ...issue,
             title: issue.title || linearIssue.title,
             description: issue.description || (linearIssue.description ?? ""),
             identifier: issue.identifier || linearIssue.identifier,
-            labels: linearLabels.nodes.map((l) => l.name),
+            labels: resolvedLabels,
           };
+        } else {
+          // Normalize webhook labels (may contain "parent → child" format)
+          issue = { ...issue, labels: issue.labels.map(normalizeLabel) };
         }
 
         console.log(`[worker] Issue: "${issue.title}" labels=[${issue.labels.join(", ")}]`);
@@ -202,6 +206,44 @@ function extractIssue(
   }
 
   return { id: issueId, identifier, title, description, labels };
+}
+
+/**
+ * Resolve grouped labels by fetching each label's parent.
+ * Converts child labels like "dev-storefront" (with parent "repo") into "repo:dev-storefront".
+ * Labels without a parent or already containing ":" are returned as-is.
+ */
+async function resolveGroupedLabels(labels: Array<{ name: string }>): Promise<string[]> {
+  return Promise.all(
+    labels.map(async (label) => {
+      // Already a prefixed label (flat format like "repo:dev-storefront")
+      if (label.name.includes(":")) return label.name;
+      // Normalize "parent → child" format
+      if (label.name.includes(" → ")) return normalizeLabel(label.name);
+      // Try to resolve parent via SDK getter (returns Promise<IssueLabel> | undefined)
+      try {
+        const parentPromise = (label as Record<string, unknown>).parent as Promise<{ name: string }> | undefined;
+        if (parentPromise) {
+          const parent = await parentPromise;
+          if (parent?.name) {
+            return `${parent.name}:${label.name}`;
+          }
+        }
+      } catch {
+        // Parent resolution failed — use name as-is
+      }
+      return label.name;
+    }),
+  );
+}
+
+/** Normalize label names: convert "parent → child" to "parent:child". */
+function normalizeLabel(label: string): string {
+  if (label.includes(" → ")) {
+    const [parent, child] = label.split(" → ", 2);
+    return `${parent}:${child}`;
+  }
+  return label;
 }
 
 function buildPromptContext(
