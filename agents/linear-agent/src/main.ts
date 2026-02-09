@@ -7,6 +7,7 @@ import { TaskQueue } from "./queue/task-queue.js";
 import { createWorker } from "./queue/worker.js";
 import { AgentRegistry } from "./agents/registry.js";
 import { DefaultAgentRunner } from "./agents/default/runner.js";
+import { PlanRunner } from "./agents/plan/runner.js";
 import { SessionRegistry } from "./sessions/registry.js";
 
 async function main(): Promise<void> {
@@ -32,6 +33,7 @@ async function main(): Promise<void> {
   // Agent registry
   const registry = new AgentRegistry();
   registry.register(new DefaultAgentRunner({ activitySender: activities, linearActivities: activities, piConfig: config.pi }));
+  registry.register(new PlanRunner({ activitySender: activities, linearActivities: activities, piConfig: config.pi }));
 
   // Session registry (shared between server and worker for stop request handling)
   const sessionRegistry = new SessionRegistry();
