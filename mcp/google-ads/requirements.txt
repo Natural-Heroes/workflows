@@ -1,0 +1,8 @@
+# Google Ads MCP from google-marketing-solutions
+# Using git+https since PyPI version (0.0.1 from googleads repo) is outdated
+# Pinned to v0.6.1 commit SHA to prevent supply-chain drift
+google-ads-mcp @ git+https://github.com/google-marketing-solutions/google_ads_mcp.git@a364c6368b3d7cbbb5dff08ea819918f2b7be4a7
+
+# Pin FastMCP to a known-good version — we rely on private APIs
+# (_tool_manager._tools, settings.mask_error_details) that may change.
+fastmcp==2.14.5
