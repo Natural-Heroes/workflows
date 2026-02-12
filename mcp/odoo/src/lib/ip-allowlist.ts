@@ -154,7 +154,7 @@ export function createIpAllowlistMiddleware(
     const clientIp = getClientIp(req);
 
     if (ipMatchesAllowlist(clientIp, parsedAllowlist)) {
-      logger.debug('IP allowlisted, bypassing auth', { clientIp });
+      logger.info('Request allowed via IP allowlist, bypassing OAuth', { clientIp });
       next();
       return;
     }
