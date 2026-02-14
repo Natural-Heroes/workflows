@@ -1,0 +1,15 @@
+name: PR Review
+
+on:
+  pull_request_target:
+    types: [opened, ready_for_review]
+    branches: [staging]
+
+jobs:
+  review:
+    if: |
+      github.event.pull_request.head.ref == 'dev' &&
+      github.event.pull_request.draft == false
+    uses: Natural-Heroes/automations/.github/workflows/pr-review-issue.yml@main
+    secrets:
+      LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
