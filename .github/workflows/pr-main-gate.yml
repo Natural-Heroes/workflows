@@ -1,0 +1,10 @@
+name: PR Main Gate
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+    branches: [main]
+
+jobs:
+  check:
+    uses: Natural-Heroes/automations/.github/workflows/pr-target-check.yml@main
