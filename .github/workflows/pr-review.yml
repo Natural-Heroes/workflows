@@ -5,6 +5,9 @@ on:
     types: [opened, ready_for_review]
     branches: [staging]
 
+permissions:
+  pull-requests: read
+
 jobs:
   review:
     if: |
