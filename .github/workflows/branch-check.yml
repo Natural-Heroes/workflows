@@ -1,0 +1,9 @@
+name: Branch Name Check
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  check:
+    uses: Natural-Heroes/automations/.github/workflows/branch-name-check.yml@main
