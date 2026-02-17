@@ -1,0 +1,14 @@
+# Copy this file to your repo's .github/workflows/ folder
+# Requires LINEAR_API_KEY secret in the repo
+
+name: Linear Mark Done
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  mark-done:
+    uses: Natural-Heroes/automations/.github/workflows/linear-mark-done.yml@main
+    secrets:
+      LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
